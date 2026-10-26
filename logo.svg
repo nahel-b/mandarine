@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 1080 1080">
+  <defs>
+    <style>
+      .cls-1{fill:#046ebc}
+      .cls-2{fill:url(#radial-gradient-1)}
+      .cls-3{fill:url(#linear-gradient-1)}
+      .cls-4{fill:url(#linear-gradient-2)}
+      .cls-5{fill:#f7931e}
+      .cls-6{fill:#ffffff}
+    </style>
+    <radialGradient id="radial-gradient-1" cx="0" cy="0" r="402.549" gradientTransform="matrix(1 0 0 0.8 540 569.508)" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#fbb03b"/>
+      <stop offset="0.565" stop-color="#f4961e" data-vc-midpoint="0.565"/>
+      <stop offset="1" stop-color="#ed7b00"/>
+    </radialGradient>
+    <linearGradient id="linear-gradient-1" x1="36.227" y1="350.431" x2="616.646" y2="188.345" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#006837"/>
+      <stop offset="1" stop-color="#003a1e"/>
+    </linearGradient>
+    <linearGradient id="linear-gradient-2" x1="888.374" y1="198.108" x2="536.575" y2="198.108" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#006837"/>
+      <stop offset="1" stop-color="#003a1e"/>
+    </linearGradient>
+  </defs>
+  <title>logo</title>
+  <g id="Layer_1" data-name="Layer 1">
+    <path d="M-22.657 -28.223 L1095.807 -28.223 L1095.807 1099.066 L-22.657 1099.066 Z" class="cls-1"/>
+    <path d="M561.881 925.654 C-13.928 925.654 5.963 212.267 561.881 213.364 C1083.704 214.393 1054.97 925.654 561.881 925.654 Z" class="cls-2"/>
+    <g id="Layer_2" data-name="Layer 2" data-vc-layer="sublayer">
+      <path d="M602.573 164.29 C725.236 302.124 115.332 500.384 71.881 466.483 C9.741 418 379.906 -85.915 602.573 164.29 Z" class="cls-3"/>
+      <path d="M540.711 178.305 C493.384 300.082 867.441 319.854 886.549 287.277 C913.875 240.689 626.623 -42.754 540.711 178.305 Z" class="cls-4"/>
+    </g>
+    <path d="M662.655 693.485" class="cls-5"/>
+    <path d="M724.606 530.504 C741.481 463.374 773.294 408.4 813.48 415.192 C904.026 430.496 837.737 761.08 757.318 747.488 C715.134 740.358 705.064 673.045 715.933 592.786 C716.948 585.291 755.934 578.928 757.318 571.504 C758.975 562.617 722.446 539.096 724.606 530.504 Z M566.887 488.307 C653.558 480.207 668.106 740.493 591.128 747.687 C550.75 751.461 526.138 703.534 517.806 641.467 C517.028 635.67 551.39 622.544 550.967 616.721 C550.461 609.751 511.537 600.11 511.56 593.25 C511.742 539.661 528.421 491.902 566.887 488.307 Z" class="cls-6"/>
+  </g>
+</svg>
