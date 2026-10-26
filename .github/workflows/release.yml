@@ -8,9 +8,11 @@ permissions:
   contents: write
 jobs:
   release:
-    runs-on: macos-15
+    runs-on: macos-26          # SDK macOS 26 requis (agrandissement par IA de VideoToolbox) ; macos-15 n'a que le SDK 15
     steps:
       - uses: actions/checkout@v4
+      - name: Outils
+        run: xcodebuild -version && swift --version
       - name: Version et dépôt
         run: |
           echo "APP_VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_ENV"
