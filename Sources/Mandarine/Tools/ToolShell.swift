@@ -171,12 +171,16 @@ enum ToolAvailability {
             return true
         case .openInCode:
             return VSCode.url != nil
-        case .downloadMP3, .downloadMP4, .downloadWAV:
+        case .downloadMP3, .downloadMP4, .downloadWAV, .speakText:
             return true
+        case .translateText:
+            return SnippetEngine.canTranslate
+        case .summarizeText:
+            return SnippetEngine.canSummarize
         case .extractAudio, .encodeVideo:
             return FFmpeg.isAvailable
         case .compress, .metadata, .editImage, .annotateImage, .frameImage, .cropImage, .redactImage, .createCollage,
-             .mergePDF, .organizePDF, .splitPDF, .extractArchive, .ocr, .tagSelect, .faceSelect:
+             .mergePDF, .organizePDF, .splitPDF, .extractArchive, .ocr, .tagSelect, .faceSelect, .scanDocument:
             return true
         case .trimVideo, .cropVideo, .changeVideoSpeed, .joinVideos, .splitVideo, .redactVideo, .muteVideo,
              .normalizeAudio, .audioToVideo, .trimAudio, .audioChannels, .redactAudio:

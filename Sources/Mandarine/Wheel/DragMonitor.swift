@@ -40,7 +40,11 @@ final class DragMonitor {
             let all = (pb.readObjects(forClasses: [NSURL.self], options: nil) as? [URL]) ?? []
             let files = all.filter(\.isFileURL)
             let links = all.filter { $0.scheme == "http" || $0.scheme == "https" }
-            let urls = files.isEmpty ? links : files       // un lien glissé depuis un navigateur ouvre aussi la roue
+            var urls = files.isEmpty ? links : files       // un lien glissé depuis un navigateur ouvre aussi la roue
+            if urls.isEmpty, settings.enableTextDrag,       // texte sélectionné et glissé : enregistré dans un petit fichier, traité comme un fichier
+               let text = pb.string(forType: .string)?.trimmingCharacters(in: .whitespacesAndNewlines), text.count >= 2, let snippet = SnippetStore.make(text) {
+                urls = [snippet]
+            }
             guard !urls.isEmpty else { return }
             draggedURLs = urls
             dragging = true

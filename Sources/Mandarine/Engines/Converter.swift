@@ -33,6 +33,8 @@ enum Converter {
             return ["pdf", "docx", "txt", "md", "html"].contains(to)
         case .subtitle, .archive:
             return true
+        case .snippet:
+            return SnippetEngine.supports(to)
         case .folder, .other:
             return false
         }
@@ -63,6 +65,7 @@ enum Converter {
         case .spreadsheet: return [try await Task.detached { try convertSheet(first, to: e) }.value]
         case .subtitle: return [try SubtitleEngine.convert(first, to: e)]
         case .archive: return [try await Task.detached { try ArchiveEngine.convert(first, to: e) }.value]
+        case .snippet: return [try await SnippetEngine.convert(first, to: e)]
         case .folder, .other: throw MandarineError("Type de fichier non pris en charge.")
         }
     }
@@ -106,7 +109,7 @@ enum Converter {
     }
 
     /// Documents : .pages passe par l'app Pages ; la sortie .pages aussi (via un DOCX intermédiaire).
-    private static func convertDocument(_ url: URL, to e: String) throws -> URL {
+    static func convertDocument(_ url: URL, to e: String) throws -> URL {
         let src = url.pathExtension.lowercased()
         let fm = FileManager.default
         if src == "pages" {
@@ -186,6 +189,8 @@ enum MediaEngine {
         switch e {
         case "mp3":
             try await FFmpeg.run(["-i", url.path, "-vn"] + FFmpeg.audioArgs(for: "mp3") + [out.path], duration: info.duration, progress: progress)
+        case "m4r":
+            try await FFmpeg.run(ringtoneArguments(url, out: out, duration: info.duration), duration: min(info.duration, Double(AppSettings.shared.ringtoneSeconds)), progress: progress)
         case "gif":
             let vf = "fps=15,scale='min(640,iw)':-1:flags=lanczos,split[s0][s1];[s0]palettegen=stats_mode=diff[p];[s1][p]paletteuse=dither=bayer:bayer_scale=5"
             try await FFmpeg.run(["-i", url.path, "-vf", vf, "-an", "-loop", "0", out.path], duration: info.duration, progress: progress)
@@ -200,9 +205,22 @@ enum MediaEngine {
         return out
     }
 
+    /// Sonnerie iPhone : le début du son (durée réglable, 30 s par défaut), fondu de sortie d'une seconde, AAC dans un conteneur .m4r.
+    static func ringtoneArguments(_ url: URL, out: URL, duration: Double) -> [String] {
+        let n = Double(AppSettings.shared.ringtoneSeconds)
+        let length = duration > 0 ? min(n, duration) : n
+        let fade = min(1.0, length / 3)
+        return ["-i", url.path, "-vn", "-t", String(length), "-af", "afade=t=out:st=\(max(0, length - fade)):d=\(fade)",
+                "-c:a", "aac", "-b:a", "192k", "-f", "ipod", out.path]
+    }
+
     static func convertAudio(_ url: URL, to e: String, progress: @escaping (Double) -> Void) async throws -> URL {
         let info = await FFmpeg.probe(url)
         let out = OutputNaming.sibling(of: url, ext: e)
+        if e == "m4r" {
+            try await FFmpeg.run(ringtoneArguments(url, out: out, duration: info.duration), duration: min(info.duration, Double(AppSettings.shared.ringtoneSeconds)), progress: progress)
+            return out
+        }
         try await FFmpeg.run(["-i", url.path, "-vn"] + FFmpeg.audioArgs(for: e) + [out.path], duration: info.duration, progress: progress)
         return out
     }

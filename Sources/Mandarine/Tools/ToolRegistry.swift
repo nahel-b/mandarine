@@ -31,10 +31,13 @@ enum ToolRegistry {
         case .cropImage: return AnyView(CropImageTool(urls: urls, close: close))
         case .redactImage: return AnyView(RedactImageTool(urls: urls, close: close))
         case .ocr: return AnyView(OCRTool(urls: urls, close: close))
+        case .scanDocument: return AnyView(ScanTool(urls: urls, close: close))
+        case .translateText: return AnyView(TranslateTool(urls: urls, close: close))
+        case .summarizeText: return AnyView(SummarizeTool(urls: urls, close: close))
         case .faceSelect: return AnyView(FaceSelectTool(urls: urls, close: close))
         case .mergePDF: return AnyView(MergePDFTool(urls: urls, close: close))
         case .organizePDF: return AnyView(OrganizePDFTool(url: urls[0], close: close))
-        case .splitPDF, .extractArchive, .muteVideo, .extractImages, .openInCode, .downloadMP3, .downloadMP4, .downloadWAV, .tagSelect:
+        case .splitPDF, .extractArchive, .muteVideo, .extractImages, .openInCode, .downloadMP3, .downloadMP4, .downloadWAV, .tagSelect, .speakText:
             return AnyView(DirectToolView(id: id, urls: urls, close: close))
         default:
             return AnyView(ComingSoonTool(id: id, close: close))
@@ -70,6 +73,8 @@ struct DirectToolView: View {
                 DownloadFlow.start(links: files, kind: id == .downloadMP3 ? .mp3 : (id == .downloadWAV ? .wav : .mp4))
             case .tagSelect:
                 TagSelect.start(files)
+            case .speakText:
+                SnippetSpeaker.shared.speak(files.map { SnippetStore.text(of: $0) }.joined(separator: "\n\n"))
             case .openInCode:
                 VSCode.open(files)
             case .extractImages:

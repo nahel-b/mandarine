@@ -18,6 +18,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             item.menu = buildMenu()
             statusItems.append(item)
         }
+        SnippetStore.cleanup()
         monitor.start()
         runLaunchArguments()
         if CommandLine.arguments.count < 2 { Updater.shared.start() }
@@ -65,7 +66,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc private func openSettings() {
         if settingsWindow == nil {
-            let w = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 440, height: 380), styleMask: [.titled, .closable], backing: .buffered, defer: false)
+            let w = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 720, height: 540), styleMask: [.titled, .closable], backing: .buffered, defer: false)
             w.title = "Mandarine Settings"
             w.contentView = NSHostingView(rootView: SettingsView())
             w.isReleasedWhenClosed = false
@@ -254,6 +255,32 @@ extension AppDelegate {
             }
             return
         }
+        if a.count >= 3, a[0] == "--scantest" {      // test : --scantest photo.jpg sortie.png [Original|Color|Grayscale|B&W]
+            do {
+                let (img, _) = try ImageEngine.load(URL(fileURLWithPath: a[1]), maxSide: 3000)
+                let c = DocumentScanner.detectCorners(img)
+                print("coins :", c.map { String(format: "(%.2f, %.2f)", $0.x, $0.y) }.joined(separator: " "))
+                let f = ScanFilter(rawValue: a.count > 3 ? a[3] : "Color") ?? .color
+                if let out = DocumentScanner.render(img, corners: c, filter: f) {
+                    try ImageEngine.write(out, to: URL(fileURLWithPath: a[2]), ext: "png"); print("résultat \(out.width)×\(out.height) → \(a[2])")
+                } else { print("ERR rendu") }
+            } catch { print("ERR", error.localizedDescription) }
+            exit(0)
+        }
+        if a.first == "--snippettest" {              // test : --snippettest "texte" (MANDARINE_SNIPPET_OUT = dossier de sortie)
+            Task {
+                let text = a.count > 1 ? a[1] : "Mandarine convertit vos fichiers sans internet. Glissez un texte, appuyez sur une touche, déposez-le sur un pétale."
+                guard let f = SnippetStore.make(text) else { print("ERR fichier"); exit(1) }
+                print("extrait :", f.path, "· type", FileKind.detect(f), "· roue ⇧:", Catalog.items(mode: .convert, urls: [f]).map(\.label), "· ⌘:", Catalog.items(mode: .tools, urls: [f]).map(\.label), "· ⌃:", Catalog.items(mode: .actions, urls: [f]).map(\.label))
+                for e in ["txt", "md", "pdf", "docx", "m4a", "qr"] {
+                    do { let o = try await Converter.run(urls: [f], to: e) { _ in }; print("  \(e) → \(o[0].lastPathComponent) (\(o[0].fileSize) o)") } catch { print("  \(e) ERR", error.localizedDescription) }
+                }
+                print("traduction possible :", SnippetEngine.canTranslate, "· résumé possible :", SnippetEngine.canSummarize, SnippetEngine.summarizeUnavailableReason)
+                if SnippetEngine.canSummarize { do { print("résumé :", try await SnippetEngine.summarize(text + " " + text)) } catch { print("résumé ERR", error.localizedDescription) } }
+                exit(0)
+            }
+            return
+        }
         if a.count >= 2, a[0] == "--ocr" {           // test : --ocr fichier (texte reconnu)
             do { print(OCREngine.join(try OCREngine.pages(of: URL(fileURLWithPath: a[1])), keepLineBreaks: true)) } catch { print("ERR", error.localizedDescription) }
             exit(0)
@@ -381,7 +408,7 @@ extension AppDelegate {
             Toast.shared.fail("Conversion failed", subtitle: "ffmpeg a échoué (code 1).")
             view = AnyView(ToastStack(center: Toast.shared.center).background(Color(white: 0.55)))
         } else if target[0] == "settings" {
-            view = AnyView(SettingsView().padding(10).background(Color(white: 0.55)))
+            view = AnyView(SettingsView(tab: SettingsView.Tab(rawValue: target.count > 1 ? target[1] : "") ?? .general).background(Color(white: 0.55)))
         } else if target[0] == "tagselect" {
             view = AnyView(TagSelectTool(total: urls.count, groups: TagSelect.groups(urls), close: {}).padding(30).background(Color(white: 0.55)))
         } else if target[0] == "faceselect" {

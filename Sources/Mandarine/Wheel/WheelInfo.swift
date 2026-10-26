@@ -15,6 +15,7 @@ enum WheelInfo {
     /// Immédiat (aucune lecture lourde) : sert d'affichage initial.
     static func quick(_ urls: [URL]) -> [String] {
         guard !urls.isEmpty else { return [] }
+        if urls.count == 1, SnippetStore.isSnippet(urls[0]) { return snippetLines(urls[0]) }
         if !urls.allSatisfy(\.isFileURL) { return [urls.count == 1 ? "Link" : "\(urls.count) links", urls[0].host ?? ""].filter { !$0.isEmpty } }
         if urls.count > 1 {
             let total = urls.reduce(Int64(0)) { $0 + $1.fileSize }
@@ -29,11 +30,18 @@ enum WheelInfo {
         ((try? FileManager.default.contentsOfDirectory(atPath: folder.path)) ?? []).filter { $0 != ".DS_Store" }.count
     }
 
+    private static func snippetLines(_ u: URL) -> [String] {
+        let t = SnippetStore.text(of: u)
+        let first = t.split(whereSeparator: \.isNewline).first.map { String($0.prefix(26)) + ($0.count > 26 ? "…" : "") } ?? ""
+        return ["\(SnippetStore.wordCount(t)) words", "\(t.count) characters", first].filter { !$0.isEmpty }
+    }
+
     /// Complet : durée, dimensions, pages… (peut lire un peu le fichier).
     static func detailed(_ urls: [URL]) async -> [String] {
         if urls.count == 1, YtDlp.isYouTube(urls[0]), let i = await YtDlp.info(urls[0]) {
             return [i.title, i.author, "YouTube"].filter { !$0.isEmpty }
         }
+        if urls.count == 1, SnippetStore.isSnippet(urls[0]) { return snippetLines(urls[0]) }
         guard urls.count == 1, urls[0].isFileURL else {
             if urls.count > 1, urls.allSatisfy(\.isFileURL) {
                 let kinds = Set(urls.map { FileKind.detect($0) })

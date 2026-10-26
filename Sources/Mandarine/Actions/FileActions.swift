@@ -10,9 +10,18 @@ enum FileActions {
             else { Toast.shared.fail("AirDrop unavailable", subtitle: "Turn on Wi‑Fi and Bluetooth to use AirDrop.") }
         case .float:
             FloatShelf.shared.add(urls)
+        case .searchWeb:
+            let q = urls.map { SnippetStore.text(of: $0) }.joined(separator: " ").trimmingCharacters(in: .whitespacesAndNewlines)
+            var c = URLComponents(string: "https://www.google.com/search"); c?.queryItems = [URLQueryItem(name: "q", value: String(q.prefix(300)))]
+            if let u = c?.url { NSWorkspace.shared.open(u) }
         case .copy:
             let pb = NSPasteboard.general
             pb.clearContents()
+            if urls.count == 1, SnippetStore.isSnippet(urls[0]) {          // texte glissé : on copie le texte, pas un fichier
+                pb.setString(SnippetStore.text(of: urls[0]), forType: .string)
+                Toast.shared.done("Text copied", subtitle: "\(SnippetStore.wordCount(SnippetStore.text(of: urls[0]))) words")
+                return
+            }
             pb.writeObjects(urls as [NSURL])
             if urls.allSatisfy({ !$0.isFileURL }) {
                 Toast.shared.done(urls.count == 1 ? "Link copied" : "\(urls.count) links copied", subtitle: urls[0].absoluteString)

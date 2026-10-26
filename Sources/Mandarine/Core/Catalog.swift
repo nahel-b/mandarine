@@ -14,8 +14,10 @@ enum Catalog {
     private static let subtitleTargets = ["vtt", "srt", "txt"]
     private static let archiveTargets = ["tar", "gzip", "zip"]
 
+    private static let snippetTargets = ["txt", "md", "pdf", "docx", "m4a", "qr"]
+
     static func convertTargets(for kind: FileKind, inputExt: String) -> [String] {
-        let e = normalized(inputExt)
+        let e = kind == .snippet ? "" : normalized(inputExt)
         let list: [String]
         switch kind {
         case .image: list = imageTargets
@@ -28,9 +30,13 @@ enum Catalog {
         case .epub: list = epubTargets
         case .subtitle: list = subtitleTargets
         case .archive: list = archiveTargets
+        case .snippet: list = snippetTargets
         case .folder, .other: list = []
         }
-        return list.filter { $0 != e }
+        var targets = list.filter { $0 != e }
+        // Sonnerie iPhone (.m4r) : depuis un son ou une vidéo, si l'option est active dans les Réglages
+        if (kind == .audio || kind == .video) && AppSettings.shared.enableRingtone && e != "m4r" { targets.append("m4r") }
+        return targets
     }
 
     static func normalized(_ ext: String) -> String {
@@ -47,7 +53,7 @@ enum Catalog {
         }
     }
 
-    static func displayName(_ ext: String) -> String { ext.uppercased() }
+    static func displayName(_ ext: String) -> String { ext == "m4r" ? "RINGTONE" : ext.uppercased() }
 
     // MARK: Outils
     /// Pétales de sélection (photos et vidéos, plusieurs fichiers) : par étiquette et/ou par visage, selon les Réglages.
@@ -78,6 +84,7 @@ enum Catalog {
                 (.redactImage, "REDACT", "eye.slash.circle"),
                 (.ocr, "TEXT", "text.viewfinder")
             ]
+            if AppSettings.shared.enableScan { t.append((.scanDocument, "SCAN", "doc.viewfinder")) }
             if multi { t.append((.createCollage, "COLLAGE", "square.grid.2x2")) }
             if multi { t += selectTools() }
             return t
@@ -121,6 +128,8 @@ enum Catalog {
             return t
         case .archive:
             return [(.extractArchive, "EXTRACT", "archivebox")]
+        case .snippet:
+            return [(.speakText, "READ ALOUD", "speaker.wave.2"), (.translateText, "TRANSLATE", "character.bubble"), (.summarizeText, "SUMMARIZE", "text.alignleft")]
         case .document, .slides, .spreadsheet, .epub, .subtitle, .folder, .other:
             return [(.compress, "COMPRESS", "arrow.down.right.and.arrow.up.left"),
                     (.metadata, "METADATA", "eye.slash")]
@@ -140,7 +149,9 @@ enum Catalog {
         if linksOnly && mode != .actions { return [] }
         switch mode {
         case .actions:
-            let actions: [FileAction] = linksOnly ? [.airDrop, .float, .copy, .copyPath] : FileAction.allCases
+            let isText = urls.count == 1 && FileKind.detect(urls[0]) == .snippet
+            let actions: [FileAction] = isText ? [.copy, .searchWeb, .switchView]
+                : linksOnly ? [.airDrop, .float, .copy, .copyPath] : FileAction.allCases.filter { $0 != .searchWeb }
             return actions.map {
                 let isLink = linksOnly && $0 == .copyPath
                 return WheelItem(id: $0.rawValue, label: isLink ? "COPY LINK" : $0.label, caption: isLink ? "Copy Link" : $0.caption,
@@ -153,8 +164,9 @@ enum Catalog {
             let sameExt = Set(urls.map { normalized($0.pathExtension) }).count == 1
             return convertTargets(for: kind, inputExt: sameExt ? first.pathExtension : "").map { ext in
                 let combine = urls.count > 1 && kind == .image && ext == "pdf"
-                return WheelItem(id: combine ? "multi-pdf" : ext, label: displayName(ext),
-                                 caption: combine ? "Combine into one PDF" : (urls.count > 1 ? "Convert \(urls.count) files to \(displayName(ext))" : "Convert to \(displayName(ext))"),
+                let label = kind == .snippet ? (ext == "m4a" ? "SPEECH" : ext == "qr" ? "QR CODE" : displayName(ext)) : displayName(ext)
+                return WheelItem(id: combine ? "multi-pdf" : ext, label: label,
+                                 caption: kind == .snippet ? (ext == "qr" ? "Make a QR code" : ext == "m4a" ? "Read it into an audio file" : "Save as \(displayName(ext))") : ext == "m4r" ? "Save as a \(AppSettings.shared.ringtoneSeconds) s ringtone" : combine ? "Combine into one PDF" : (urls.count > 1 ? "Convert \(urls.count) files to \(displayName(ext))" : "Convert to \(displayName(ext))"),
                                  symbol: nil, payload: .convert(ext),
                                  enabled: Converter.supports(kind: kind, from: first.pathExtension, to: ext))
             }
@@ -186,6 +198,7 @@ enum Catalog {
                 items.removeAll { item in ids.map(\.rawValue).contains(item.id) }
                 items.insert(g, at: min(first, items.count))
             }
+            group([.scanDocument, .ocr], id: "document", label: "DOCUMENT", caption: "Document", symbol: "doc.viewfinder")
             group([.tagSelect, .faceSelect], id: "select", label: "SELECT", caption: "Select", symbol: "tag")
             group([.editImage, .annotateImage, .redactImage], id: "edit", label: "EDIT", caption: "Edit", symbol: "slider.horizontal.3")
             group([.cropImage, .resizeImage, .rotateImage], id: "transform", label: "TRANSFORM", caption: "Transform", symbol: "crop.rotate")

@@ -45,7 +45,7 @@ enum WiiLayout {
 enum WiiText {
     static func description(_ item: WheelItem) -> String {
         if case .convert(let ext) = item.payload {
-            return item.id == "multi-pdf" ? "Combine the selected images into one PDF, one page per image." : "Convert to \(ext.uppercased()). A new copy is saved next to the original."
+            return item.id == "multi-pdf" ? "Combine the selected images into one PDF, one page per image." : item.id == "m4r" ? "Save the start of the sound as an iPhone ringtone (.m4r), with a short fade out." : "Convert to \(ext.uppercased()). A new copy is saved next to the original."
         }
         let d: [String: String] = [
             "compress": "Reduce file size locally. The original stays untouched.",
@@ -88,6 +88,12 @@ enum WiiText {
             "bg": "Add a background to a photo, or remove the current one.",
             "transform": "Crop, resize, rotate and flip.",
             "edit": "Adjust the photo, annotate it or redact parts of it.",
+            "translateText": "Translate the text into another language, on this Mac.",
+            "summarizeText": "Summarize the text with the on-device Apple Intelligence model.",
+            "speakText": "Read the text aloud with a voice in its language.",
+            "searchWeb": "Search the web for this text.",
+            "scanDocument": "Straighten a photo of a sheet of paper, clean it and save it as a PDF.",
+            "document": "Scan a sheet of paper, or read the text of a picture.",
             "faceSelect": "Pick the people you want: files showing them are selected.",
             "select": "Select files by Finder tag or by the people in them.",
             "tagSelect": "Keep only the files that carry a Finder tag, and choose which tags.",
@@ -502,7 +508,7 @@ final class WiiDropView: NSView {
     weak var controller: WheelController?
     override var isFlipped: Bool { true }              // origine en haut à gauche, comme SwiftUI
 
-    override init(frame: NSRect) { super.init(frame: frame); registerForDraggedTypes([.fileURL, .URL]) }
+    override init(frame: NSRect) { super.init(frame: frame); registerForDraggedTypes([.fileURL, .URL, .string]) }
     required init?(coder: NSCoder) { fatalError() }
     override func hitTest(_ point: NSPoint) -> NSView? { self }
 

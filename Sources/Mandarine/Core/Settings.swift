@@ -51,6 +51,10 @@ final class AppSettings: ObservableObject {
     // Pétales facultatifs de la roue ⌘
     @Published var enableTagSelect: Bool { didSet { d.set(enableTagSelect, forKey: "enableTagSelect") } }
     @Published var enableFaceSelect: Bool { didSet { d.set(enableFaceSelect, forKey: "enableFaceSelect") } }
+    @Published var enableScan: Bool { didSet { d.set(enableScan, forKey: "enableScan") } }
+    @Published var enableRingtone: Bool { didSet { d.set(enableRingtone, forKey: "enableRingtone") } }
+    @Published var ringtoneSeconds: Int { didSet { d.set(ringtoneSeconds, forKey: "ringtoneSeconds") } }
+    @Published var enableTextDrag: Bool { didSet { d.set(enableTextDrag, forKey: "enableTextDrag") } }
     @Published var enableCode: Bool { didSet { d.set(enableCode, forKey: "enableCode") } }
     @Published var enableDavinci: Bool { didSet { d.set(enableDavinci, forKey: "enableDavinci") } }
     @Published var launchAtLogin: Bool {
@@ -75,6 +79,10 @@ final class AppSettings: ObservableObject {
         autoInstallUpdates = d.object(forKey: "autoInstallUpdates") as? Bool ?? true
         enableTagSelect = d.object(forKey: "enableTagSelect") as? Bool ?? true
         enableFaceSelect = d.object(forKey: "enableFaceSelect") as? Bool ?? true
+        enableScan = d.object(forKey: "enableScan") as? Bool ?? true
+        enableRingtone = d.object(forKey: "enableRingtone") as? Bool ?? true
+        ringtoneSeconds = (d.object(forKey: "ringtoneSeconds") as? Int) ?? 30
+        enableTextDrag = d.object(forKey: "enableTextDrag") as? Bool ?? true
         enableCode = d.object(forKey: "enableCode") as? Bool ?? true
         enableDavinci = d.object(forKey: "enableDavinci") as? Bool ?? true
         launchAtLogin = d.bool(forKey: "launchAtLogin")

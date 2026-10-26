@@ -87,3 +87,15 @@ Photos et vidéos (plusieurs fichiers) : le pétale TAG SELECT devient un groupe
 ## Téléchargement des moteurs (Réglages → Engines)
 Bouton « Download » pour ffmpeg + ffprobe (versions statiques de ffmpeg.martin-riedl.de, empreinte SHA-256 publiée vérifiée), cwebp (libwebp officiel de Google, empreinte épinglée), le modèle de visages et yt-dlp. Installés dans ~/Library/Application Support/Mandarine ; le programme est essayé avant installation (signature locale si macOS le refuse sur Apple Silicon).
 Qualité mesurée (504 photos de 42 personnes, jeu LFW, images 125×94) : 417 visages détectés ; similarité médiane 0,65 pour une même personne contre 0,13 entre personnes différentes ; seuil par défaut 0,50 → 44 groupes pour 42 personnes, 0 visage mal rangé. Le curseur « Same person » règle ce seuil (0,38–0,65). Les photos très petites ou de profil peuvent ne pas être détectées.
+
+## Réglages à onglets
+Fenêtre de réglages avec une barre d'onglets à gauche : General, Wheel (style et touches), Petals (pétales facultatifs), Engines (moteurs à télécharger), Updates.
+
+## Scan de document (roue ⌘ des photos, groupe DOCUMENT → SCAN / TEXT)
+Détecte la feuille sur une photo (Vision), redresse la perspective, rétablit le vrai rapport largeur/hauteur (estimation par la géométrie des quatre coins, calée sur A4 / Lettre quand c'est proche), nettoie l'éclairage (le fond devient blanc). Quatre coins déplaçables à la souris, aperçu du résultat, filtres Original / Color / Grayscale / B&W, plusieurs photos = plusieurs pages ; sortie PDF ou images JPG. Désactivable dans Réglages → Petals.
+
+## Sonnerie (roue ⇧ des sons et vidéos)
+Pétale RINGTONE : début du son (30 s par défaut, réglable 5–40 s), fondu de sortie d'une seconde, AAC dans un fichier .m4r. Actif par défaut, désactivable dans Réglages → Petals.
+
+## Texte glissé
+Sélectionner du texte (Safari, Notes, Mail…), le glisser et taper ⇧ ⌘ ou ⌃ : le texte devient un petit fichier temporaire que la roue traite comme un fichier. ⇧ : enregistrer en TXT / MD / PDF / DOCX, lire dans un fichier audio (SPEECH, voix de la langue du texte), QR CODE (PNG). ⌘ : READ ALOUD (voix du système, bouton Stop), TRANSLATE (framework Translation, macOS 15+, langue du Mac par défaut), SUMMARIZE (modèle Apple Intelligence du Mac, macOS 26). ⌃ : COPY (texte brut), SEARCH (recherche web). Résultats enregistrés sur le Bureau. Désactivable dans Réglages → Petals.

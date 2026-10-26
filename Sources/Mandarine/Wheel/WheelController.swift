@@ -7,7 +7,7 @@ final class WheelDropView: NSView {
 
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
-        registerForDraggedTypes([.fileURL, .URL])
+        registerForDraggedTypes([.fileURL, .URL, .string])
     }
     required init?(coder: NSCoder) { fatalError() }
 

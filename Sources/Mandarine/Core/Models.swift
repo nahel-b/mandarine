@@ -3,7 +3,7 @@ import UniformTypeIdentifiers
 
 /// Famille d'un fichier : détermine quelles roues et quels outils sont proposés.
 enum FileKind: String, CaseIterable {
-    case image, video, audio, pdf, document, slides, spreadsheet, epub, subtitle, archive, folder, other
+    case image, video, audio, pdf, document, slides, spreadsheet, epub, subtitle, archive, folder, snippet, other
 
     static let imageExts: Set<String> = ["jpg", "jpeg", "png", "webp", "heic", "heif", "tif", "tiff", "avif", "bmp", "gif", "svg"]
     static let videoExts: Set<String> = ["mp4", "mov", "m4v", "mkv", "webm", "avi", "wmv", "mpg", "mpeg", "gif_video"]
@@ -15,6 +15,7 @@ enum FileKind: String, CaseIterable {
     static let archiveExts: Set<String> = ["zip", "tar", "gz", "gzip", "tgz", "rar"]
 
     static func detect(_ url: URL) -> FileKind {
+        if SnippetStore.isSnippet(url) { return .snippet }            // texte glissé
         var isDir: ObjCBool = false
         if FileManager.default.fileExists(atPath: url.path, isDirectory: &isDir), isDir.boolValue,
            !["rtfd", "pages", "key", "numbers"].contains(url.pathExtension.lowercased()) {
@@ -55,7 +56,7 @@ enum WheelMode: String, CaseIterable, Identifiable {
 }
 
 enum ToolID: String {
-    case compress, metadata, editImage, annotateImage, frameImage, cropImage, redactImage, createCollage, removeBackground, resizeImage, rotateImage, extractAudio, extractImages, quickLook, encodeVideo, openInCode, davinciTree, downloadMP3, downloadMP4, downloadWAV, tagSelect, faceSelect
+    case compress, metadata, editImage, annotateImage, frameImage, cropImage, redactImage, createCollage, removeBackground, resizeImage, rotateImage, extractAudio, extractImages, quickLook, encodeVideo, openInCode, davinciTree, downloadMP3, downloadMP4, downloadWAV, tagSelect, faceSelect, scanDocument, translateText, summarizeText, speakText
     case trimVideo, cropVideo, changeVideoSpeed, joinVideos, videoSnapshots, splitVideo, redactVideo, muteVideo
     case normalizeAudio, audioToVideo, trimAudio, audioChannels, redactAudio
     case mergePDF, organizePDF, splitPDF, extractArchive, ocr
@@ -83,6 +84,10 @@ enum ToolID: String {
         case .downloadWAV: return "Download WAV"
         case .tagSelect: return "Tag Select"
         case .faceSelect: return "Face Select"
+        case .scanDocument: return "Scan Document"
+        case .translateText: return "Translate"
+        case .summarizeText: return "Summarize"
+        case .speakText: return "Read Aloud"
         case .quickLook: return "Quick Look"
         case .trimVideo: return "Trim Video"
         case .cropVideo: return "Crop Video"
@@ -107,7 +112,7 @@ enum ToolID: String {
 }
 
 enum FileAction: String, CaseIterable {
-    case airDrop, float, copy, move, copyPath, terminal, switchView
+    case airDrop, float, copy, move, copyPath, terminal, switchView, searchWeb
     var label: String {
         switch self {
         case .airDrop: return "AIRDROP"
@@ -117,6 +122,7 @@ enum FileAction: String, CaseIterable {
         case .copyPath: return "COPY PATH"
         case .terminal: return "TERMINAL"
         case .switchView: return AppSettings.shared.appearance == .wii ? "WHEEL VIEW" : "WII VIEW"
+        case .searchWeb: return "SEARCH"
         }
     }
     var caption: String {
@@ -128,6 +134,7 @@ enum FileAction: String, CaseIterable {
         case .copyPath: return "Copy Path"
         case .terminal: return "Terminal"
         case .switchView: return AppSettings.shared.appearance == .wii ? "Wheel View" : "Wii View"
+        case .searchWeb: return "Search the web"
         }
     }
     var symbol: String {
@@ -139,6 +146,7 @@ enum FileAction: String, CaseIterable {
         case .copyPath: return "link"
         case .terminal: return "terminal"
         case .switchView: return "arrow.triangle.2.circlepath"
+        case .searchWeb: return "magnifyingglass"
         }
     }
 }

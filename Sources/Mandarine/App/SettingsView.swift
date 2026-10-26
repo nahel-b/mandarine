@@ -1,13 +1,71 @@
 import SwiftUI
 
+/// Réglages : onglets à gauche, contenu à droite.
 struct SettingsView: View {
     @ObservedObject var s = AppSettings.shared
     @ObservedObject var yt = YtDlpUpdater.shared
     @ObservedObject var installer = EngineInstaller.shared
     @ObservedObject var updater = Updater.shared
+    @State private var tab: Tab
+
+    enum Tab: String, CaseIterable, Identifiable {
+        case general, wheel, petals, engines, updates
+        var id: String { rawValue }
+        var title: String {
+            switch self { case .general: return "General"; case .wheel: return "Wheel"; case .petals: return "Petals"; case .engines: return "Engines"; case .updates: return "Updates" }
+        }
+        var symbol: String {
+            switch self { case .general: return "gearshape"; case .wheel: return "circle.hexagongrid"; case .petals: return "leaf"; case .engines: return "wrench.and.screwdriver"; case .updates: return "arrow.triangle.2.circlepath" }
+        }
+    }
+
+    init(tab: Tab = .general) { _tab = State(initialValue: tab) }
 
     var body: some View {
-        Form {
+        HStack(spacing: 0) {
+            sidebar.frame(width: 168)
+            Divider()
+            Form { content }.formStyle(.grouped)
+        }
+        .frame(width: 720, height: 540)
+    }
+
+    private var sidebar: some View {
+        VStack(alignment: .leading, spacing: 3) {
+            ForEach(Tab.allCases) { t in
+                Button { tab = t } label: {
+                    HStack(spacing: 9) {
+                        Image(systemName: t.symbol).frame(width: 20)
+                        Text(t.title)
+                        Spacer()
+                        if t == .updates, case .available = updater.state { Circle().fill(Theme.orange).frame(width: 8, height: 8) }
+                    }
+                    .font(.system(size: 13, weight: tab == t ? .semibold : .regular))
+                    .padding(.horizontal, 10).padding(.vertical, 7)
+                    .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(tab == t ? Theme.orange.opacity(0.22) : .clear))
+                    .contentShape(Rectangle())
+                }.buttonStyle(.plain)
+            }
+            Spacer()
+            Text("Mandarine \(updater.currentVersion)").font(.caption).foregroundStyle(.secondary).padding(.horizontal, 10)
+        }
+        .padding(10)
+        .frame(maxHeight: .infinity)
+        .background(Color(nsColor: .windowBackgroundColor).opacity(0.6))
+    }
+
+    @ViewBuilder private var content: some View {
+        switch tab {
+        case .general:
+            Section("General") {
+                Toggle("Launch at login", isOn: $s.launchAtLogin)
+                Toggle("Show the welcome guide at startup", isOn: $s.showWelcome)
+                Toggle("Reveal results in Finder", isOn: $s.revealAfterSave)
+                Picker("Terminal", selection: $s.terminalApp) {
+                    ForEach(TerminalApp.allCases) { Text($0.title).tag($0) }
+                }
+            }
+        case .wheel:
             Section("Appearance") {
                 Picker("Menu style", selection: $s.appearance) { ForEach(MenuAppearance.allCases) { Text($0.title).tag($0) } }
                 Text(s.appearance == .wii ? "A small Wii-style screen: every tool is a channel, with a clock, a pointer hand and a description line." : "The radial wheel.")
@@ -23,37 +81,31 @@ struct SettingsView: View {
                     Label("Each wheel needs its own key.", systemImage: "exclamationmark.triangle").foregroundStyle(.orange).font(.caption)
                 }
             }
-            Section("Updates") {
-                HStack {
-                    Text("Mandarine \(updater.currentVersion)")
-                    Spacer()
-                    switch updater.state {
-                    case .checking, .downloading, .installing: ProgressView().controlSize(.small)
-                    case .available: Button("Update now") { Task { await updater.install() } }
-                    default: Button("Check for updates") { Task { await updater.check(userInitiated: true) } }
-                    }
-                }
-                Toggle("Check for updates automatically", isOn: $s.autoCheckUpdates)
-                Toggle("Install them automatically when Mandarine is idle", isOn: $s.autoInstallUpdates)
-                Text(updater.isConfigured ? "Updates come from the project's GitHub releases and are checked against a signature before they are installed." : "This build has no update source yet.")
-                    .font(.caption).foregroundStyle(.secondary)
-            }
-            Section("Optional petals (⌘ wheel)") {
-                Toggle("Tag Select — photos & videos", isOn: $s.enableTagSelect)
+        case .petals:
+            Section("Photos & videos") {
+                Toggle("Tag Select", isOn: $s.enableTagSelect)
                 Text("With several files selected, keep only the ones that carry a Finder tag, and choose which tags.").font(.caption).foregroundStyle(.secondary)
-                Toggle("Face Select — photos & videos", isOn: $s.enableFaceSelect)
-                Text("Pick people by their face. Needs a small model (\(FaceModel.sizeText)), downloaded once; shown in Engines below.").font(.caption).foregroundStyle(.secondary)
-                Toggle("Code — folders", isOn: $s.enableCode)
-                Toggle("DaVinci project — folders", isOn: $s.enableDavinci)
+                Toggle("Face Select", isOn: $s.enableFaceSelect)
+                Text("Pick people by their face. Needs a small model (\(FaceModel.sizeText)), downloaded once; see Engines.").font(.caption).foregroundStyle(.secondary)
+                Toggle("Document scan (photos)", isOn: $s.enableScan)
+                Text("Straighten and clean a photo of a sheet of paper, and save it as a PDF.").font(.caption).foregroundStyle(.secondary)
             }
-            Section("General") {
-                Toggle("Launch at login", isOn: $s.launchAtLogin)
-                Toggle("Show the welcome guide at startup", isOn: $s.showWelcome)
-                Toggle("Reveal results in Finder", isOn: $s.revealAfterSave)
-                Picker("Terminal", selection: $s.terminalApp) {
-                    ForEach(TerminalApp.allCases) { Text($0.title).tag($0) }
+            Section("Conversion (⇧ wheel)") {
+                Toggle("Ringtone — audio & video", isOn: $s.enableRingtone)
+                Text("Adds a RINGTONE petal that saves the start of the sound as an iPhone ringtone (.m4r) with a short fade out.").font(.caption).foregroundStyle(.secondary)
+                if s.enableRingtone {
+                    Stepper("Ringtone length: \(s.ringtoneSeconds) s", value: $s.ringtoneSeconds, in: 5...40, step: 5)
                 }
             }
+            Section("Dragged text") {
+                Toggle("Wheel for selected text", isOn: $s.enableTextDrag)
+                Text("Drag a text selection (from Safari, Notes, Mail…) and tap a key: translate, summarize, read aloud, save as a file, make a QR code.").font(.caption).foregroundStyle(.secondary)
+            }
+            Section("Folders") {
+                Toggle("Code", isOn: $s.enableCode)
+                Toggle("DaVinci project", isOn: $s.enableDavinci)
+            }
+        case .engines:
             Section("Engines") {
                 engine("ffmpeg (video, audio)", FFmpeg.ffmpeg?.path, install: .ffmpeg)
                 engine("ffprobe", FFmpeg.ffprobe?.path, install: .ffmpeg)
@@ -71,9 +123,23 @@ struct SettingsView: View {
                     }
                 }
             }
+        case .updates:
+            Section("Updates") {
+                HStack {
+                    Text("Mandarine \(updater.currentVersion)")
+                    Spacer()
+                    switch updater.state {
+                    case .checking, .downloading, .installing: ProgressView().controlSize(.small)
+                    case .available: Button("Update now") { Task { await updater.install() } }
+                    default: Button("Check for updates") { Task { await updater.check(userInitiated: true) } }
+                    }
+                }
+                Toggle("Check for updates automatically", isOn: $s.autoCheckUpdates)
+                Toggle("Install them automatically when Mandarine is idle", isOn: $s.autoInstallUpdates)
+                Text(updater.isConfigured ? "Updates come from the project's GitHub releases and are checked against a signature before they are installed." : "This build has no update source yet.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
         }
-        .formStyle(.grouped)
-        .frame(width: 440)
     }
 
     /// Version installée + bouton pour vérifier / installer la dernière version.
