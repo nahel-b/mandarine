@@ -29,7 +29,7 @@ Les notes de version affichées aux utilisateurs viennent de la description de l
 ## Côté utilisateur
 
 - La première installation se fait avec le DMG d'une release (une version qui contient déjà ce système).
-- Ensuite : vérification 6 s après le lancement puis toutes les 6 h. Une pastille « Mandarine X.Y est disponible — Update » apparaît, ou l'installation se fait seule quand l'app est inactive (aucun travail en cours, aucune fenêtre d'outil ouverte).
+- Ensuite : **une vérification par jour au plus** (au lancement, au réveil du Mac, ou quand l'app tourne depuis plus de 24 h en heure réelle : les minuteurs ne comptent pas le temps de veille, on compare donc des dates). Un contrôle local toutes les heures ne fait que comparer des dates, sans réseau. « Check for updates » vérifie toujours tout de suite. Une pastille « Mandarine X.Y est disponible — Update » apparaît, ou l'installation se fait seule quand l'app est inactive (aucun travail en cours, aucune fenêtre d'outil ouverte).
 - Réglages → Updates : version, « Check for updates », et deux interrupteurs (vérification automatique, installation automatique). Menu de la barre : « Check for Updates… ».
 
 ## Sécurité

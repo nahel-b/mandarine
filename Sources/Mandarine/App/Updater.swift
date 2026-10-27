@@ -38,21 +38,39 @@ final class Updater: ObservableObject {
 
     // MARK: Vérification
 
-    /// À appeler au lancement : première vérification peu après, puis toutes les 6 heures.
+    /// Dernière vérification (heure réelle). Les minuteurs ne comptent PAS le temps pendant lequel le Mac dort : un minuteur de 6 h
+    /// peut mettre des jours à sonner sur un portable souvent en veille. On compare donc des dates, et on revérifie aussi au réveil.
+    private var lastCheck: Date {
+        get { Date(timeIntervalSince1970: UserDefaults.standard.double(forKey: "lastUpdateCheck")) }
+        set { UserDefaults.standard.set(newValue.timeIntervalSince1970, forKey: "lastUpdateCheck") }
+    }
+
+    /// À appeler au lancement : une vérification par jour au plus (au lancement, au réveil du Mac, ou quand l'app tourne depuis longtemps).
+    /// Le contrôle horaire ne fait que comparer des dates sur le Mac : il n'accède au réseau que si 24 h se sont écoulées.
     func start() {
         guard isConfigured else { return }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 6) { [weak self] in
-            guard let self = self, AppSettings.shared.autoCheckUpdates else { return }
-            Task { await self.check(userInitiated: false) }
+        let delay = Double(env["MANDARINE_UPDATE_DELAY"] ?? "") ?? 6                       // (réglables par variables d'environnement, pour les tests)
+        let tick = Double(env["MANDARINE_UPDATE_INTERVAL"] ?? "") ?? 3600
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
+            Task { @MainActor in await self?.checkIfDue() }
         }
-        timer = Timer.scheduledTimer(withTimeInterval: 6 * 3600, repeats: true) { [weak self] _ in
-            guard let self = self, AppSettings.shared.autoCheckUpdates else { return }
-            Task { @MainActor in await self.check(userInitiated: false) }
+        timer = Timer.scheduledTimer(withTimeInterval: tick, repeats: true) { [weak self] _ in
+            Task { @MainActor in await self?.checkIfDue() }
         }
+        NSWorkspace.shared.notificationCenter.addObserver(forName: NSWorkspace.didWakeNotification, object: nil, queue: .main) { [weak self] _ in
+            DispatchQueue.main.asyncAfter(deadline: .now() + 20) { Task { @MainActor in await self?.checkIfDue() } }       // le temps que le réseau revienne
+        }
+    }
+
+    private func checkIfDue() async {
+        let due = Double(env["MANDARINE_UPDATE_DUE"] ?? "") ?? 24 * 3600
+        guard AppSettings.shared.autoCheckUpdates, Date().timeIntervalSince(lastCheck) >= due else { return }
+        await check(userInitiated: false)
     }
 
     func check(userInitiated: Bool) async {
         guard !busy else { return }
+        lastCheck = Date()
         guard let feed = feedURL, publicKey != nil else {
             if userInitiated { Toast.shared.fail("Updates aren't set up", subtitle: "This build has no update source. Set GITHUB_REPO in Scripts/update.conf and rebuild.") }
             return
