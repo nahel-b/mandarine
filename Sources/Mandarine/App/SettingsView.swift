@@ -28,6 +28,7 @@ struct SettingsView: View {
             Form { content }.formStyle(.grouped)
         }
         .frame(width: 720, height: 540)
+        .task { await yt.refreshCurrent() }          // la version de yt-dlp est lue dès l'ouverture, quel que soit l'onglet
     }
 
     private var sidebar: some View {
@@ -146,15 +147,15 @@ struct SettingsView: View {
     private var ytDlpUpdate: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack {
-                Text(yt.current.isEmpty ? "Not installed" : "Version \(yt.current)").font(.caption).foregroundStyle(.secondary)
+                Text(YtDlp.url == nil ? "Not installed" : (yt.current.isEmpty ? "Reading the version…" : "Version \(yt.current)")).font(.caption).foregroundStyle(.secondary)
                 Spacer()
                 switch yt.state {
                 case .checking, .installing:
                     ProgressView().controlSize(.small)
                 case .available(let v):
-                    Button(yt.current.isEmpty ? "Install yt-dlp \(v)" : "Update to \(v)") { Task { await yt.install() } }
+                    Button(YtDlp.url == nil ? "Install yt-dlp \(v)" : "Update to \(v)") { Task { await yt.install() } }
                 default:
-                    Button(yt.current.isEmpty ? "Install yt-dlp" : "Check for updates") { Task { await (yt.current.isEmpty ? yt.install() : yt.check()) } }
+                    Button(YtDlp.url == nil ? "Install yt-dlp" : "Check for updates") { Task { await (YtDlp.url == nil ? yt.install() : yt.check()) } }
                 }
             }
             switch yt.state {
@@ -167,7 +168,6 @@ struct SettingsView: View {
             case .idle: Text("Sites change often: if a download stops working, update yt-dlp here. The copy is kept in Mandarine's engines folder.").font(.caption).foregroundStyle(.secondary)
             }
         }
-        .task { await yt.refreshCurrent() }
     }
 
     private func keyPicker(_ title: String, _ b: Binding<TriggerKey>) -> some View {

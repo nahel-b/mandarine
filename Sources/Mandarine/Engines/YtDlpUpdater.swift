@@ -20,8 +20,22 @@ final class YtDlpUpdater: ObservableObject {
     /// Dossier de destination ; modifiable pour les tests.
     nonisolated(unsafe) static var destination = FFmpeg.enginesFolder
 
+    /// Le numéro de version est noté à côté du programme au moment de l'installation : lancer `yt-dlp --version` peut prendre plusieurs secondes
+    /// (premier lancement vérifié par macOS), et l'affichage ne doit pas dépendre de cette attente.
+    nonisolated private static var versionNote: URL { destination.appendingPathComponent("yt-dlp.version") }
+
+    private func noted() -> String? {
+        guard let bin = YtDlp.url, bin.deletingLastPathComponent().path == Self.destination.path,
+              let v = try? String(contentsOf: Self.versionNote, encoding: .utf8).trimmingCharacters(in: .whitespacesAndNewlines), !v.isEmpty,
+              let binDate = try? bin.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate,
+              let noteDate = try? Self.versionNote.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate,
+              noteDate >= binDate.addingTimeInterval(-120) else { return nil }          // programme remplacé à la main depuis : la note est périmée
+        return v
+    }
+
     func refreshCurrent() async {
-        guard YtDlp.url != nil, let d = try? await YtDlp.capture(["--version"], timeout: 20) else { current = ""; return }
+        if let v = noted() { current = v; return }
+        guard YtDlp.url != nil, let d = try? await YtDlp.capture(["--version"], timeout: 90) else { current = ""; return }
         current = String(data: d, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
     }
 
@@ -30,7 +44,7 @@ final class YtDlpUpdater: ObservableObject {
         await refreshCurrent()
         do {
             let latest = try await Self.latestVersion()
-            if current.isEmpty || Self.isNewer(latest, than: current) { state = .available(latest) } else { state = .upToDate }
+            if YtDlp.url == nil || current.isEmpty || Self.isNewer(latest, than: current) { state = .available(latest) } else { state = .upToDate }
         } catch {
             state = .failed("Couldn't check: \(error.localizedDescription)")
         }
@@ -40,7 +54,7 @@ final class YtDlpUpdater: ObservableObject {
         state = .installing
         do {
             let version = try await Task.detached { try await Self.downloadAndInstall() }.value
-            await refreshCurrent()
+            if !version.isEmpty { current = version } else { await refreshCurrent() }
             state = .installed(version.isEmpty ? current : version)
         } catch {
             state = .failed(error.localizedDescription)
@@ -102,6 +116,7 @@ final class YtDlpUpdater: ObservableObject {
         let final = destination.appendingPathComponent("yt-dlp")
         try? fm.removeItem(at: final)
         try fm.moveItem(at: staging, to: final)
+        try? version.write(to: versionNote, atomically: true, encoding: .utf8)
         return version
     }
 }
