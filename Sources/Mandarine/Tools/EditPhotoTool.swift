@@ -154,7 +154,6 @@ struct EditPhotoTool: View {
             Button("Reset") { values = [:]; refresh() }.buttonStyle(PillButtonStyle())
             Button { let f = urls; close(); ToolWindowController.present(.resizeImage, urls: f) } label: { Label("Resize…", systemImage: "arrow.up.left.and.arrow.down.right") }
                 .buttonStyle(PillButtonStyle()).help("Open Resize for the same image")
-            Spacer()
             Button("Save Edited Copy") { save() }.buttonStyle(PillButtonStyle())
         }
         .onAppear(perform: load)

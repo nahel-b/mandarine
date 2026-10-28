@@ -107,7 +107,6 @@ struct ResizeImageTool: View {
         } footer: {
             Button { let f = urls; close(); ToolWindowController.present(.editImage, urls: f) } label: { Label("Edit…", systemImage: "slider.horizontal.3") }
                 .buttonStyle(PillButtonStyle()).help("Open Edit Photo for the same image")
-            Spacer()
             Button(mode == .upscale ? "Upscale" : "Resize") { mode == .upscale ? upscale() : apply() }.buttonStyle(PillButtonStyle()).disabled(mode == .multiple && sizes.isEmpty)
         }
         .onAppear { w = Int(src.pixelSize.width); h = Int(src.pixelSize.height) }
@@ -349,7 +348,6 @@ struct RotateImageTool: View {
             }.frame(width: 380)
         } footer: {
             Button("Reset") { turns = 0; flipH = false; flipV = false; update() }.buttonStyle(PillButtonStyle()).disabled(!changed)
-            Spacer()
             Button(changed ? "Save Rotated Copy" : "Straighten (EXIF)") { save() }.buttonStyle(PillButtonStyle()).disabled(!changed && exif == 1)
         }
         .task {

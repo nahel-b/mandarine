@@ -2,8 +2,9 @@ import SwiftUI
 import AppKit
 
 enum Theme {
-    static let orange = Color(red: 0xF3 / 255, green: 0x5B / 255, blue: 0x28 / 255)
-    static let nsOrange = NSColor(red: 0xF3 / 255, green: 0x5B / 255, blue: 0x28 / 255, alpha: 1)
+    /// Couleur de tinte (réglable dans Réglages → Wheel → Appearance). Le nom « orange » est celui de la couleur d'origine.
+    static var orange: Color { AppSettings.shared.accentColor }
+    static var nsOrange: NSColor { AppSettings.shared.accentNSColor }
     static let text = Color(red: 40 / 255, green: 43 / 255, blue: 41 / 255)
     static let muted = Color(red: 0x82 / 255, green: 0x87 / 255, blue: 0x82 / 255)
     static let line = Color(red: 0xE9 / 255, green: 0xEC / 255, blue: 0xE8 / 255)
@@ -106,14 +107,75 @@ enum Theme {
 struct PillButtonStyle: ButtonStyle {
     var prominent = false
     @Environment(\.isEnabled) private var enabled
+    @Environment(\.toolStyle) private var style
     func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .font(.system(size: 13, weight: .medium))
-            .foregroundStyle(prominent ? Color.white : Theme.text)
-            .padding(.horizontal, 14).padding(.vertical, 6)
-            .background(RoundedRectangle(cornerRadius: 8, style: .continuous)
-                .fill(prominent ? Theme.orange : Color.black.opacity(configuration.isPressed ? 0.14 : 0.08)))
-            .opacity(enabled ? 1 : 0.4)
+        let p = configuration.isPressed
+        switch style {
+        case .graphite:
+            configuration.label.font(.system(size: 13, weight: .medium)).foregroundStyle(Color.white)
+                .padding(.horizontal, 14).padding(.vertical, 6)
+                .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(prominent ? Theme.orange : Color.white.opacity(p ? 0.28 : 0.16)))
+                .opacity(enabled ? 1 : 0.4)
+        case .minimal:
+            configuration.label.font(.system(size: 13, weight: .medium)).foregroundStyle(prominent ? Color.white : Theme.text)
+                .padding(.horizontal, 14).padding(.vertical, 6)
+                .background(Capsule().fill(prominent ? Theme.orange : Color.black.opacity(p ? 0.08 : 0)))
+                .overlay(Capsule().stroke(prominent ? Color.clear : Color.black.opacity(0.22), lineWidth: 1))
+                .opacity(enabled ? 1 : 0.4)
+        case .rail:
+            configuration.label.font(.system(size: 13, weight: .medium)).foregroundStyle(prominent ? Color.white : Theme.text)
+                .padding(.horizontal, 12).padding(.vertical, 8).frame(maxWidth: .infinity)
+                .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(prominent ? Theme.orange : Color.black.opacity(p ? 0.16 : 0.09)))
+                .opacity(enabled ? 1 : 0.4)
+        case .brutal:
+            configuration.label.font(.system(size: 12, weight: .heavy, design: .monospaced)).textCase(.uppercase).foregroundStyle(Color.black)
+                .padding(.horizontal, 12).padding(.vertical, 6)
+                .background(Rectangle().fill(prominent ? Theme.orange : Color.white))
+                .overlay(Rectangle().stroke(Color.black, lineWidth: 2.5))
+                .background(Rectangle().fill(Color.black).offset(x: p ? 1 : 3.5, y: p ? 1 : 3.5))
+                .offset(x: p ? 2 : 0, y: p ? 2 : 0)
+                .opacity(enabled ? 1 : 0.4)
+        case .ticket:
+            configuration.label.font(.system(size: 12, weight: .bold, design: .monospaced)).foregroundStyle(prominent ? Color.white : Theme.text)
+                .padding(.horizontal, 12).padding(.vertical, 6)
+                .background(RoundedRectangle(cornerRadius: 6).fill(prominent ? Theme.orange : Color.white.opacity(p ? 0.6 : 1)))
+                .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(Theme.text.opacity(0.5), style: StrokeStyle(lineWidth: 1.3, dash: prominent ? [] : [4, 3])))
+                .opacity(enabled ? 1 : 0.4)
+        case .stamp:
+            configuration.label.font(.system(size: 12, weight: .semibold, design: .serif)).foregroundStyle(prominent ? Color.white : Color(red: 0.2, green: 0.25, blue: 0.42))
+                .padding(.horizontal, 14).padding(.vertical, 5)
+                .background(Capsule().fill(prominent ? Color(red: 0.2, green: 0.25, blue: 0.42) : Color.clear))
+                .overlay(Capsule().stroke(Color(red: 0.2, green: 0.25, blue: 0.42), lineWidth: 1.4))
+                .opacity(enabled ? 1 : 0.4)
+        case .retro:
+            configuration.label.font(.system(size: 12, weight: .semibold, design: .rounded)).foregroundStyle(Color.black)
+                .padding(.horizontal, 16).padding(.vertical, 4)
+                .background(RoundedRectangle(cornerRadius: 8).fill(LinearGradient(colors: p ? [Color(white: 0.6), Color(white: 0.75)] : [Color.white, Color(white: 0.8)], startPoint: .top, endPoint: .bottom)))
+                .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.black, lineWidth: prominent ? 3 : 1))
+                .opacity(enabled ? 1 : 0.4)
+        case .wii:
+            configuration.label.font(.system(size: 13, weight: .bold, design: .rounded)).foregroundStyle(prominent ? Color.white : ToolPalette.wiiBlue)
+                .padding(.horizontal, 18).padding(.vertical, 7)
+                .background(Capsule().fill(prominent ? ToolPalette.wiiBlue : Color.white.opacity(p ? 0.8 : 1)))
+                .overlay(Capsule().stroke(ToolPalette.wiiBlue, lineWidth: 2))
+                .shadow(color: ToolPalette.wiiBlue.opacity(0.25), radius: 2, y: 1)
+                .opacity(enabled ? 1 : 0.45)
+        case .capsule, .islands:
+            configuration.label
+                .font(.system(size: 13, weight: .medium))
+                .foregroundStyle(prominent ? Color.white : Theme.text)
+                .padding(.horizontal, 16).padding(.vertical, 7)
+                .background(Capsule().fill(prominent ? Theme.orange : Color.black.opacity(p ? 0.14 : 0.08)))
+                .opacity(enabled ? 1 : 0.4)
+        default:
+            configuration.label
+                .font(.system(size: 13, weight: .medium))
+                .foregroundStyle(prominent ? Color.white : Theme.text)
+                .padding(.horizontal, 14).padding(.vertical, 6)
+                .background(RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .fill(prominent ? Theme.orange : Color.black.opacity(p ? 0.14 : 0.08)))
+                .opacity(enabled ? 1 : 0.4)
+        }
     }
 }
 

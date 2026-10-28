@@ -159,8 +159,15 @@ struct WheelView: View {
 
     private let cr: CGFloat = WheelGeometry.petalCR          // rayon des coins des pétales
     private let gapPts: CGFloat = WheelGeometry.petalGap       // espace entre pétales
-    private let orangeTop = Color(red: 1.0, green: 0.46, blue: 0.22)
-    private let orangeBottom = Color(red: 0.93, green: 0.33, blue: 0.12)
+    private var orangeTop: Color {
+        AppSettings.shared.isDefaultAccent ? Color(red: 1.0, green: 0.46, blue: 0.22) : Color(nsColor: AppSettings.shared.accentNSColor.mixed(with: .white, 0.12))
+    }
+    private var orangeBottom: Color {
+        AppSettings.shared.isDefaultAccent ? Color(red: 0.93, green: 0.33, blue: 0.12) : Color(nsColor: AppSettings.shared.accentNSColor.mixed(with: .black, 0.1))
+    }
+
+    /// Liseré d'un pétale survolé : la couleur de tinte, en plus claire.
+    private var accentRim: Color { Color(nsColor: AppSettings.shared.accentNSColor.mixed(with: .white, 0.2)) }
 
     var body: some View {
         let n = max(model.items.count, 1)
@@ -215,7 +222,7 @@ struct WheelView: View {
                                   startPoint: .top, endPoint: .bottom)
         return ZStack {
             body.fill(grad)
-            body.stroke(Color.white.opacity(active ? 0.35 : (enabled ? 0.22 : 0.09)), lineWidth: 1)
+            body.stroke(active ? accentRim : Color.white.opacity(enabled ? 0.22 : 0.09), lineWidth: active ? 1.6 : 1)
             VStack(spacing: 5) {
                 if let s = item.symbol {
                     Image(systemName: s).font(.system(size: n > 7 ? 11 : 13, weight: .semibold))
@@ -256,7 +263,7 @@ struct WheelView: View {
                 ZStack {
                     // teinte claire comme les pétales de base : ils reposent maintenant sur le fond agrandi
                     shape.fill(LinearGradient(colors: active ? [orangeTop, orangeBottom] : [Color.white.opacity(0.22), Color.white.opacity(0.10)], startPoint: .top, endPoint: .bottom))
-                    shape.stroke(Color.white.opacity(active ? 0.4 : 0.24), lineWidth: 1)
+                    shape.stroke(active ? accentRim : Color.white.opacity(0.24), lineWidth: active ? 1.6 : 1)
                     VStack(spacing: 4) {
                         if let s = child.symbol { Image(systemName: s).font(.system(size: 13, weight: .semibold)) }
                         Text(child.label.replacingOccurrences(of: " ", with: "\n")).font(.system(size: 7.5, weight: .bold)).tracking(0.5).multilineTextAlignment(.center)

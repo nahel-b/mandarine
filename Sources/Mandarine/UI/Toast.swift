@@ -106,7 +106,7 @@ struct ToastStack: View {
             }
         }
         .animation(.easeOut(duration: 0.2), value: center.items.map(\.id))
-        .padding(20)
+        .padding(.horizontal, 30).padding(.top, 20).padding(.bottom, 40)          // marge pour que l'ombre (rayon 16, décalée de 6) ne soit pas rognée
         .onHover { Toast.shared.setHovering($0) }
     }
 }

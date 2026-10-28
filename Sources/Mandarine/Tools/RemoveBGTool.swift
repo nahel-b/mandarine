@@ -71,7 +71,6 @@ struct RemoveBGTool: View {
             }.frame(width: 380, alignment: .leading)
         } footer: {
             Button("Reset") { o = BGOptions(); chosen = Set(ids) }.buttonStyle(PillButtonStyle())
-            Spacer()
             Button("Remove Background") { save() }.buttonStyle(PillButtonStyle()).disabled(failed || busy)
         }
         .task { await start() }

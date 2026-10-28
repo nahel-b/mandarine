@@ -9,6 +9,7 @@ struct CompressTool: View {
     @State private var useTarget = false
     @State private var targetMB = 1.0
 
+    private var mixed: Bool { FileKind.common(of: urls) == nil }
     private var kind: FileKind { FileKind.common(of: urls) ?? .other }
     private var total: Int64 { urls.reduce(0) { $0 + $1.fileSize } }
     private var sizeOptions: [(String, Double?, Int?)] {
@@ -16,7 +17,7 @@ struct CompressTool: View {
          ("Max 3840 px", nil, 3840), ("Max 2048 px", nil, 2048), ("Max 1280 px", nil, 1280)]
     }
     private var supportsTarget: Bool { [.image, .video, .audio].contains(kind) }
-    private var supportsPreset: Bool { kind != .folder && kind != .other }
+    private var supportsPreset: Bool { mixed || (kind != .folder && kind != .other) }
 
     var body: some View {
         ToolShell(title: "Compress", close: close) {
@@ -48,7 +49,9 @@ struct CompressTool: View {
                         }
                     }
                 }
-                if kind == .other || kind == .folder {
+                if mixed {
+                    Text("Each file is compressed according to its type: photos, videos, sounds and PDFs.").font(.system(size: 12)).foregroundStyle(Theme.muted)
+                } else if kind == .other || kind == .folder {
                     Text("This item will be compressed into a ZIP archive.").font(.system(size: 12)).foregroundStyle(Theme.muted)
                 }
             }

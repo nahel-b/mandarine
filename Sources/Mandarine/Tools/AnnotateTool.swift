@@ -153,7 +153,6 @@ struct AnnotateTool: View {
             }.frame(width: 420)
         } footer: {
             Button("Reset") { anns = []; nextNumber = 1; selected = nil }.buttonStyle(PillButtonStyle())
-            Spacer()
             Button("Save Annotated Copy") { save() }.buttonStyle(PillButtonStyle())
         }
     }

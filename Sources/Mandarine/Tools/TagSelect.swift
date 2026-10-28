@@ -7,6 +7,8 @@ struct FinderTag: Hashable, Identifiable {
     let color: Int
     var id: String { name }
     var swiftUIColor: Color {
+        let colors = NSWorkspace.shared.fileLabelColors
+        if (1..<colors.count).contains(color) { return Color(nsColor: colors[color]) }        // couleurs mêmes du Finder
         switch color {
         case 1: return Color(red: 0.60, green: 0.60, blue: 0.62)
         case 2: return Color(red: 0.35, green: 0.78, blue: 0.36)
@@ -26,10 +28,9 @@ struct TaggedGroup: Identifiable {
     var id: String { tag.id }
 }
 
-/// « Tag Select » : dans une sélection, ne garder que les fichiers qui ont une étiquette Finder (au choix quand il y en a plusieurs)
-/// et les sélectionner dans le Finder.
+/// Étiquettes Finder : lecture (nom + couleur) et sélection de fichiers dans le Finder.
 enum TagSelect {
-    private static let attribute = "com.apple.metadata:_kMDItemUserTags"
+    static let attribute = "com.apple.metadata:_kMDItemUserTags"
 
     /// Étiquettes d'un fichier (le Finder les range dans un attribut étendu : « Nom\\nN » avec N = couleur).
     static func tags(of url: URL) -> [FinderTag] {
@@ -56,73 +57,29 @@ enum TagSelect {
         return order.compactMap { byName[$0] }
     }
 
-    static func start(_ urls: [URL]) {
-        let groups = groups(urls)
-        if groups.isEmpty {
-            Toast.shared.done("No tagged files", subtitle: "None of the \(urls.count) selected files has a Finder tag.")
-        } else if groups.count == 1 {
-            select(groups[0].files, of: urls.count)          // une seule étiquette : rien à choisir
-        } else {
-            ToolWindowController.present { close in AnyView(TagSelectTool(total: urls.count, groups: groups, close: close)) }
-        }
-    }
-
     static func select(_ files: [URL], of total: Int) {
         NSWorkspace.shared.activateFileViewerSelecting(files)
         Toast.shared.done("Selected \(files.count) of \(total) files", subtitle: "in the Finder")
     }
 }
 
-struct TagSelectTool: View {
-    let total: Int
-    let groups: [TaggedGroup]
-    let close: () -> Void
-    @State private var chosen: Set<String>
+/// Écriture d'étiquettes Finder (couleurs 1 gris, 2 vert, 3 violet, 4 bleu, 5 jaune, 6 rouge, 7 orange ; noms localisés par le système).
+enum FinderTags {
+    static func labelName(_ index: Int) -> String { NSWorkspace.shared.fileLabels.indices.contains(index) ? NSWorkspace.shared.fileLabels[index] : "" }
 
-    init(total: Int, groups: [TaggedGroup], close: @escaping () -> Void) {
-        self.total = total; self.groups = groups; self.close = close
-        _chosen = State(initialValue: Set(groups.map(\.id)))          // tout est pris au départ
+    static func write(_ tags: [FinderTag], to url: URL) {
+        let path = url.path
+        if tags.isEmpty { removexattr(path, TagSelect.attribute, 0); return }
+        let entries = tags.map { $0.color > 0 ? "\($0.name)\n\($0.color)" : $0.name }
+        guard let data = try? PropertyListSerialization.data(fromPropertyList: entries, format: .binary, options: 0) else { return }
+        _ = data.withUnsafeBytes { setxattr(path, TagSelect.attribute, $0.baseAddress, data.count, 0, 0) }
     }
 
-    private var files: [URL] {
-        var seen = Set<URL>()
-        return groups.filter { chosen.contains($0.id) }.flatMap(\.files).filter { seen.insert($0).inserted }
-    }
-
-    var body: some View {
-        ToolShell(title: "Tag Select", close: close) {
-            VStack(spacing: 14) {
-                Text("Pick the tags to keep. Files carrying at least one of them are selected.").sectionLabel()
-                    .multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(alignment: .top, spacing: 18) {
-                        ForEach(groups) { g in dot(g) }
-                    }.padding(.horizontal, 6).padding(.vertical, 8)
-                }
-                Text("\(files.count) of \(total) files").font(.system(size: 12, weight: .medium)).foregroundStyle(Theme.text)
-            }.frame(width: min(max(CGFloat(groups.count) * 82 + 24, 330), 470))
-        } footer: {
-            Button(files.count == 1 ? "Select 1 file" : "Select \(files.count) files") {
-                let f = files; close(); TagSelect.select(f, of: total)
-            }.buttonStyle(PillButtonStyle()).disabled(files.isEmpty)
-        }
-    }
-
-    /// Rond de couleur : sélectionné = bord blanc ; sinon estompé.
-    private func dot(_ g: TaggedGroup) -> some View {
-        let on = chosen.contains(g.id)
-        return Button {
-            if on { chosen.remove(g.id) } else { chosen.insert(g.id) }
-        } label: {
-            VStack(spacing: 6) {
-                Circle().fill(g.tag.swiftUIColor).frame(width: 38, height: 38)
-                    .overlay(Circle().stroke(Color.white, lineWidth: on ? 3.5 : 0))
-                    .overlay(Circle().stroke(Color.black.opacity(g.tag.color == 0 ? 0.25 : 0), lineWidth: 1))
-                    .shadow(color: on ? Color.black.opacity(0.35) : .clear, radius: 2.5, y: 1)
-                    .opacity(on ? 1 : 0.35)
-                Text(g.tag.name).font(.system(size: 11, weight: .medium)).foregroundStyle(Theme.text).lineLimit(1).frame(width: 64)
-                Text("\(g.files.count)").font(.system(size: 10).monospacedDigit()).foregroundStyle(Theme.muted)
-            }.contentShape(Rectangle())
-        }.buttonStyle(.plain).help(g.tag.name)
+    /// Pose l'étiquette de couleur `labelIndex` (ou aucune), en retirant les autres étiquettes de `managed` et en gardant toutes les autres.
+    static func set(_ url: URL, label labelIndex: Int?, managed: [Int]) {
+        let managedNames = Set(managed.map(labelName))
+        var tags = TagSelect.tags(of: url).filter { !managedNames.contains($0.name) }
+        if let i = labelIndex { tags.append(FinderTag(name: labelName(i), color: i)) }
+        write(tags, to: url)
     }
 }

@@ -137,7 +137,6 @@ struct FrameImageTool: View {
             }.frame(width: 400)
         } footer: {
             Button("Reset") { p = FrameParams(); ratioChoice = 0; bgImage = nil; cutEnabled = false }.buttonStyle(PillButtonStyle())
-            Spacer()
             Button("Save with Background") { save() }.buttonStyle(PillButtonStyle())
         }
     }
@@ -307,7 +306,6 @@ struct CollageTool: View {
             }.frame(width: 380).font(.system(size: 12))
         } footer: {
             Button("Reset Layout") { style = .grid; columns = 2; spacing = 0; corners = 0; urls.sort { $0.path < $1.path } }.buttonStyle(PillButtonStyle())
-            Spacer()
             Button("Create Collage") { save() }.buttonStyle(PillButtonStyle())
         }
         .task(id: urls) {

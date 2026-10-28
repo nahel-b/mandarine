@@ -108,7 +108,6 @@ struct CropVideoTool: View {
             }.frame(width: 400)
         } footer: {
             Button("Reset") { regions[0].rect = CGRect(x: 0, y: 0, width: 1, height: 1); ratio = AspectRatioChoice.all[0] }.buttonStyle(PillButtonStyle())
-            Spacer()
             Button("Apply") { apply() }.buttonStyle(PillButtonStyle())
         }
         .task { await player.load(urls[0]) }

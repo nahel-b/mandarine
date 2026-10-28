@@ -46,7 +46,6 @@ struct CropImageTool: View {
             .frame(width: 400)
         } footer: {
             Button("Reset") { regions[0].rect = CGRect(x: 0, y: 0, width: 1, height: 1); ratio = AspectRatioChoice.all[0] }.buttonStyle(PillButtonStyle())
-            Spacer()
             Button("Apply") { apply() }.buttonStyle(PillButtonStyle())
         }
     }
@@ -114,7 +113,6 @@ struct RedactImageTool: View {
             .frame(width: 400)
         } footer: {
             Button("Reset") { regions = []; selected = nil }.buttonStyle(PillButtonStyle())
-            Spacer()
             Button("Save Redacted Copy") { save() }.buttonStyle(PillButtonStyle()).disabled(regions.isEmpty)
         }
     }

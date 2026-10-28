@@ -56,15 +56,25 @@ enum Catalog {
     static func displayName(_ ext: String) -> String { ext == "m4r" ? "RINGTONE" : ext.uppercased() }
 
     // MARK: Outils
-    /// Pétales de sélection (photos et vidéos, plusieurs fichiers) : par étiquette et/ou par visage, selon les Réglages.
+    /// Sélection par visage (photos et vidéos, plusieurs fichiers), selon les Réglages. Les étiquettes Finder se choisissent dans Type Select.
     private static func selectTools() -> [(ToolID, String, String)] {
-        let s = AppSettings.shared
-        switch (s.enableTagSelect, s.enableFaceSelect) {
-        case (true, true): return [(.tagSelect, "TAG", "tag"), (.faceSelect, "FACE", "face.smiling")]
-        case (true, false): return [(.tagSelect, "TAG", "tag")]
-        case (false, true): return [(.faceSelect, "FACE", "face.smiling")]
-        default: return []
+        AppSettings.shared.enableFaceSelect ? [(.faceSelect, "FACE", "face.smiling")] : []
+    }
+
+    /// Tri rapide (photos et vidéos, plusieurs fichiers), rangé dans le groupe SELECT.
+    private static func sortTools() -> [(ToolID, String, String)] {
+        AppSettings.shared.enableCull ? [(.quickSort, "SORT", "hand.thumbsup")] : []
+    }
+
+    /// Roue ⌘ d'une sélection de types mélangés : ce qui a un sens pour tous les fichiers.
+    private static func mixedTools(_ kinds: Set<FileKind>) -> [(ToolID, String, String)] {
+        var t: [(ToolID, String, String)] = []
+        if kinds.isSubset(of: [.image, .video, .audio, .pdf]) {
+            t += [(.compress, "COMPRESS", "arrow.down.right.and.arrow.up.left"), (.metadata, "METADATA", "eye.slash")]
         }
+        t.append((.zipFiles, "ZIP", "doc.zipper"))
+        if kinds.isSubset(of: [.image, .video]) { t += selectTools() + sortTools() }
+        return t
     }
 
     static func tools(for kind: FileKind, count: Int) -> [(ToolID, String, String)] {
@@ -86,7 +96,7 @@ enum Catalog {
             ]
             if AppSettings.shared.enableScan { t.append((.scanDocument, "SCAN", "doc.viewfinder")) }
             if multi { t.append((.createCollage, "COLLAGE", "square.grid.2x2")) }
-            if multi { t += selectTools() }
+            if multi { t += selectTools() + sortTools() }
             return t
         case .video:
             var t: [(ToolID, String, String)] = [
@@ -103,7 +113,7 @@ enum Catalog {
                 (.encodeVideo, "EXPORT", "film.stack")
             ]
             if multi { t.append((.joinVideos, "JOIN", "rectangle.stack")) }
-            if multi { t += selectTools() }
+            if multi { t += selectTools() + sortTools() }
             return t
         case .audio:
             return [
@@ -171,20 +181,15 @@ enum Catalog {
                                  enabled: Converter.supports(kind: kind, from: first.pathExtension, to: ext))
             }
         case .tools:
-            guard let kind = FileKind.common(of: urls) else {
-                // Photos et vidéos mélangées : seule la sélection par tag a un sens
-                let kinds = Set(urls.map(FileKind.detect))
-                if urls.count > 1, kinds.isSubset(of: [.image, .video]) {
-                    let children = selectTools().map { WheelItem(id: $0.0.rawValue, label: $0.1, caption: $0.0.title, symbol: $0.2, payload: .tool($0.0)) }
-                    if children.count == 2 {
-                        var g = WheelItem(id: "select", label: "SELECT", caption: "Select", symbol: "tag", payload: .tool(.tagSelect)); g.children = children
-                        return [g]
-                    }
-                    return children
-                }
-                return []
-            }
-            var items: [WheelItem] = tools(for: kind, count: urls.count).map { t in
+            // Types mélangés : une roue commune (compresser, métadonnées, zip, étiquettes…). Un texte glissé ne se mélange à rien.
+            let common = FileKind.common(of: urls)
+            let kinds = Set(urls.map(FileKind.detect))
+            if common == nil && (urls.count < 2 || kinds.contains(.snippet)) { return [] }
+            let kind = common ?? .other
+            var list = common == nil ? mixedTools(kinds) : tools(for: kind, count: urls.count)
+            // Sélection par type (extension, catégorie, taille, date) : pour toute sélection de plusieurs éléments
+            if urls.count > 1, AppSettings.shared.enableTypeSelect { list.append((.typeSelect, "TYPE", "line.3.horizontal.decrease.circle")) }
+            var items: [WheelItem] = list.map { t in
                 let (id, label, symbol) = t
                 return WheelItem(id: id.rawValue, label: label, caption: id.title, symbol: symbol, payload: .tool(id),
                                  enabled: ToolAvailability.isImplemented(id))
@@ -192,14 +197,14 @@ enum Catalog {
             // Groupes à 2ᵉ niveau : le survol d'un pétale fait apparaître ses sous-pétales plus loin du centre.
             func group(_ ids: [ToolID], id: String, label: String, caption: String, symbol: String) {
                 let found = ids.compactMap { tid in items.first(where: { $0.id == tid.rawValue }) }
-                guard found.count == ids.count, let first = items.firstIndex(where: { $0.id == ids[0].rawValue || ids.map(\.rawValue).contains($0.id) }) else { return }
-                var g = WheelItem(id: id, label: label, caption: caption, symbol: symbol, payload: .tool(ids[0]))
+                guard found.count >= 2, let first = items.firstIndex(where: { ids.map(\.rawValue).contains($0.id) }), case .tool(let firstTool) = found[0].payload else { return }
+                var g = WheelItem(id: id, label: label, caption: caption, symbol: symbol, payload: .tool(firstTool))
                 g.children = found
                 items.removeAll { item in ids.map(\.rawValue).contains(item.id) }
                 items.insert(g, at: min(first, items.count))
             }
             group([.scanDocument, .ocr], id: "document", label: "DOCUMENT", caption: "Document", symbol: "doc.viewfinder")
-            group([.tagSelect, .faceSelect], id: "select", label: "SELECT", caption: "Select", symbol: "tag")
+            group([.faceSelect, .quickSort, .typeSelect], id: "select", label: "SELECT", caption: "Select", symbol: "line.3.horizontal.decrease.circle")
             group([.editImage, .annotateImage, .redactImage], id: "edit", label: "EDIT", caption: "Edit", symbol: "slider.horizontal.3")
             group([.cropImage, .resizeImage, .rotateImage], id: "transform", label: "TRANSFORM", caption: "Transform", symbol: "crop.rotate")
             group([.frameImage, .removeBackground], id: "bg", label: "BG", caption: "Background", symbol: "photo.on.rectangle")

@@ -89,13 +89,37 @@ Bouton « Download » pour ffmpeg + ffprobe (versions statiques de ffmpeg.martin
 Qualité mesurée (504 photos de 42 personnes, jeu LFW, images 125×94) : 417 visages détectés ; similarité médiane 0,65 pour une même personne contre 0,13 entre personnes différentes ; seuil par défaut 0,50 → 44 groupes pour 42 personnes, 0 visage mal rangé. Le curseur « Same person » règle ce seuil (0,38–0,65). Les photos très petites ou de profil peuvent ne pas être détectées.
 
 ## Réglages à onglets
-Fenêtre de réglages avec une barre d'onglets à gauche : General, Wheel (style et touches), Petals (pétales facultatifs), Engines (moteurs à télécharger), Updates.
+Fenêtre de réglages avec une barre d'onglets à gauche : General, Appearance (style du menu, couleur de tinte, style des fenêtres), Wheel keys (touches), Petals (pétales facultatifs), Engines (moteurs à télécharger), Updates.
 
 ## Scan de document (roue ⌘ des photos, groupe DOCUMENT → SCAN / TEXT)
-Détecte la feuille sur une photo (Vision), redresse la perspective, rétablit le vrai rapport largeur/hauteur (estimation par la géométrie des quatre coins, calée sur A4 / Lettre quand c'est proche), nettoie l'éclairage (le fond devient blanc). Quatre coins déplaçables à la souris, aperçu du résultat, filtres Original / Color / Grayscale / B&W, plusieurs photos = plusieurs pages ; sortie PDF ou images JPG. Désactivable dans Réglages → Petals.
+Détecte la feuille sur une photo (Vision), redresse la perspective, rétablit le vrai rapport largeur/hauteur (estimation par la géométrie des quatre coins, calée sur A4 / Lettre quand c'est proche), nettoie l'éclairage (le fond devient blanc). Quatre coins déplaçables à la souris, aperçu du résultat, filtres Original / Color / Grayscale / B&W, plusieurs photos = plusieurs pages ; sortie PDF ou images JPG. Les quatre touches (A Z E R par défaut, selon la disposition du clavier) se changent dans Réglages → Petals (clic sur la touche, puis appui sur la nouvelle ; doublons refusés). Désactivable dans Réglages → Petals.
 
 ## Sonnerie (roue ⇧ des sons et vidéos)
 Pétale RINGTONE : début du son (30 s par défaut, réglable 5–40 s), fondu de sortie d'une seconde, AAC dans un fichier .m4r. Actif par défaut, désactivable dans Réglages → Petals.
 
 ## Texte glissé
 Sélectionner du texte (Safari, Notes, Mail…), le glisser et taper ⇧ ⌘ ou ⌃ : le texte devient un petit fichier temporaire que la roue traite comme un fichier. ⇧ : enregistrer en TXT / MD / PDF / DOCX, lire dans un fichier audio (SPEECH, voix de la langue du texte), QR CODE (PNG). ⌘ : READ ALOUD (voix du système, bouton Stop), TRANSLATE (framework Translation, macOS 15+, langue du Mac par défaut), SUMMARIZE (modèle Apple Intelligence du Mac, macOS 26). ⌃ : COPY (texte brut), SEARCH (recherche web). Résultats enregistrés sur le Bureau. Désactivable dans Réglages → Petals.
+
+## Sélection de types mélangés (roue ⌘)
+Plusieurs fichiers de types différents ouvrent maintenant une roue commune : COMPRESS et METADATA (si tout est photo, vidéo, son ou PDF ; chaque fichier est traité selon son type), ZIP (tout, dossiers compris : une archive « Archive.zip » à côté du premier élément), et TYPE (sélection par type, extension, étiquette, taille, date). Photos + vidéos mélangées gardent aussi FACE et SORT.
+
+## Tri rapide (groupe SELECT → SORT)
+Photos et vidéos (plusieurs fichiers) en grand dans une fenêtre, au clavier : E / ↑ garder = oui (étiquette Finder verte), Z peut-être = je ne sais pas (jaune), A / ↓ / Supprimer rejeter = non (rouge), R effacer la marque, ← → parcourir, barre de couleurs cliquable. Les marques sont écrites tout de suite comme étiquettes Finder (les autres étiquettes sont conservées ; couleurs et noms du système). Pied de fenêtre : « Select kept in Finder » et « Move rejects to the Trash… » (confirmation, récupérable dans la Corbeille). Désactivable dans Réglages → Petals.
+
+## Type Select (groupe SELECT → TYPE, et pétale seul sur les autres roues)
+Pour toute sélection de plusieurs éléments : fenêtre avec une pastille par extension (nombre de fichiers, « folder » pour les dossiers), des raccourcis par catégorie (Photos, Videos, Audio, PDF, Documents, Archives, Folders), un filtre de taille (plus grand / plus petit que 1 Mo … 1 Go) et de date de modification (aujourd'hui, 7 / 30 jours, un an, plus vieux). Le nombre de résultats se met à jour en direct ; « Select N items » les sélectionne dans le Finder. Désactivable dans Réglages → Petals (actif par défaut).
+
+## Les étiquettes Finder sont dans Type Select
+Le pétale TAG n'existe plus : la fenêtre Type Select a une section « Finder tags » avec un rond de couleur par étiquette présente dans la sélection (couleurs du Finder, bord blanc = choisie, nombre de fichiers dessous) et un rond « No tag » pour les fichiers sans étiquette. Plusieurs étiquettes choisies = fichiers qui portent au moins l'une d'elles ; le filtre se combine avec les extensions, la taille et la date. Le groupe SELECT contient donc FACE, SORT et TYPE (TYPE seul sur les roues sans photos ni vidéos).
+
+## Style des fenêtres d'outils (Réglages → Appearance → Window style)
+Cinq cadres au choix pour toutes les fenêtres qui s'ouvrent depuis un pétale (le contenu reste clair) : Classic (par défaut), Tangerine (bandeau orange), Graphite (cadre sombre), Minimal (plat et clair, ✕ à droite), Wii (liseré bleu, boutons ronds à contour bleu). Six autres styles changent la structure, pas seulement les couleurs : Rail (titre et boutons dans une colonne à gauche), Islands (titre, contenu et boutons en trois cartes flottantes), Folder (onglet de chemise cartonnée), Brutalist (gros traits noirs, ombre dure, police à chasse fixe), Retro (fenêtre de Mac classique : bandeau rayé, case de fermeture carrée) et Capsule (titre et barre de boutons en pastilles flottantes à cheval sur les bords). Le glissement de la fenêtre passe par des zones déclarées par chaque style (barre de titre, rail, onglet…), le ✕ n'en fait jamais partie. Capsule est le style par défaut ; Classic reste disponible dans les Réglages. Six styles de plus : Sticky (pense-bête jaune, punaise, coin replié), Notepad (bloc-notes à spirale), Stamp (timbre-poste dentelé), Bubble (bulle de dialogue), Polaroid (cadre photo, légende manuscrite) et Ticket (talon avec encoches et pointillés). Le style s'applique aux fenêtres ouvertes ensuite.
+
+## Couleur de tinte
+Réglages → Appearance → « Accent color » : dix pastilles (Orange par défaut, Red, Pink, Purple, Indigo, Blue, Teal, Green, Gold, Graphite) et un sélecteur de couleur libre ; « Reset » revient à l'orange. La tinte colore le pétale survolé de la roue, les boutons principaux, les puces et la progression des fenêtres et des notifications. Les fenêtres déjà ouvertes gardent leur couleur.
+
+## Styles de fenêtres proposés
+Réglages → Appearance → Window style : **Capsule** (par défaut), **Classic** et **Islands** (les autres styles restent dans le code mais ne sont plus proposés). Les boutons des fenêtres sont centrés (Capsule, Classic) ou collés à droite de la carte du bas (Islands) et, en Capsule et Islands, entièrement arrondis comme leur fond. Seul Classic utilise l'ombre de fenêtre du système (les autres dessinent la leur, pour éviter un liseré gris irrégulier).
+
+## Liseré des pétales survolés
+Un pétale survolé (et un sous-pétale) a un liseré de la couleur de tinte en plus claire (à peine plus claire : 20 % de blanc, trait de 1,6 pt) au lieu du liseré blanc translucide.

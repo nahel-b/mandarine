@@ -173,7 +173,6 @@ struct MetadataTool: View {
                     .sectionLabel().fixedSize(horizontal: false, vertical: true)
             }.frame(width: 520)
         } footer: {
-            Spacer()
             Button("Remove All") { run(removeAll: true) }.buttonStyle(PillButtonStyle())
             Button("Save") { run(removeAll: false) }.buttonStyle(PillButtonStyle(prominent: false)).disabled(!rows.contains { $0.removed || $0.value != $0.original })
         }

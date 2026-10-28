@@ -9,13 +9,13 @@ struct SettingsView: View {
     @State private var tab: Tab
 
     enum Tab: String, CaseIterable, Identifiable {
-        case general, wheel, petals, engines, updates
+        case general, appearance, wheel, petals, engines, updates
         var id: String { rawValue }
         var title: String {
-            switch self { case .general: return "General"; case .wheel: return "Wheel"; case .petals: return "Petals"; case .engines: return "Engines"; case .updates: return "Updates" }
+            switch self { case .general: return "General"; case .appearance: return "Appearance"; case .wheel: return "Wheel keys"; case .petals: return "Petals"; case .engines: return "Engines"; case .updates: return "Updates" }
         }
         var symbol: String {
-            switch self { case .general: return "gearshape"; case .wheel: return "circle.hexagongrid"; case .petals: return "leaf"; case .engines: return "wrench.and.screwdriver"; case .updates: return "arrow.triangle.2.circlepath" }
+            switch self { case .general: return "gearshape"; case .appearance: return "paintpalette"; case .wheel: return "circle.hexagongrid"; case .petals: return "leaf"; case .engines: return "wrench.and.screwdriver"; case .updates: return "arrow.triangle.2.circlepath" }
         }
     }
 
@@ -66,12 +66,33 @@ struct SettingsView: View {
                     ForEach(TerminalApp.allCases) { Text($0.title).tag($0) }
                 }
             }
-        case .wheel:
+        case .appearance:
             Section("Appearance") {
                 Picker("Menu style", selection: $s.appearance) { ForEach(MenuAppearance.allCases) { Text($0.title).tag($0) } }
                 Text(s.appearance == .wii ? "A small Wii-style screen: every tool is a channel, with a clock, a pointer hand and a description line." : "The radial wheel.")
                     .font(.caption).foregroundStyle(.secondary)
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack {
+                        Text("Accent color")
+                        Spacer()
+                        ColorPicker("", selection: Binding(get: { s.accentColor }, set: { s.accentHex = NSColor($0).hexString }), supportsOpacity: false).labelsHidden()
+                        if !s.isDefaultAccent { Button("Reset") { s.accentHex = AppSettings.defaultAccent }.controlSize(.small) }
+                    }
+                    HStack(spacing: 8) {
+                        ForEach(Self.accents, id: \.1) { name, hex in
+                            Button { s.accentHex = hex } label: {
+                                Circle().fill(Color(nsColor: NSColor(hex: hex)!)).frame(width: 24, height: 24)
+                                    .overlay(Circle().stroke(Color.primary.opacity(0.9), lineWidth: s.accentHex.uppercased() == hex ? 2.5 : 0).padding(-3))
+                            }.buttonStyle(.plain).help(name)
+                        }
+                    }
+                    Text("The highlight of the wheel, buttons and progress in every window. Windows already open keep their color.").font(.caption).foregroundStyle(.secondary)
+                }
+                VStack(alignment: .leading, spacing: 4) {
+                    Picker("Window style", selection: $s.toolStyle) { ForEach(ToolStyle.available) { Text($0.title).tag($0) } }
+                }
             }
+        case .wheel:
             Section("Wheel keys") {
                 Text("Start dragging a file, then tap a key. The wheel stays open until you drop.")
                     .font(.caption).foregroundStyle(.secondary)
@@ -84,10 +105,26 @@ struct SettingsView: View {
             }
         case .petals:
             Section("Photos & videos") {
-                Toggle("Tag Select", isOn: $s.enableTagSelect)
-                Text("With several files selected, keep only the ones that carry a Finder tag, and choose which tags.").font(.caption).foregroundStyle(.secondary)
                 Toggle("Face Select", isOn: $s.enableFaceSelect)
                 Text("Pick people by their face. Needs a small model (\(FaceModel.sizeText)), downloaded once; see Engines.").font(.caption).foregroundStyle(.secondary)
+                Toggle("Quick Sort", isOn: $s.enableCull)
+                Text("Go through the photos and videos full screen and mark each one Keep, Maybe or Reject with a key. The marks are Finder tags.").font(.caption).foregroundStyle(.secondary)
+                if s.enableCull {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Quick Sort keys — click one, then press the new key").font(.caption).foregroundStyle(.secondary)
+                        HStack(spacing: 14) {
+                            KeyRecorder(title: "No · reject", key: $s.cullRejectKey, taken: { cullKeyOwner($0, except: \.cullRejectKey) })
+                            KeyRecorder(title: "Maybe", key: $s.cullMaybeKey, taken: { cullKeyOwner($0, except: \.cullMaybeKey) })
+                            KeyRecorder(title: "Yes · keep", key: $s.cullKeepKey, taken: { cullKeyOwner($0, except: \.cullKeepKey) })
+                            KeyRecorder(title: "Clear", key: $s.cullClearKey, taken: { cullKeyOwner($0, except: \.cullClearKey) })
+                            Spacer()
+                            Button("A · Z · E · R") { s.resetCullKeys() }.controlSize(.small)
+                        }
+                        Text("Arrow keys always work: ← → browse, ↑ keep, ↓ reject.").font(.caption).foregroundStyle(.secondary)
+                    }
+                }
+                Toggle("Type Select", isOn: $s.enableTypeSelect)
+                Text("With several items selected, keep only some extensions, kinds, Finder tags, sizes or dates (JPG, MP4, red tag, bigger than 100 MB…).").font(.caption).foregroundStyle(.secondary)
                 Toggle("Document scan (photos)", isOn: $s.enableScan)
                 Text("Straighten and clean a photo of a sheet of paper, and save it as a PDF.").font(.caption).foregroundStyle(.secondary)
             }
@@ -169,6 +206,15 @@ struct SettingsView: View {
             }
         }
     }
+
+    /// Qui utilise déjà cette touche dans le tri rapide ? (nil si personne)
+    private func cullKeyOwner(_ k: String, except: KeyPath<AppSettings, String>) -> String? {
+        let all: [(String, KeyPath<AppSettings, String>)] = [("reject", \.cullRejectKey), ("maybe", \.cullMaybeKey), ("keep", \.cullKeepKey), ("clear", \.cullClearKey)]
+        return all.first { $0.1 != except && s[keyPath: $0.1] == k }?.0
+    }
+
+    static let accents: [(String, String)] = [("Orange", "F35B28"), ("Red", "E0343A"), ("Pink", "E8488B"), ("Purple", "8E5CD9"), ("Indigo", "4F5BD5"),
+                                              ("Blue", "2D7FF0"), ("Teal", "14A39A"), ("Green", "3FA34D"), ("Gold", "E0A100"), ("Graphite", "5B6068")]
 
     private func keyPicker(_ title: String, _ b: Binding<TriggerKey>) -> some View {
         Picker(title, selection: b) { ForEach(TriggerKey.allCases) { Text($0.title).tag($0) } }

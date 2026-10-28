@@ -5,7 +5,6 @@ enum Dispatcher {
     static func run(_ item: WheelItem, on urls: [URL]) {
         switch item.payload {
         case .convert(let ext): convert(urls, to: ext)
-        case .tool(.tagSelect): TagSelect.start(urls)          // pas de fenêtre vide : elle ne s'ouvre que s'il y a un choix
         case .tool(let id): ToolWindowController.present(id, urls: urls)
         case .action(let a): FileActions.perform(a, on: urls)
         }

@@ -281,6 +281,65 @@ extension AppDelegate {
             }
             return
         }
+        if a.count >= 2, a[0] == "--ziptest" {       // test : --ziptest fichier_ou_dossier…
+            Task { do { let z = try await ZipEngine.make(a.dropFirst().map { URL(fileURLWithPath: $0) }); print("OK", z.path, z.fileSize, "o") } catch { print("ERR", error.localizedDescription) }; exit(0) }
+            return
+        }
+        if a.count >= 2, a[0] == "--culltest" {      // test : --culltest image… (ouvre le tri rapide, simule des touches K, X, flèche droite, M, puis relit les étiquettes)
+            let urls = a.dropFirst().map { URL(fileURLWithPath: $0) }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                ToolWindowController.present(.quickSort, urls: urls)
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                    guard let w = NSApp.windows.first(where: { $0 is ToolWindow }) else { print("pas de fenêtre"); exit(1) }
+                    func key(_ ch: String, _ code: UInt16) { w.sendEvent(NSEvent.keyEvent(with: .keyDown, location: .zero, modifierFlags: [], timestamp: 0, windowNumber: w.windowNumber, context: nil, characters: ch, charactersIgnoringModifiers: ch, isARepeat: false, keyCode: code)!) }
+                    key("e", 14); key("a", 0); key("\u{F703}", 124); key("z", 6)       // E : image 1 gardée · A : image 2 rejetée · flèche droite · Z : dernière image « peut-être »
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
+                        for u in urls { print(u.lastPathComponent, "→", TagSelect.tags(of: u).map { "\($0.name)(\($0.color))" }.joined(separator: ", ")) }
+                        exit(0)
+                    }
+                }
+            }
+            return
+        }
+        if a.count >= 3, a[0] == "--sizetest", let id = ToolID(rawValue: a[1]) {      // test : --sizetest outil fichier… (la fenêtre suit-elle la taille de son contenu ?)
+            let urls = a.dropFirst(2).map { URL(fileURLWithPath: $0) }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                ToolWindowController.present(id, urls: urls)
+                guard let w = NSApp.windows.first(where: { $0 is ToolWindow }), let host = w.contentView else { print("pas de fenêtre"); exit(1) }
+                print("à l'ouverture : fenêtre", w.frame.size, "· contenu", host.fittingSize)
+                DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+                    print("3 s plus tard  : fenêtre", w.frame.size, "· contenu", host.fittingSize, "· haut de la fenêtre", w.frame.maxY, "· écran", w.screen?.visibleFrame.maxY ?? 0)
+                    exit(0)
+                }
+            }
+            return
+        }
+        if a.count >= 2, a[0] == "--toastshot" {      // test : --toastshot sortie.png (capture la vraie notification, ombre comprise)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                Toast.shared.done("Selected 4 of 17 files", subtitle: "in the Finder")
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                    guard let w = NSApp.windows.first(where: { $0 is NSPanel && $0.level == .statusBar && $0.frame.width > 200 }),
+                          let cg = CGWindowListCreateImage(.null, .optionIncludingWindow, CGWindowID(w.windowNumber), [.bestResolution]) else { print("capture impossible"); exit(1) }
+                    try? NSBitmapImageRep(cgImage: cg).representation(using: .png, properties: [:])?.write(to: URL(fileURLWithPath: a[1]))
+                    print("panneau", w.frame.size); exit(0)
+                }
+            }
+            return
+        }
+        if a.count >= 4, a[0] == "--winshot", let id = ToolID(rawValue: a[1]) {      // test : --winshot outil sortie.png fichier… (capture la vraie fenêtre, ombre comprise)
+            let urls = a.dropFirst(3).map { URL(fileURLWithPath: $0) }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                ToolWindowController.present(id, urls: urls)
+                DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
+                    guard let w = NSApp.windows.first(where: { $0 is ToolWindow }),
+                          let cg = CGWindowListCreateImage(.null, .optionIncludingWindow, CGWindowID(w.windowNumber), [.bestResolution]) else { print("capture impossible"); exit(1) }
+                    try? NSBitmapImageRep(cgImage: cg).representation(using: .png, properties: [:])?.write(to: URL(fileURLWithPath: a[2]))
+                    print("fenêtre", w.frame.size, "· image", cg.width, "×", cg.height, "· ombre système :", w.hasShadow)
+                    exit(0)
+                }
+            }
+            return
+        }
         if a.count >= 2, a[0] == "--ocr" {           // test : --ocr fichier (texte reconnu)
             do { print(OCREngine.join(try OCREngine.pages(of: URL(fileURLWithPath: a[1])), keepLineBreaks: true)) } catch { print("ERR", error.localizedDescription) }
             exit(0)
@@ -409,8 +468,6 @@ extension AppDelegate {
             view = AnyView(ToastStack(center: Toast.shared.center).background(Color(white: 0.55)))
         } else if target[0] == "settings" {
             view = AnyView(SettingsView(tab: SettingsView.Tab(rawValue: target.count > 1 ? target[1] : "") ?? .general).background(Color(white: 0.55)))
-        } else if target[0] == "tagselect" {
-            view = AnyView(TagSelectTool(total: urls.count, groups: TagSelect.groups(urls), close: {}).padding(30).background(Color(white: 0.55)))
         } else if target[0] == "faceselect" {
             view = AnyView(FaceSelectTool(urls: urls, close: {}).padding(30).background(Color(white: 0.55)))
         } else if target[0] == "playlist" {
