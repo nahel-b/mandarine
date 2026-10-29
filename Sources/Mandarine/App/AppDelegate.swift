@@ -340,6 +340,46 @@ extension AppDelegate {
             }
             return
         }
+        if a.first == "--bubbletest" {               // test de la détection des bulles
+            for k in [6, 8, 9, 10, 12, 14, 16, 18] {
+                let q = BubbleLayout.spots(k)
+                let rmax = Int(q.map { hypot($0.x, $0.y) + $0.d / 2 }.max() ?? 0), dmin = Int(q.map(\.d).min() ?? 0)
+                let clash = (0..<k).flatMap { i in ((i + 1)..<k).filter { j in hypot(q[i].x - q[j].x, q[i].y - q[j].y) < (q[i].d + q[j].d) / 2 } }.count
+                print("anneau unique,", k, "bulles · portée", rmax, "· plus petite bulle", dmin, "· chevauchements", clash)
+            }
+            let n = 9, sp = BubbleLayout.spots(n)
+            print("bulles :", sp.count, "· rayon moyen", Int(sp.map { hypot($0.x, $0.y) }.reduce(0, +) / CGFloat(n)), "· plus petit écart avec la bulle du centre", Int(sp.map { hypot($0.x, $0.y) - $0.d / 2 - BubbleLayout.centerDiameter / 2 }.min() ?? 0), "· chevauchements :", (0..<n).flatMap { i in ((i + 1)..<n).filter { j in hypot(sp[i].x - sp[j].x, sp[i].y - sp[j].y) < (sp[i].d + sp[j].d) / 2 } }.count)
+            print("sur la bulle 3 :", BubbleLayout.hit(CGPoint(x: sp[3].x, y: sp[3].y), count: n, hoverParent: nil, childCount: 0))
+            print("dans le vide   :", BubbleLayout.hit(CGPoint(x: 0, y: 0), count: n, hoverParent: nil, childCount: 0))
+            let kids = BubbleLayout.childSpots(parent: sp[2], count: 3)
+            print("sur une sous-bulle du groupe 2 :", BubbleLayout.hit(CGPoint(x: kids[1].x, y: kids[1].y), count: n, hoverParent: 2, childCount: 3))
+            print("sur le parent, groupe 2 ouvert :", BubbleLayout.hit(CGPoint(x: sp[2].x + 20, y: sp[2].y), count: n, hoverParent: 2, childCount: 3))
+            print("sous-bulle hors groupe ouvert  :", BubbleLayout.hit(CGPoint(x: kids[1].x, y: kids[1].y), count: n, hoverParent: nil, childCount: 0))
+            exit(0)
+        }
+        if a.count >= 3, a[0] == "--panelshots" {      // test : --panelshots mode fichier… (ouvre le vrai panneau, capture deux images à 0,6 s d'écart)
+            guard let m = WheelMode(rawValue: a[1]) else { exit(2) }
+            let urls = a.dropFirst(2).map { URL(fileURLWithPath: $0) }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                WheelController.shared.show(mode: m, urls: urls, at: NSPoint(x: 900, y: 600))
+                func grab(_ name: String) {
+                    guard let w = NSApp.windows.first(where: { $0 is WheelPanel && $0.isVisible }) ?? { print("fenêtres :", NSApp.windows.map { "\(type(of: $0)) visible=\($0.isVisible) \($0.frame.size)" }); return nil }(),
+                          let cg = CGWindowListCreateImage(.null, .optionIncludingWindow, CGWindowID(w.windowNumber), [.bestResolution]) else { print("pas de panneau"); return }
+                    try? NSBitmapImageRep(cgImage: cg).representation(using: .png, properties: [:])?.write(to: URL(fileURLWithPath: name))
+                }
+                for (k, dt) in [0.12, 0.22, 0.34, 0.5].enumerated() {                                        // images en pleine animation d'entrée
+                    DispatchQueue.main.asyncAfter(deadline: .now() + dt) { grab("/tmp/bub/anim\(k).png") }
+                }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
+                    grab("/tmp/bub/real1.png")
+                    // survol d'une bulle (comme le ferait le glisser)
+                    WheelController.shared.bubbleHover(at: BubbleLayout.spots(WheelController.shared.model.items.count).first.map { CGPoint(x: $0.x, y: $0.y) } ?? .zero)
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) { grab("/tmp/bub/real2.png") }
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { grab("/tmp/bub/real3.png"); print("hover :", WheelController.shared.model.hover as Any); exit(0) }
+                }
+            }
+            return
+        }
         if a.count >= 2, a[0] == "--ocr" {           // test : --ocr fichier (texte reconnu)
             do { print(OCREngine.join(try OCREngine.pages(of: URL(fileURLWithPath: a[1])), keepLineBreaks: true)) } catch { print("ERR", error.localizedDescription) }
             exit(0)
@@ -473,6 +513,18 @@ extension AppDelegate {
         } else if target[0] == "playlist" {
             let es = (0..<14).map { YtDlp.Playlist.Entry(id: $0, url: URL(string: "https://example.com/\($0)")!, title: "Track number \($0 + 1) — a fairly long title to check truncation", duration: Double(150 + $0 * 17)) }
             view = AnyView(PlaylistTool(link: URL(string: "https://www.youtube.com/watch?v=abc&list=xyz")!, list: .init(title: "Summer mix 2026", entries: es), kind: .mp4, close: {}).padding(30).background(Color(white: 0.55)))
+        } else if target[0] == "bubbles", let m = WheelMode(rawValue: target[1]) {
+            let model = WheelModel()
+            model.mode = m; model.items = Catalog.items(mode: m, urls: urls); model.appear = true
+            model.infoLines = WheelInfo.quick(urls); model.fileCount = urls.count
+            if let h = ProcessInfo.processInfo.environment["MANDARINE_HOVER"] {
+                let p = h.split(separator: ",").compactMap { Int($0) }
+                model.hover = p.first; model.hoverChild = p.count > 1 ? p[1] : nil
+            }
+            let sem = DispatchSemaphore(value: 0); var previews: [WheelPreviewItem] = []
+            Task.detached { previews = await WheelPreview.make(urls); sem.signal() }
+            sem.wait(); model.previews = previews
+            view = AnyView(BubbleMenuView(model: model).background(Color(white: 0.55)))
         } else if target[0] == "wiitiles" {
             view = AnyView(WiiTilesDebug().background(Color(white: 0.55)))
         } else if target[0] == "help" {

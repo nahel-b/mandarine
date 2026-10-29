@@ -145,6 +145,7 @@ final class WheelModel: ObservableObject {
     // style « Wii »
     @Published var wiiPage = 0
     @Published var wiiNav = false               // le pointeur est sur la flèche « page suivante »
+    @Published var previews: [WheelPreviewItem] = []     // aperçus des fichiers (bulle du centre du menu « bulles »)
     @Published var cursor: CGPoint? = nil       // position du pointeur main (repère de l'écran Wii)
     @Published var fileCount = 1
     @Published var sizeLabel = ""
@@ -184,19 +185,24 @@ struct WheelView: View {
                 .frame(width: R * 2, height: R * 2)
             Circle().strokeBorder(Color.white.opacity(0.07), lineWidth: 1)
                 .frame(width: R * 2 - 12, height: R * 2 - 12)
-            ForEach(Array(model.items.enumerated()), id: \.element.id) { i, item in
-                petal(i, item)
+            // entrée : « Light twist » = les pétales tournent à peine (8°) ; « One by one » = ils sortent l'un après l'autre en glissant sur leur rayon
+            ZStack {
+                ForEach(Array(model.items.enumerated()), id: \.element.id) { i, item in
+                    petal(i, item)
+                }
             }
+            .rotationEffect(.degrees(model.appear || settings.wheelEntrance != .rotate ? 0 : -8))
+            .scaleEffect(model.appear || settings.wheelEntrance != .rotate ? 1 : 0.9)
+            .animation(.spring(response: 0.3, dampingFraction: 0.88), value: model.appear)
             if let h = model.hover, model.items.indices.contains(h), model.items[h].isGroup {
                 childPetals(parentIndex: h, parent: model.items[h]).transition(.scale(scale: 0.93).combined(with: .opacity))     // 0,8 avant : moins de décalage vers l'extérieur
             }
             center
         }
         .environment(\.colorScheme, .dark)
-        // apparition discrète : petit grossissement (92 % → 100 %), quasi sans rebond
-        .scaleEffect(model.appear ? 1 : 0.92)
+        // le fondu du bloc entier ; le mouvement est porté par les pétales (ci-dessus)
         .opacity(model.appear ? 1 : 0)
-        .animation(.spring(response: 0.28, dampingFraction: 0.86), value: model.appear)
+        .animation(.easeOut(duration: 0.18), value: model.appear)
         .animation(.spring(response: 0.26, dampingFraction: 0.82), value: model.hover)
         .frame(width: WheelGeometry.size, height: WheelGeometry.size)
     }
@@ -216,6 +222,7 @@ struct WheelView: View {
         let mid = (WheelGeometry.inner(n) + WheelGeometry.outer(n)) / 2
         let rad = center * .pi / 180
         let enabled = item.enabled
+        let radial = settings.wheelEntrance == .radial
         let body = petalShape(i, n, grow: cr)
         let grad = LinearGradient(colors: active ? [orangeTop, orangeBottom]
                                                   : [Color.white.opacity(enabled ? 0.17 : 0.07), Color.white.opacity(enabled ? 0.07 : 0.03)],
@@ -239,6 +246,10 @@ struct WheelView: View {
         .shadow(color: active ? orangeBottom.opacity(0.5) : .clear, radius: 10)
         .scaleEffect(active ? 1.02 : 1, anchor: Self.anchor(angle: center, radius: mid))
         .animation(.easeOut(duration: 0.10), value: model.hover)
+        // « One by one » : chaque pétale part d'un peu plus près du centre, sur son propre rayon, avec un léger décalage
+        .offset(x: radial && !model.appear ? -cos(rad) * 26 : 0, y: radial && !model.appear ? -sin(rad) * 26 : 0)
+        .opacity(radial && !model.appear ? 0 : 1)
+        .animation(radial ? (model.appear ? .spring(response: 0.3, dampingFraction: 0.86).delay(Double(i) * 0.03) : .easeOut(duration: 0.08)) : nil, value: model.appear)
 
     }
 

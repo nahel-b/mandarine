@@ -24,9 +24,24 @@ enum TriggerKey: String, CaseIterable, Identifiable {
 }
 
 enum MenuAppearance: String, CaseIterable, Identifiable {
-    case wheel, wii
+    case wheel, wii, bubbles
     var id: String { rawValue }
-    var title: String { self == .wheel ? "Wheel" : "Wii menu" }
+    var title: String { switch self { case .wheel: return "Wheel"; case .wii: return "Wii menu"; case .bubbles: return "Bubbles" } }
+    var isBubbles: Bool { self == .bubbles }
+}
+
+/// Animation d'entrée de la roue : les pétales tournent à peine, ou sortent un à un en glissant sur leur rayon.
+enum WheelEntrance: String, CaseIterable, Identifiable {
+    case rotate, radial
+    var id: String { rawValue }
+    var title: String { self == .rotate ? "Light twist" : "One by one" }
+}
+
+/// Aspect des bulles du menu « bulles ».
+enum BubbleLook: String, CaseIterable, Identifiable {
+    case gel, glass, paper, night
+    var id: String { rawValue }
+    var title: String { rawValue.capitalized }
 }
 
 enum TerminalApp: String, CaseIterable, Identifiable {
@@ -57,7 +72,10 @@ final class AppSettings: ObservableObject {
     @Published var cullClearKey: String { didSet { d.set(cullClearKey, forKey: "cullClearKey") } }
     @Published var enableTypeSelect: Bool { didSet { d.set(enableTypeSelect, forKey: "enableTypeSelect") } }
     /// Couleur de tinte (hexadécimal sans #) : orange Mandarine par défaut.
+    @Published var wheelEntrance: WheelEntrance { didSet { d.set(wheelEntrance.rawValue, forKey: "wheelEntrance") } }
     @Published var accentHex: String { didSet { d.set(accentHex, forKey: "accentHex") } }
+    /// Les bulles sont en verre ; les autres peaux restent dans le code pour des essais (MANDARINE_BUBBLELOOK=gel|paper|night).
+    var effectiveBubbleLook: BubbleLook { BubbleLook(rawValue: ProcessInfo.processInfo.environment["MANDARINE_BUBBLELOOK"] ?? "") ?? .glass }
     @Published var toolStyle: ToolStyle { didSet { d.set(toolStyle.rawValue, forKey: "toolStyle") } }
     @Published var enableCull: Bool { didSet { d.set(enableCull, forKey: "enableCull") } }
     @Published var enableScan: Bool { didSet { d.set(enableScan, forKey: "enableScan") } }
@@ -82,11 +100,13 @@ final class AppSettings: ObservableObject {
         actionsKey = TriggerKey(rawValue: d.string(forKey: "actionsKey") ?? "") ?? .control
         terminalApp = TerminalApp(rawValue: d.string(forKey: "terminalApp") ?? "") ?? .terminal
         revealAfterSave = d.object(forKey: "revealAfterSave") as? Bool ?? false
-        appearance = MenuAppearance(rawValue: d.string(forKey: "appearance") ?? "") ?? .wheel
+        let rawAppearance = ProcessInfo.processInfo.environment["MANDARINE_APPEARANCE"] ?? d.string(forKey: "appearance") ?? ""
+        appearance = MenuAppearance(rawValue: ["glass": "bubbles", "paper": "bubbles"][rawAppearance] ?? rawAppearance) ?? .wheel
         showWelcome = d.object(forKey: "showWelcome") as? Bool ?? true
         autoCheckUpdates = d.object(forKey: "autoCheckUpdates") as? Bool ?? true
         autoInstallUpdates = d.object(forKey: "autoInstallUpdates") as? Bool ?? true
         enableFaceSelect = d.object(forKey: "enableFaceSelect") as? Bool ?? true
+        wheelEntrance = WheelEntrance(rawValue: ProcessInfo.processInfo.environment["MANDARINE_ENTRANCE"] ?? d.string(forKey: "wheelEntrance") ?? "") ?? .rotate
         accentHex = ProcessInfo.processInfo.environment["MANDARINE_ACCENT"] ?? d.string(forKey: "accentHex") ?? AppSettings.defaultAccent
         toolStyle = ToolStyle(rawValue: d.string(forKey: "toolStyle") ?? "").flatMap { ToolStyle.available.contains($0) ? $0 : nil } ?? .capsule
         cullKeepKey = d.string(forKey: "cullKeepKey") ?? "e"

@@ -55,12 +55,14 @@ final class WheelController {
     let model = WheelModel()
     private var panel: WheelPanel?
     private var wiiPanel: WheelPanel?
+    private var bubblePanel: WheelPanel?
     private var wiiNavTimer: Timer?
     private var glass: NSVisualEffectView?
     private var infoTask: Task<Void, Never>?
+    private var previewTask: Task<Void, Never>?
     var dropSoundFired = Date.distantPast
     private(set) var urls: [URL] = []
-    var isVisible: Bool { (panel?.isVisible ?? false) || (wiiPanel?.isVisible ?? false) }
+    var isVisible: Bool { (panel?.isVisible ?? false) || (wiiPanel?.isVisible ?? false) || (bubblePanel?.isVisible ?? false) }
     var onDismiss: (() -> Void)?
 
     /// Élément réellement ciblé : le sous-pétale s'il y en a un survolé, sinon le pétale (un groupe seul n'est pas déposable).
@@ -91,16 +93,26 @@ final class WheelController {
             if Task.isCancelled { return }
             await MainActor.run { if self?.urls == urls, !lines.isEmpty { self?.model.infoLines = lines } }
         }
+        previewTask?.cancel()
+        model.previews = []
+        if AppSettings.shared.appearance.isBubbles {
+            previewTask = Task { [weak self] in
+                let imgs = await WheelPreview.make(urls)
+                if Task.isCancelled { return }
+                await MainActor.run { if self?.urls == urls { self?.model.previews = imgs } }
+            }
+        }
         model.sizeLabel = !urls.allSatisfy(\.isFileURL) ? (urls.count > 1 ? "\(urls.count) links" : "Link") : (urls.count > 1 ? "\(urls.count) files" : total.humanSize)
 
         // Roue déjà ouverte (on change de touche) : on garde sa position, seul le contenu change.
-        let wii = AppSettings.shared.appearance == .wii
+        let look = AppSettings.shared.appearance
         if isVisible {
-            if wii { model.wiiPage = 0; model.cursor = nil } else { layoutGlass() }
+            if look == .wii { model.wiiPage = 0; model.cursor = nil } else if look == .wheel { layoutGlass() }
             Feedback.shared.tick()
             return
         }
-        if wii { showWii(at: mouse); return }
+        if look == .wii { showWii(at: mouse); return }
+        if look.isBubbles { showBubbles(at: mouse); return }
 
         let w = WheelGeometry.size, h = WheelGeometry.size + WheelGeometry.captionHeight
         var origin = NSPoint(x: mouse.x - w / 2, y: mouse.y - (h - WheelGeometry.size / 2))
@@ -233,6 +245,53 @@ final class WheelController {
         l.add(fade, forKey: "fade")
     }
 
+    // MARK: Style bulles
+    private func showBubbles(at mouse: NSPoint) {
+        let s = BubbleLayout.panelSize
+        model.cursor = nil
+        var origin = NSPoint(x: mouse.x - s / 2, y: mouse.y - s / 2)
+        if let screen = NSScreen.screens.first(where: { $0.frame.contains(mouse) }) ?? NSScreen.main {
+            let f = screen.visibleFrame
+            origin.x = min(max(origin.x, f.minX), f.maxX - s)
+            origin.y = min(max(origin.y, f.minY), f.maxY - s)
+        }
+        if bubblePanel == nil {
+            let p = WheelPanel(contentRect: NSRect(origin: origin, size: NSSize(width: s, height: s)), styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
+            p.isOpaque = false; p.backgroundColor = .clear; p.hasShadow = false
+            p.level = .popUpMenu
+            p.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .transient]
+            p.isMovable = false
+            let container = NSView(frame: NSRect(origin: .zero, size: NSSize(width: s, height: s)))
+            let host = NSHostingView(rootView: BubbleMenuView(model: model))
+            host.frame = container.bounds
+            let drop = BubbleDropView(frame: container.bounds)
+            drop.controller = self
+            container.addSubview(host)
+            container.addSubview(drop)                      // au-dessus : reçoit le glisser-déposer
+            p.contentView = container
+            bubblePanel = p
+        }
+        bubblePanel?.setFrame(NSRect(origin: origin, size: NSSize(width: s, height: s)), display: true)
+        model.appear = false
+        bubblePanel?.orderFrontRegardless()
+        Feedback.shared.open()
+        DispatchQueue.main.async { [weak self] in self?.model.appear = true }
+    }
+
+    /// `p` : position relative au centre de la bulle du logo (y vers le bas).
+    func bubbleHover(at p: CGPoint) {
+        model.cursor = p
+        let parentItem = model.hover.flatMap { model.items.indices.contains($0) ? model.items[$0] : nil }
+        let r = BubbleLayout.hit(p, count: model.items.count, hoverParent: model.hover, childCount: parentItem?.isGroup == true ? parentItem!.children.count : 0)
+        if r.parent != model.hover || r.child != model.hoverChild {
+            let changed = r.parent != model.hover || (r.child != nil && r.child != model.hoverChild)
+            model.hover = r.parent; model.hoverChild = r.child
+            if changed && r.parent != nil { Feedback.shared.tick() }
+        }
+    }
+
+    func bubbleExited() { model.hover = nil; model.hoverChild = nil; model.cursor = nil }
+
     // MARK: Style Wii
     private func showWii(at mouse: NSPoint) {
         let size = WiiLayout.displaySize
@@ -340,7 +399,7 @@ final class WheelController {
     /// Masque la roue sans mettre fin au suivi du glisser (le drag continue).
     func hide() {
         panel?.orderOut(nil)
-        wiiPanel?.orderOut(nil); wiiNavTimer?.invalidate(); wiiNavTimer = nil; model.cursor = nil; model.wiiNav = false
+        wiiPanel?.orderOut(nil); bubblePanel?.orderOut(nil); wiiNavTimer?.invalidate(); wiiNavTimer = nil; model.cursor = nil; model.wiiNav = false
         model.appear = false
         model.hover = nil
         model.hoverChild = nil
@@ -349,7 +408,7 @@ final class WheelController {
 
     func dismiss() {
         panel?.orderOut(nil)
-        wiiPanel?.orderOut(nil); wiiNavTimer?.invalidate(); wiiNavTimer = nil; model.cursor = nil; model.wiiNav = false
+        wiiPanel?.orderOut(nil); bubblePanel?.orderOut(nil); wiiNavTimer?.invalidate(); wiiNavTimer = nil; model.cursor = nil; model.wiiNav = false
         model.appear = false
         model.hover = nil
         model.hoverChild = nil

@@ -42,8 +42,13 @@ final class Updater: ObservableObject {
     /// peut mettre des jours à sonner sur un portable souvent en veille. On compare donc des dates, et on revérifie aussi au réveil.
     private var lastCheck: Date {
         get { Date(timeIntervalSince1970: UserDefaults.standard.double(forKey: "lastUpdateCheck")) }
-        set { UserDefaults.standard.set(newValue.timeIntervalSince1970, forKey: "lastUpdateCheck") }
+        set { UserDefaults.standard.set(newValue.timeIntervalSince1970, forKey: "lastUpdateCheck"); lastChecked = newValue }
     }
+    /// Pour l'affichage dans les réglages (nil : jamais vérifié).
+    @Published private(set) var lastChecked: Date? = {
+        let t = UserDefaults.standard.double(forKey: "lastUpdateCheck")
+        return t > 0 ? Date(timeIntervalSince1970: t) : nil
+    }()
 
     /// À appeler au lancement : une vérification par jour au plus (au lancement, au réveil du Mac, ou quand l'app tourne depuis longtemps).
     /// Le contrôle horaire ne fait que comparer des dates sur le Mac : il n'accède au réseau que si 24 h se sont écoulées.

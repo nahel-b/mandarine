@@ -31,6 +31,10 @@ struct SettingsView: View {
         .task { await yt.refreshCurrent() }          // la version de yt-dlp est lue dès l'ouverture, quel que soit l'onglet
     }
 
+    private static let checkFormat: DateFormatter = {
+        let f = DateFormatter(); f.dateStyle = .medium; f.timeStyle = .short; f.doesRelativeDateFormatting = true; return f
+    }()
+
     private var sidebar: some View {
         VStack(alignment: .leading, spacing: 3) {
             ForEach(Tab.allCases) { t in
@@ -69,8 +73,11 @@ struct SettingsView: View {
         case .appearance:
             Section("Appearance") {
                 Picker("Menu style", selection: $s.appearance) { ForEach(MenuAppearance.allCases) { Text($0.title).tag($0) } }
-                Text(s.appearance == .wii ? "A small Wii-style screen: every tool is a channel, with a clock, a pointer hand and a description line." : "The radial wheel.")
+                Text(s.appearance == .wii ? "A small Wii-style screen: every tool is a channel, with a clock, a pointer hand and a description line." : s.appearance.isBubbles ? "Tools are round bubbles floating around your logo." : "The radial wheel.")
                     .font(.caption).foregroundStyle(.secondary)
+                if s.appearance == .wheel {
+                    Picker("Opening animation", selection: $s.wheelEntrance) { ForEach(WheelEntrance.allCases) { Text($0.title).tag($0) } }
+                }
                 VStack(alignment: .leading, spacing: 8) {
                     HStack {
                         Text("Accent color")
@@ -164,7 +171,11 @@ struct SettingsView: View {
         case .updates:
             Section("Updates") {
                 HStack {
-                    Text("Mandarine \(updater.currentVersion)")
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Mandarine \(updater.currentVersion)")
+                        Text("Last checked: " + (updater.lastChecked.map { Self.checkFormat.string(from: $0) } ?? "never"))
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
                     Spacer()
                     switch updater.state {
                     case .checking, .downloading, .installing: ProgressView().controlSize(.small)
