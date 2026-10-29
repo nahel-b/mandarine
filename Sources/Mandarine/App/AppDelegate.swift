@@ -341,14 +341,25 @@ extension AppDelegate {
             return
         }
         if a.first == "--bubbletest" {               // test de la détection des bulles
+            func overlaps(_ q: [BubbleLayout.Spot]) -> Int {
+                var count = 0
+                for i in q.indices {
+                    for j in q.indices where j > i {
+                        let dist: CGFloat = hypot(q[i].x - q[j].x, q[i].y - q[j].y)
+                        let minDist: CGFloat = (q[i].d + q[j].d) / 2
+                        if dist < minDist { count += 1 }
+                    }
+                }
+                return count
+            }
             for k in [6, 8, 9, 10, 12, 14, 16, 18] {
                 let q = BubbleLayout.spots(k)
-                let rmax = Int(q.map { hypot($0.x, $0.y) + $0.d / 2 }.max() ?? 0), dmin = Int(q.map(\.d).min() ?? 0)
-                let clash = (0..<k).flatMap { i in ((i + 1)..<k).filter { j in hypot(q[i].x - q[j].x, q[i].y - q[j].y) < (q[i].d + q[j].d) / 2 } }.count
-                print("anneau unique,", k, "bulles · portée", rmax, "· plus petite bulle", dmin, "· chevauchements", clash)
+                var reach: CGFloat = 0, smallest: CGFloat = 999
+                for b in q { reach = max(reach, hypot(b.x, b.y) + b.d / 2); smallest = min(smallest, b.d) }
+                print("anneau unique,", k, "bulles · portée", Int(reach), "· plus petite bulle", Int(smallest), "· chevauchements", overlaps(q))
             }
             let n = 9, sp = BubbleLayout.spots(n)
-            print("bulles :", sp.count, "· rayon moyen", Int(sp.map { hypot($0.x, $0.y) }.reduce(0, +) / CGFloat(n)), "· plus petit écart avec la bulle du centre", Int(sp.map { hypot($0.x, $0.y) - $0.d / 2 - BubbleLayout.centerDiameter / 2 }.min() ?? 0), "· chevauchements :", (0..<n).flatMap { i in ((i + 1)..<n).filter { j in hypot(sp[i].x - sp[j].x, sp[i].y - sp[j].y) < (sp[i].d + sp[j].d) / 2 } }.count)
+            print("bulles :", sp.count, "· chevauchements :", overlaps(sp))
             print("sur la bulle 3 :", BubbleLayout.hit(CGPoint(x: sp[3].x, y: sp[3].y), count: n, hoverParent: nil, childCount: 0))
             print("dans le vide   :", BubbleLayout.hit(CGPoint(x: 0, y: 0), count: n, hoverParent: nil, childCount: 0))
             let kids = BubbleLayout.childSpots(parent: sp[2], count: 3)
