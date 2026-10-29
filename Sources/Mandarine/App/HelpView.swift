@@ -264,27 +264,61 @@ private struct BeforeAfter: View {
 }
 
 private struct EnginesCard: View {
-    @State private var tab = Int(ProcessInfo.processInfo.environment["MANDARINE_ENGINES_TAB"] ?? "") ?? 0     // 0 = Homebrew, 1 = sans Homebrew
+    @State private var tab = Int(ProcessInfo.processInfo.environment["MANDARINE_ENGINES_TAB"] ?? "") ?? 0     // 0 = Homebrew, 1 = sans Homebrew (téléchargement par l'app)
     @State private var tick = 0
     @State private var copied = ""
 
-    static let homebrew = "brew install ffmpeg webp"
+    static let homebrew = "brew install ffmpeg webp yt-dlp"
     static let homebrewInstall = "/bin/bash -c \"$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)\""
-    static let rosetta = "sudo softwareupdate --install-rosetta --agree-to-license"
-    static let ytBrew = "brew install yt-dlp"
-    static let ytManual = """
-    D=~/Library/Application\\ Support/Mandarine/bin; mkdir -p "$D"
-    curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_macos -o "$D/yt-dlp"
-    chmod +x "$D/yt-dlp"; xattr -dr com.apple.quarantine "$D"
-    "$D/yt-dlp" --version
-    """
-    /// Télécharge ffmpeg et ffprobe (versions statiques de evermeet.cx, WebP inclus) dans le dossier lu par Mandarine, puis les autorise.
-    static let manual = """
-    D=~/Library/Application\\ Support/Mandarine/bin; mkdir -p "$D"; cd "$D"
-    for t in ffmpeg ffprobe; do curl -sL "$(curl -s https://evermeet.cx/ffmpeg/info/$t/release | plutil -extract download.zip.url raw -o - -)" -o $t.zip && unzip -oq $t.zip && rm $t.zip; done
-    chmod +x ffmpeg ffprobe; xattr -dr com.apple.quarantine .
-    ./ffmpeg -version | head -1
-    """
+    @ObservedObject private var installer = EngineInstaller.shared
+    @ObservedObject private var yt = YtDlpUpdater.shared
+
+    /// Une ligne de téléchargement fait par l'app elle-même (dossier des moteurs de Mandarine, aucun droit administrateur).
+    private func downloadRow(_ title: String, _ detail: String, ready: Bool, working: Double?, error: String?, action: @escaping () -> Void) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(spacing: 10) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title).font(.system(size: 11, weight: .semibold))
+                    Text(detail).font(.system(size: 9.5)).foregroundStyle(Theme.muted)
+                }
+                Spacer()
+                if ready {
+                    Label("Installed", systemImage: "checkmark.circle.fill").font(.system(size: 10, weight: .semibold)).foregroundStyle(.green)
+                } else if let w = working {
+                    if w > 0 { ProgressView(value: w).frame(width: 80) } else { ProgressView().controlSize(.small) }
+                } else {
+                    Button(action: action) {
+                        Label("Download", systemImage: "arrow.down.circle.fill").font(.system(size: 10, weight: .semibold)).foregroundStyle(.white)
+                            .padding(.horizontal, 10).padding(.vertical, 5).background(Capsule().fill(Theme.orange))
+                    }.buttonStyle(.plain)
+                }
+            }
+            if let e = error { Text(e).font(.system(size: 9.5)).foregroundStyle(.red).fixedSize(horizontal: false, vertical: true) }
+        }
+        .padding(10).background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Color.white.opacity(0.94))).foregroundStyle(Theme.text)
+    }
+
+    private func installerRow(_ title: String, _ detail: String, _ e: EngineInstaller.Engine, ready: Bool) -> some View {
+        var working: Double?
+        var error: String?
+        switch installer.state(e) {
+        case .working(let p): working = p
+        case .failed(let m): error = m
+        default: break
+        }
+        return downloadRow(title, detail, ready: ready, working: working, error: error) { installer.install(e) }
+    }
+
+    private var ytRow: some View {
+        var working: Double?
+        var error: String?
+        switch yt.state {
+        case .installing, .checking: working = 0
+        case .failed(let m): error = m
+        default: break
+        }
+        return downloadRow("yt-dlp", "For links (YouTube, Instagram, SoundCloud…). The app checks the official release before using it.", ready: YtDlp.url != nil, working: working, error: error) { Task { await yt.install() } }
+    }
 
     private func block(_ id: String, _ title: String, _ code: String) -> some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -311,22 +345,20 @@ private struct EnginesCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            PillPicker(options: [(0, "With Homebrew"), (1, "Without Homebrew"), (2, "YouTube")], selection: $tab)
+            PillPicker(options: [(0, "With Homebrew"), (1, "Without Homebrew")], selection: $tab)
                 .padding(3).background(Capsule().fill(Color.white.opacity(0.94))).environment(\.colorScheme, .light)
             if tab == 0 {
                 block("brew", "1 · Paste in Terminal", Self.homebrew)
                 block("brewinstall", "No Homebrew yet? Install it first (official script)", Self.homebrewInstall)
-            } else if tab == 2 {
-                block("ytbrew", "YouTube → MP3 / MP4 (⌘ wheel on a YouTube link) · With Homebrew", Self.ytBrew)
-                block("ytmanual", "Without Homebrew — downloads yt-dlp and allows it", Self.ytManual)
             } else {
-                block("manual", "Paste in Terminal — downloads, installs and allows ffmpeg + ffprobe", Self.manual)
-                block("rosetta", "Apple silicon only, if Terminal says “Bad CPU type”", Self.rosetta)
+                installerRow("ffmpeg + ffprobe", "Video and audio. Downloaded by Mandarine into its own folder — nothing else to install.", .ffmpeg, ready: FFmpeg.ffmpeg != nil && FFmpeg.ffprobe != nil)
+                installerRow("WebP", "Needed to create .webp images.", .cwebp, ready: FFmpeg.locate("cwebp") != nil || FFmpeg.hasEncoder("libwebp"))
+                ytRow
             }
             VStack(spacing: 6) {
                 StatusRow(name: "ffmpeg", detail: FFmpeg.ffmpeg?.deletingLastPathComponent().path ?? "not found", ok: FFmpeg.ffmpeg != nil)
                 StatusRow(name: "ffprobe", detail: FFmpeg.ffprobe?.deletingLastPathComponent().path ?? "not found", ok: FFmpeg.ffprobe != nil)
-                if tab == 2 { StatusRow(name: "yt-dlp", detail: YtDlp.url?.deletingLastPathComponent().path ?? "not found", ok: YtDlp.url != nil) }
+                StatusRow(name: "yt-dlp", detail: YtDlp.url?.deletingLastPathComponent().path ?? "not found", ok: YtDlp.url != nil)
                 StatusRow(name: "WebP", detail: (FFmpeg.locate("cwebp") != nil || FFmpeg.hasEncoder("libwebp")) ? "available" : "not available yet", ok: FFmpeg.locate("cwebp") != nil || FFmpeg.hasEncoder("libwebp"))
             }
             .padding(10).background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Color.white.opacity(0.94))).foregroundStyle(Theme.text)
@@ -394,10 +426,10 @@ struct HelpView: View {
     private var pages: [HelpPage] {
         [
             HelpPage(title: "First, set up the engines",
-                     subtitle: "Images, PDF, documents, archives and subtitles work right away. Video, audio and WebP need ffmpeg. Easiest: Settings → Engines → Download. Or copy the commands on the right and paste them in Terminal.",
+                     subtitle: "Images, PDF, documents, archives and subtitles work right away. Video, audio and WebP need ffmpeg: Mandarine can download it itself (“Without Homebrew”), or you can use Homebrew.",
                      bullets: [Bullet(symbol: "checkmark.seal", title: "Works without anything", text: "Convert and edit images, PDF, documents, slides, spreadsheets, subtitles, archives."),
                                Bullet(symbol: "film", title: "Needs ffmpeg", text: "Video and audio conversion and tools, Export Video, and WebP."),
-                               Bullet(symbol: "arrow.down.circle", title: "One-click download", text: "Settings → Engines has a Download button for ffmpeg, WebP, yt-dlp and the face model — no Homebrew needed."),
+                               Bullet(symbol: "arrow.down.circle", title: "One-click download", text: "Mandarine downloads ffmpeg, WebP, yt-dlp and the face model into its own folder — no Homebrew, no Terminal. Same buttons in Settings → Engines."),
                                Bullet(symbol: "arrow.clockwise", title: "Then check", text: "The status below turns green. You can skip this and come back via Help.")],
                      illustration: { AnyView(Desktop { EnginesCard() }) }),
             HelpPage(title: "Drag. Tap. Drop.",
@@ -509,7 +541,7 @@ struct HelpView: View {
                     }
                 }.foregroundStyle(.white)
                 VStack(spacing: 8) {
-                    StatusRow(name: "Video & audio engine", detail: FFmpeg.isAvailable ? "ffmpeg found" : "install ffmpeg (brew install ffmpeg)", ok: FFmpeg.isAvailable)
+                    StatusRow(name: "Video & audio engine", detail: FFmpeg.isAvailable ? "ffmpeg found" : "download it in Settings → Engines", ok: FFmpeg.isAvailable)
                     StatusRow(name: "Apple AI upscale", detail: Upscaler.aiAvailable ? "available (×4)" : "needs macOS 26", ok: Upscaler.aiAvailable)
                     StatusRow(name: "Pages · Keynote · Numbers", detail: (AppleApps.App.pages.isInstalled && AppleApps.App.keynote.isInstalled) ? "installed" : "optional, for .pages and slides", ok: AppleApps.App.pages.isInstalled && AppleApps.App.keynote.isInstalled)
                     StatusRow(name: "Visual Studio Code", detail: VSCode.url != nil ? "found" : "optional, for the Code tool", ok: VSCode.url != nil)

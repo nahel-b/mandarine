@@ -126,7 +126,7 @@ enum FFmpeg {
     @discardableResult
     static func run(_ args: [String], duration: Double? = nil, progress: ((Double) -> Void)? = nil) async throws -> String {
         guard let ff = ffmpeg else {
-            throw MandarineError("ffmpeg est introuvable. Installez-le (brew install ffmpeg) ou placez-le dans Resources/bin.")
+            throw MandarineError("ffmpeg est introuvable. Téléchargez-le dans Réglages → Engines (ou brew install ffmpeg).")
         }
         let box = ProcessBox()
         return try await withTaskCancellationHandler {

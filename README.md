@@ -13,7 +13,7 @@ Pour tester sans glisser-déposer : menu de la barre → « Try … wheel… »,
 
 ## Moteurs
 - Images : ImageIO / CoreImage / Vision (natif). WebP : `cwebp` (ou ffmpeg+libwebp).
-- Vidéo / audio : **ffmpeg** (Resources/bin dans l'app, sinon Homebrew). `brew install ffmpeg webp`.
+- Vidéo / audio : **ffmpeg** (téléchargé par l'app dans Réglages → Engines, ou `brew install ffmpeg webp`).
 - PDF : PDFKit. Documents : AppKit/CoreText. Archives : bsdtar/zip/gzip système.
 - Présentations (PPT/PPTX) : LibreOffice si installé.
 

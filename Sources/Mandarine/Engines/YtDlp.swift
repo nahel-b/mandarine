@@ -98,8 +98,8 @@ enum YtDlp {
 
     static let installHelp = """
     yt-dlp est introuvable. Installez-le :
-    • avec Homebrew : brew install yt-dlp
-    • sans Homebrew : voir la page « First, set up the engines » du guide (onglet YouTube).
+    • dans l'app : Réglages → Engines → « Install yt-dlp » (téléchargé et vérifié par Mandarine)
+    • ou avec Homebrew : brew install yt-dlp
     """
 
     /// Titre et chaîne via l'API publique oEmbed (aucune clé nécessaire).

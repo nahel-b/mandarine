@@ -69,12 +69,16 @@ final class Updater: ObservableObject {
 
     private func checkIfDue() async {
         let due = Double(env["MANDARINE_UPDATE_DUE"] ?? "") ?? 24 * 3600
-        guard AppSettings.shared.autoCheckUpdates, Date().timeIntervalSince(lastCheck) >= due else { return }
+        guard AppSettings.shared.autoCheckUpdates else { return }
+        // une mise à jour déjà trouvée mais pas installée (app occupée, puis quittée) est reprise tout de suite au lancement suivant, sans attendre 24 h
+        let pending = UserDefaults.standard.string(forKey: "pendingUpdateVersion").map { YtDlpUpdater.isNewer($0, than: currentVersion) } ?? false
+        guard pending || Date().timeIntervalSince(lastCheck) >= due else { return }
         await check(userInitiated: false)
     }
 
     func check(userInitiated: Bool) async {
         guard !busy else { return }
+        let previousCheck = lastCheck
         lastCheck = Date()
         guard let feed = feedURL, publicKey != nil else {
             if userInitiated { Toast.shared.fail("Updates aren't set up", subtitle: "This build has no update source. Set GITHUB_REPO in Scripts/update.conf and rebuild.") }
@@ -92,6 +96,7 @@ final class Updater: ObservableObject {
             func asset(_ name: String) -> URL? { assets.first { $0["name"] as? String == name }.flatMap { $0["browser_download_url"] as? String }.flatMap(URL.init(string:)) }
             let version = tag.hasPrefix("v") ? String(tag.dropFirst()) : tag
             guard YtDlpUpdater.isNewer(version, than: currentVersion) else {
+                UserDefaults.standard.removeObject(forKey: "pendingUpdateVersion")
                 state = .upToDate
                 if userInitiated { Toast.shared.done("Mandarine is up to date", subtitle: "Version \(currentVersion)") }
                 return
@@ -100,9 +105,11 @@ final class Updater: ObservableObject {
             let notes = ((j["body"] as? String) ?? "").split(separator: "\n").first.map(String.init) ?? ""
             release = Release(version: version, zip: zip, signature: sig, notes: notes)
             state = .available(version)
+            UserDefaults.standard.set(version, forKey: "pendingUpdateVersion")
             if AppSettings.shared.autoInstallUpdates && !userInitiated { await installWhenIdle() } else { announce() }
         } catch {
             state = .failed(error.localizedDescription)
+            if !userInitiated { lastCheck = previousCheck }          // échec (réseau coupé…) : le contrôle horaire réessaiera, sans attendre un jour de plus
             if userInitiated { Toast.shared.fail("Couldn't check for updates", subtitle: error.localizedDescription) }
         }
     }
