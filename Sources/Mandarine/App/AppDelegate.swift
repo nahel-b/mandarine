@@ -355,6 +355,18 @@ extension AppDelegate {
             }
             return
         }
+        if a.count >= 2, a[0] == "--updatetoastshot" {      // test : --updatetoastshot sortie.png (la notification « New update »)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                Updater.shared.debugAnnounce("1.3.3")
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                    guard let w = NSApp.windows.first(where: { $0 is NSPanel && $0.level == .statusBar && $0.frame.width > 200 }),
+                          let cg = CGWindowListCreateImage(.null, .optionIncludingWindow, CGWindowID(w.windowNumber), [.bestResolution]) else { print("capture impossible"); exit(1) }
+                    try? NSBitmapImageRep(cgImage: cg).representation(using: .png, properties: [:])?.write(to: URL(fileURLWithPath: a[1]))
+                    exit(0)
+                }
+            }
+            return
+        }
         if a.count >= 2, a[0] == "--toastshot" {      // test : --toastshot sortie.png (capture la vraie notification, ombre comprise)
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
                 Toast.shared.done("Selected 4 of 17 files", subtitle: "in the Finder")

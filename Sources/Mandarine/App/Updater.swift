@@ -114,10 +114,16 @@ final class Updater: ObservableObject {
         }
     }
 
+    /// (test) affiche la notification de mise à jour avec une fausse version.
+    func debugAnnounce(_ version: String) {
+        release = Release(version: version, zip: URL(fileURLWithPath: "/dev/null"), signature: URL(fileURLWithPath: "/dev/null"), notes: "")
+        announce()
+    }
+
     private func announce() {
         guard let r = release else { return }
         if let id = toastID { Toast.shared.remove(id) }
-        toastID = Toast.shared.add(ToastItem(id: UUID(), phase: .done, title: "Mandarine \(r.version) is available", subtitle: r.notes.isEmpty ? "You have \(currentVersion)." : r.notes,
+        toastID = Toast.shared.add(ToastItem(id: UUID(), phase: .done, title: "New update", subtitle: r.version,
                                               action: ("Update", { [weak self] in Task { @MainActor in await self?.install() } }), sticky: true))
     }
 
