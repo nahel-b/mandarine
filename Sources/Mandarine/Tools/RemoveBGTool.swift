@@ -127,7 +127,7 @@ struct RemoveBGTool: View {
         opts.instances = (chosen.count == ids.count || urls.count > 1) ? nil : chosen
         let (files, fmt, final) = (urls, format, opts)
         close()
-        Dispatcher.job("Removing background…") { progress in
+        Dispatcher.job("Removing background…", count: files.count) { progress in
             guard #available(macOS 14.0, *) else { throw MandarineError("Remove Background nécessite macOS 14 ou plus récent.") }
             var outs: [URL] = []
             for (i, f) in files.enumerated() {

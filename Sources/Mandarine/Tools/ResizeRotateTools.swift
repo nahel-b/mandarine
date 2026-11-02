@@ -186,7 +186,7 @@ struct ResizeImageTool: View {
     private func upscale() {
         let (factor, ai, files) = (upFactor, useAI, urls)
         close()
-        Dispatcher.job(ai ? "Upscaling with AI…" : "Upscaling…") { progress in
+        Dispatcher.job(ai ? "Upscaling with AI…" : "Upscaling…", count: files.count) { progress in
             var outs: [URL] = []
             for (i, url) in files.enumerated() {
                 let (img, props) = try ImageEngine.load(url)
@@ -255,7 +255,7 @@ struct ResizeImageTool: View {
         let (m, w, h, f, p, sz, ne) = (mode == .dimensions ? 0 : (mode == .percent ? 1 : 2), self.w, self.h, fit == .fit ? 0 : (fit == .fill ? 1 : 2), percent, Array(sizes), noEnlarge)
         let files = urls
         close()
-        Dispatcher.job("Resizing…") { progress in
+        Dispatcher.job("Resizing…", count: files.count) { progress in
             try await Task.detached {
                 var outs: [URL] = []
                 var folder: URL?
@@ -373,7 +373,7 @@ struct RotateImageTool: View {
     private func save() {
         let (t, h, v, files) = (turns, flipH, flipV, urls)
         close()
-        Dispatcher.job("Rotating…") { progress in
+        Dispatcher.job("Rotating…", count: files.count) { progress in
             try await Task.detached {
                 var outs: [URL] = []
                 for (i, url) in files.enumerated() {
@@ -443,7 +443,7 @@ struct ExtractAudioTool: View {
     private func apply() {
         let (c, files) = (choice, urls)
         close()
-        Dispatcher.job("Extracting audio…") { progress in
+        Dispatcher.job("Extracting audio…", count: files.count) { progress in
             var outs: [URL] = []
             for (i, f) in files.enumerated() {
                 let info = await FFmpeg.probe(f)

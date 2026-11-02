@@ -9,6 +9,8 @@ final class DragMonitor {
     private var downChangeCount = 0
     private var dragging = false
     private var draggedURLs: [URL] = []
+    private var seenCount = 0                 // état du presse-papiers de glissement lors de la dernière lecture
+    private var dragText: String?             // texte déjà converti en petit fichier (évite d'en refaire un à chaque lecture)
     private var lastFlags: NSEvent.ModifierFlags = []
     private var otherKeyHeld = false          // une touche non-modificateur est enfoncée : la roue est annulée / bloquée
     private let settings = AppSettings.shared
@@ -37,16 +39,9 @@ final class DragMonitor {
             guard !dragging else { return }
             let pb = NSPasteboard(name: .drag)
             guard pb.changeCount != downChangeCount else { return }
-            let all = (pb.readObjects(forClasses: [NSURL.self], options: nil) as? [URL]) ?? []
-            let files = all.filter(\.isFileURL)
-            let links = all.filter { $0.scheme == "http" || $0.scheme == "https" }
-            var urls = files.isEmpty ? links : files       // un lien glissé depuis un navigateur ouvre aussi la roue
-            if urls.isEmpty, settings.enableTextDrag,       // texte sélectionné et glissé : enregistré dans un petit fichier, traité comme un fichier
-               let text = pb.string(forType: .string)?.trimmingCharacters(in: .whitespacesAndNewlines), text.count >= 2, let snippet = SnippetStore.make(text) {
-                urls = [snippet]
-            }
-            guard !urls.isEmpty else { return }
+            guard let urls = readDraggedURLs(pb), !urls.isEmpty else { return }
             draggedURLs = urls
+            seenCount = pb.changeCount
             dragging = true
             lastFlags = NSEvent.modifierFlags.intersection(.deviceIndependentFlagsMask)
             startPolling()
@@ -69,6 +64,32 @@ final class DragMonitor {
         }
     }
 
+    /// Ce qui est en train d'être glissé : fichiers, sinon liens, sinon texte (petit fichier). nil si rien d'exploitable.
+    private func readDraggedURLs(_ pb: NSPasteboard) -> [URL]? {
+        let all = (pb.readObjects(forClasses: [NSURL.self], options: nil) as? [URL]) ?? []
+        let files = all.filter(\.isFileURL)
+        let links = all.filter { $0.scheme == "http" || $0.scheme == "https" }
+        var urls = files.isEmpty ? links : files       // un lien glissé depuis un navigateur ouvre aussi la roue
+        if urls.isEmpty, settings.enableTextDrag,       // texte sélectionné et glissé : enregistré dans un petit fichier, traité comme un fichier
+           let text = pb.string(forType: .string)?.trimmingCharacters(in: .whitespacesAndNewlines), text.count >= 2 {
+            if text == dragText, let known = draggedURLs.first, SnippetStore.isSnippet(known) { urls = draggedURLs }
+            else if let snippet = SnippetStore.make(text) { urls = [snippet]; dragText = text }
+        }
+        return urls
+    }
+
+    /// Finder (surtout quand sa fenêtre n'est pas au premier plan) complète parfois le presse-papiers de glissement APRÈS le début du geste :
+    /// la sélection lue au premier mouvement peut être partielle ou périmée. On surveille donc ce presse-papiers pendant tout le glissement,
+    /// et la roue (déjà ouverte ou non) repart de la sélection à jour.
+    private func refreshFromPasteboard() {
+        let pb = NSPasteboard(name: .drag)
+        guard pb.changeCount != seenCount else { return }
+        seenCount = pb.changeCount
+        guard let urls = readDraggedURLs(pb), !urls.isEmpty, urls != draggedURLs else { return }
+        draggedURLs = urls
+        if wheel.isVisible { wheel.show(mode: wheel.model.mode, urls: urls) }          // roue ouverte : même place, contenu mis à jour
+    }
+
     private func startPolling() {
         timer?.invalidate()
         timer = Timer.scheduledTimer(withTimeInterval: 1.0 / 60.0, repeats: true) { [weak self] _ in self?.poll() }
@@ -77,6 +98,7 @@ final class DragMonitor {
 
     private func poll() {
         guard dragging else { return }
+        refreshFromPasteboard()
         if NSEvent.pressedMouseButtons & 1 == 0 {            // le bouton a été relâché ailleurs
             if !wheel.isVisible { reset() }
             return

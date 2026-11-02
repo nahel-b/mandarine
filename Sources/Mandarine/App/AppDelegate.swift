@@ -19,6 +19,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             statusItems.append(item)
         }
         SnippetStore.cleanup()
+        FaceCache.purge()
         monitor.start()
         runLaunchArguments()
         if CommandLine.arguments.count < 2 { Updater.shared.start() }
@@ -176,6 +177,46 @@ extension AppDelegate {
                 }
             }
             return
+        }
+        if a.count >= 3, a[0] == "--batchtest" {         // test : --batchtest ext fichier… (convertit le lot et affiche la ligne de notification toutes les 0,3 s)
+            let urls = a.dropFirst(2).map { URL(fileURLWithPath: $0) }
+            DispatchQueue.main.async {
+                Dispatcher.convert(urls, to: a[1])
+                Timer.scheduledTimer(withTimeInterval: 0.3, repeats: true) { t in
+                    let rows = Toast.shared.center.items
+                    for r in rows { print(String(format: "%@ · %@ · %@ · %.0f%%", "\(r.phase)", r.title, r.subtitle, (r.progress ?? 0) * 100)) }
+                    if !rows.isEmpty, rows.allSatisfy({ $0.phase == .done || $0.phase == .failed }) { t.invalidate(); print("fini, \(rows.first?.reveal.count ?? 0) fichiers"); exit(0) }
+                }
+            }
+            return
+        }
+        if a.first == "--facecachetest" {              // test de la mémoire temporaire des visages (sans modèle : visages fictifs)
+            FaceCache.folder = FileManager.default.temporaryDirectory.appendingPathComponent("facecache-test-\(UUID().uuidString)")
+            let img = FileManager.default.temporaryDirectory.appendingPathComponent("facecache-photo.jpg")
+            try? Data("x".utf8).write(to: img)
+            let ctx = CGContext(data: nil, width: 80, height: 80, bitsPerComponent: 8, bytesPerRow: 0, space: CGColorSpace(name: CGColorSpace.sRGB)!, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
+            ctx.setFillColor(CGColor(red: 0.9, green: 0.4, blue: 0.2, alpha: 1)); ctx.fill(CGRect(x: 0, y: 0, width: 80, height: 80))
+            let vec: [Float] = (0..<128).map { Float($0) / 127 }
+            let fake = [FaceHit(file: img, vector: vec, thumb: ctx.makeImage()!, score: 0.42), FaceHit(file: img, vector: vec.reversed(), thumb: ctx.makeImage()!, score: 0.1)]
+            print("avant : \(FaceCache.load(img, minRelativeWidth: 0.04) == nil ? "absent" : "présent")")
+            FaceCache.store(fake, for: img, minRelativeWidth: 0.04)
+            let back = FaceCache.load(img, minRelativeWidth: 0.04)
+            print("relu : \(back?.count ?? -1) visages · empreinte identique \(back?[0].vector == vec) · score \(back?[0].score ?? -1) · vignette \(back?[0].thumb.width ?? 0)×\(back?[0].thumb.height ?? 0)")
+            print("autre réglage (largeur 0,1) : \(FaceCache.load(img, minRelativeWidth: 0.1) == nil ? "absent (bien)" : "présent (mal)")")
+            try? Data("xyz".utf8).write(to: img)          // fichier modifié → ancienne analyse inutilisable
+            print("fichier modifié : \(FaceCache.load(img, minRelativeWidth: 0.04) == nil ? "absent (bien)" : "présent (mal)")")
+            try? Data("x".utf8).write(to: img)
+            FaceCache.store(fake, for: img, minRelativeWidth: 0.04)
+            let size = ((try? FileManager.default.contentsOfDirectory(at: FaceCache.folder, includingPropertiesForKeys: [.fileSizeKey])) ?? []).compactMap { try? $0.resourceValues(forKeys: [.fileSizeKey]).fileSize }.reduce(0, +)
+            print("taille d'une entrée à 2 visages : \(size) octets")
+            for f in (try? FileManager.default.contentsOfDirectory(at: FaceCache.folder, includingPropertiesForKeys: nil)) ?? [] {      // vieillit les entrées de 25 h
+                try? FileManager.default.setAttributes([.modificationDate: Date().addingTimeInterval(-25 * 3600)], ofItemAtPath: f.path)
+            }
+            print("après 25 h : \(FaceCache.load(img, minRelativeWidth: 0.04) == nil ? "expirée (bien)" : "encore là (mal)")")
+            FaceCache.purge()
+            print("dossier après nettoyage : \((try? FileManager.default.contentsOfDirectory(atPath: FaceCache.folder.path))?.count ?? 0) fichier(s)")
+            try? FileManager.default.removeItem(at: img); try? FileManager.default.removeItem(at: FaceCache.folder)
+            exit(0)
         }
         if a.first == "--ordertest" {                   // test de la logique de déplacement des lignes (Merge PDFs…)
             let l = ["a", "b", "c", "d", "e", "f"]

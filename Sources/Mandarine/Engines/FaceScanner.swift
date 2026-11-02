@@ -2,6 +2,9 @@ import Foundation
 import Vision
 import AVFoundation
 import AppKit
+import CryptoKit
+import ImageIO
+import UniformTypeIdentifiers
 
 /// Un visage trouvé : fichier d'origine, empreinte (128 nombres), vignette et score de netteté/taille.
 struct FaceHit {
@@ -18,6 +21,71 @@ struct FaceCluster: Identifiable {
     var centroid: [Float]
     var files: [URL] = []
     var thumb: CGImage
+}
+
+/// Mémoire temporaire des visages déjà analysés : relancer Face Select sur les mêmes photos ne refait pas la détection (la partie lente).
+/// Une entrée par fichier (clé : chemin + date de modification + taille + réglage), dans le dossier Caches du Mac, effacée après `maxAge`
+/// (24 h) et dans la limite de `maxBytes`. Elle contient les empreintes de visages : rien n'y reste longtemps ni ne quitte le Mac.
+enum FaceCache {
+    static let maxAge: TimeInterval = 24 * 3600
+    static let maxBytes = 60_000_000
+    nonisolated(unsafe) static var folder = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0].appendingPathComponent("Mandarine/faces", isDirectory: true)
+    nonisolated(unsafe) static var hits = 0              // (tests) fichiers servis depuis la mémoire temporaire
+    private static let version = "sface1"
+
+    private struct Entry: Codable { var vectors: [Data]; var scores: [Float]; var thumbs: [Data] }
+
+    private static func file(for url: URL, minRelativeWidth: Double) -> URL? {
+        guard let a = try? FileManager.default.attributesOfItem(atPath: url.path), let m = a[.modificationDate] as? Date else { return nil }      // (pas resourceValues : valeurs mises en cache par l'URL)
+        let key = "\(url.path)|\(m.timeIntervalSince1970)|\((a[.size] as? NSNumber)?.intValue ?? 0)|\(minRelativeWidth)|\(version)"
+        let hex = SHA256.hash(data: Data(key.utf8)).map { String(format: "%02x", $0) }.joined()
+        return folder.appendingPathComponent(hex + ".plist")
+    }
+
+    static func load(_ url: URL, minRelativeWidth: Double) -> [FaceHit]? {
+        guard let f = file(for: url, minRelativeWidth: minRelativeWidth), let data = try? Data(contentsOf: f),
+              let made = try? f.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate, Date().timeIntervalSince(made) < maxAge,
+              let e = try? PropertyListDecoder().decode(Entry.self, from: data), e.vectors.count == e.scores.count, e.vectors.count == e.thumbs.count else { return nil }
+        var out: [FaceHit] = []
+        for i in e.vectors.indices {
+            guard let thumb = CGImageSourceCreateWithData(e.thumbs[i] as CFData, nil).flatMap({ CGImageSourceCreateImageAtIndex($0, 0, nil) }) else { return nil }
+            let vec = e.vectors[i].withUnsafeBytes { Array($0.bindMemory(to: Float.self)) }
+            out.append(FaceHit(file: url, vector: vec, thumb: thumb, score: e.scores[i]))
+        }
+        hits += 1
+        return out
+    }
+
+    static func store(_ faces: [FaceHit], for url: URL, minRelativeWidth: Double) {
+        guard let f = file(for: url, minRelativeWidth: minRelativeWidth) else { return }
+        var e = Entry(vectors: [], scores: [], thumbs: [])
+        for h in faces {
+            let png = NSMutableData()
+            guard let dest = CGImageDestinationCreateWithData(png, UTType.jpeg.identifier as CFString, 1, nil) else { return }
+            CGImageDestinationAddImage(dest, h.thumb, [kCGImageDestinationLossyCompressionQuality: 0.85] as CFDictionary)
+            guard CGImageDestinationFinalize(dest) else { return }
+            e.vectors.append(h.vector.withUnsafeBufferPointer { Data(buffer: $0) }); e.scores.append(h.score); e.thumbs.append(png as Data)
+        }
+        guard let data = try? PropertyListEncoder().encode(e) else { return }
+        try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        try? data.write(to: f, options: .atomic)
+    }
+
+    /// Supprime les entrées de plus de `maxAge`, puis les plus anciennes si le dossier dépasse `maxBytes`.
+    static func purge() {
+        let fm = FileManager.default
+        let keys: [URLResourceKey] = [.contentModificationDateKey, .fileSizeKey]
+        var entries = ((try? fm.contentsOfDirectory(at: folder, includingPropertiesForKeys: keys)) ?? []).compactMap { u -> (URL, Date, Int)? in
+            guard let v = try? u.resourceValues(forKeys: Set(keys)), let d = v.contentModificationDate else { return nil }
+            return (u, d, v.fileSize ?? 0)
+        }
+        entries = entries.filter { e in
+            if Date().timeIntervalSince(e.1) >= maxAge { try? fm.removeItem(at: e.0); return false }
+            return true
+        }
+        var total = entries.reduce(0) { $0 + $1.2 }
+        for e in entries.sorted(by: { $0.1 < $1.1 }) where total > maxBytes { try? fm.removeItem(at: e.0); total -= e.2 }
+    }
 }
 
 enum FaceScanner {
@@ -105,9 +173,15 @@ enum FaceScanner {
     /// Cherche les visages de tous les fichiers. `progress(fichiers lus, total, visages trouvés)`.
     static func scan(_ urls: [URL], minRelativeWidth: Double = 0.04, progress: @escaping (Int, Int, Int) -> Void) async throws -> [FaceHit] {
         _ = try FaceEmbedder.get()          // échoue tout de suite si le modèle manque
+        FaceCache.purge()
         var hits: [FaceHit] = []
         for (i, u) in urls.enumerated() {
             try Task.checkCancellation()
+            if let cached = FaceCache.load(u, minRelativeWidth: minRelativeWidth) {          // déjà analysé il y a moins de 24 h
+                hits += cached
+                progress(i + 1, urls.count, hits.count)
+                continue
+            }
             let found = try await Task.detached { () throws -> [FaceHit] in
                 switch FileKind.detect(u) {
                 case .image:
@@ -118,6 +192,7 @@ enum FaceScanner {
                 default: return []
                 }
             }.value
+            FaceCache.store(found, for: u, minRelativeWidth: minRelativeWidth)
             hits += found
             progress(i + 1, urls.count, hits.count)
         }

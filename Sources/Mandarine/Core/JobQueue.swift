@@ -11,13 +11,16 @@ final class JobQueue {
     /// Variante qui peut aussi changer la ligne de détail pendant le travail (ex. « 3 / 27 — titre »).
     typealias StatusWork = (@escaping (Double) -> Void, @escaping (String) -> Void) async throws -> [URL]
 
+    /// Un lot dont une partie seulement a réussi : les fichiers faits sont gardés, le reste est signalé (« Saved 8 of 10 — 2 failed »).
+    struct Partial: Error { let outs: [URL]; let failed: Int; let total: Int; let message: String }
+
     private final class Entry {
         let id = UUID()
-        let title: String, subtitle: String, heavy: Bool, work: StatusWork
+        let title: String, subtitle: String, heavy: Bool, count: Int, work: StatusWork
         var task: Task<Void, Never>?
         var started = false, cancelled = false
-        init(title: String, subtitle: String, heavy: Bool, work: @escaping StatusWork) {
-            self.title = title; self.subtitle = subtitle; self.heavy = heavy; self.work = work
+        init(title: String, subtitle: String, heavy: Bool, count: Int, work: @escaping StatusWork) {
+            self.title = title; self.subtitle = subtitle; self.heavy = heavy; self.count = count; self.work = work
         }
     }
 
@@ -25,13 +28,15 @@ final class JobQueue {
     var isIdle: Bool { entries.isEmpty }      // en attente et en cours, dans l'ordre d'arrivée
 
     @discardableResult
-    func add(_ title: String, subtitle: String = "", light: Bool = false, work: @escaping Work) -> UUID {
-        add(title, subtitle: subtitle, light: light, statusWork: { progress, _ in try await work(progress) })
+    func add(_ title: String, subtitle: String = "", light: Bool = false, count: Int = 1, work: @escaping Work) -> UUID {
+        add(title, subtitle: subtitle, light: light, count: count, statusWork: { progress, _ in try await work(progress) })
     }
 
     @discardableResult
-    func add(_ title: String, subtitle: String = "", light: Bool = false, statusWork work: @escaping StatusWork) -> UUID {
-        let e = Entry(title: title, subtitle: subtitle, heavy: !light, work: work)
+    /// `count` : nombre de fichiers du lot. Au-dessus de 1, la ligne affiche « x of n done » d'après la progression globale
+    /// (le travail doit la calculer comme (fichiers faits + part du fichier en cours) / n).
+    func add(_ title: String, subtitle: String = "", light: Bool = false, count: Int = 1, statusWork work: @escaping StatusWork) -> UUID {
+        let e = Entry(title: title, subtitle: subtitle, heavy: !light, count: count, work: work)
         entries.append(e)
         Toast.shared.add(ToastItem(id: e.id, phase: .waiting, title: title, subtitle: "Waiting…", progress: nil, cancel: { [weak self] in self?.cancel(e.id) }))
         pump()
@@ -66,13 +71,19 @@ final class JobQueue {
 
     private func start(_ e: Entry) {
         e.started = true
-        Toast.shared.update(e.id) { $0.phase = .running; $0.subtitle = e.subtitle; $0.progress = -1 }
+        let n = e.count
+        Toast.shared.update(e.id) { $0.phase = .running; $0.subtitle = n > 1 ? "0 of \(n) done" : e.subtitle; $0.progress = n > 1 ? 0 : -1 }
         let id = e.id
         let queue = self
         e.task = Task {
             do {
                 let outs = try await e.work({ p in
-                    DispatchQueue.main.async { Toast.shared.update(id) { $0.progress = p } }
+                    DispatchQueue.main.async {
+                        Toast.shared.update(id) {
+                            $0.progress = p
+                            if n > 1, $0.phase == .running { $0.subtitle = "\(min(max(Int((p * Double(n)).rounded(.down)), 0), n - 1)) of \(n) done" }
+                        }
+                    }
                 }, { text in
                     DispatchQueue.main.async { Toast.shared.update(id) { if $0.phase == .running { $0.subtitle = text } } }
                 })
@@ -98,6 +109,15 @@ final class JobQueue {
             if AppSettings.shared.revealAfterSave { NSWorkspace.shared.activateFileViewerSelecting(outs) }
         case .failure(let error):
             if error is CancellationError { Toast.shared.remove(e.id); return }
+            if let part = error as? Partial, let first = part.outs.first {
+                Toast.shared.update(e.id) {
+                    $0.phase = .done; $0.title = "Saved \(part.outs.count) of \(part.total) — \(part.failed) failed"
+                    $0.subtitle = part.message; $0.detail = part.message; $0.progress = nil; $0.reveal = part.outs; $0.cancel = nil
+                }
+                if AppSettings.shared.revealAfterSave { NSWorkspace.shared.activateFileViewerSelecting(part.outs) }
+                _ = first
+                return
+            }
             let msg = error.localizedDescription
             Toast.shared.update(e.id) {
                 $0.phase = .failed; $0.title = e.title.replacingOccurrences(of: "…", with: "") + " failed"

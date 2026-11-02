@@ -69,7 +69,7 @@ struct CompressTool: View {
         if useTarget && supportsTarget { o.targetBytes = Int64(targetMB * 1_000_000) }
         let files = urls
         close()
-        Dispatcher.job("Compressing…", subtitle: files.count == 1 ? files[0].lastPathComponent : "\(files.count) files") { progress in
+        Dispatcher.job("Compressing…", subtitle: files.count == 1 ? files[0].lastPathComponent : "\(files.count) files", count: files.count) { progress in
             var outs: [URL] = []
             for (i, f) in files.enumerated() {
                 let o = try await Compressor.run(f, options: o) { p in progress((Double(i) + p) / Double(files.count)) }

@@ -169,7 +169,7 @@ struct EncodeVideoTool: View {
     private func run() {
         let (opts, files) = (o, urls)
         close()
-        Dispatcher.job("Encoding…", subtitle: files.count == 1 ? files[0].lastPathComponent : "\(files.count) videos") { progress in
+        Dispatcher.job("Encoding…", subtitle: files.count == 1 ? files[0].lastPathComponent : "\(files.count) videos", count: files.count) { progress in
             var outs: [URL] = []
             for (i, f) in files.enumerated() {
                 let names = [3840: "4K", 2560: "1440p", 1920: "1080p", 1280: "720p", 854: "480p"]
