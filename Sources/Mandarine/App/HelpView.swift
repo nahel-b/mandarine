@@ -2,26 +2,8 @@ import SwiftUI
 import AppKit
 
 // MARK: Ressources d'illustration
-/// Image d'exemple tirée du logo (SVG) : sert de « photo » aux démonstrations, sans dépendre d'aucun fichier de l'utilisateur.
+/// Fichiers factices qui servent à construire les roues des illustrations (et de la fenêtre des fonctionnalités).
 enum HelpAssets {
-    static let sampleURL: URL = {
-        let dir = FileManager.default.temporaryDirectory.appendingPathComponent("Mandarine-Help", isDirectory: true)
-        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-        let url = dir.appendingPathComponent("tangerine.png")
-        if FileManager.default.fileExists(atPath: url.path) { return url }
-        let size = NSSize(width: 900, height: 900)
-        let img = NSImage(size: size)
-        img.lockFocus()
-        if let r = Bundle.main.resourceURL?.appendingPathComponent("logo.svg"), let svg = NSImage(contentsOf: r) {
-            svg.draw(in: NSRect(origin: .zero, size: size))
-        } else {
-            NSColor(calibratedRed: 0.02, green: 0.43, blue: 0.74, alpha: 1).setFill(); NSRect(origin: .zero, size: size).fill()
-            NSColor.orange.setFill(); NSBezierPath(ovalIn: NSRect(x: 150, y: 150, width: 600, height: 560)).fill()
-        }
-        img.unlockFocus()
-        if let t = img.tiffRepresentation, let rep = NSBitmapImageRep(data: t), let png = rep.representation(using: .png, properties: [:]) { try? png.write(to: url) }
-        return url
-    }()
     static let fakeImage = URL(fileURLWithPath: "/Mandarine/photo.jpg")      // n'existe pas : sert seulement à construire les roues
     /// Vrai dossier (vide) : la roue d'actions propose « CODE » seulement pour un dossier existant.
     static let fakeFolder: URL = {
@@ -86,19 +68,6 @@ private struct WheelPicture: View {
     }
 }
 
-/// Fenêtre d'outil réelle (aperçu non interactif, réduit).
-private struct ToolPicture<V: View>: View {
-    let width: CGFloat, height: CGFloat, scale: CGFloat
-    @ViewBuilder var content: () -> V
-    var body: some View {
-        content().environment(\.colorScheme, .light)
-            .fixedSize()
-            .scaleEffect(scale, anchor: .topLeading)
-            .frame(width: width * scale, height: height * scale, alignment: .topLeading)
-            .allowsHitTesting(false)
-            .shadow(color: .black.opacity(0.45), radius: 16, y: 8)
-    }
-}
 
 private struct FileChip: View {
     let name: String
@@ -187,23 +156,10 @@ private struct HelpPage {
     let title: String
     let subtitle: String
     let bullets: [Bullet]
+    var action: (title: String, symbol: String, run: () -> Void)? = nil
     let illustration: () -> AnyView
 }
 
-private struct FamilyCard: View {
-    let symbol: String, title: String, formats: String
-    var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Image(systemName: symbol).font(.system(size: 18, weight: .semibold)).foregroundStyle(Theme.orange)
-            Text(title).font(.system(size: 13, weight: .semibold))
-            Text(formats).font(.system(size: 9, weight: .medium)).foregroundStyle(.white.opacity(0.65)).lineLimit(2)
-        }
-        .foregroundStyle(.white)
-        .padding(12).frame(maxWidth: .infinity, alignment: .leading)
-        .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Color.white.opacity(0.10)))
-        .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).stroke(Color.white.opacity(0.14), lineWidth: 1))
-    }
-}
 
 private struct StatusRow: View {
     let name: String, detail: String, ok: Bool
@@ -217,51 +173,6 @@ private struct StatusRow: View {
     }
 }
 
-private struct BeforeAfter: View {
-    @State private var after: NSImage?
-    @State private var failed = false
-    var body: some View {
-        HStack(spacing: 14) {
-            tile("Before") { Image(nsImage: NSImage(contentsOf: HelpAssets.sampleURL) ?? NSImage()).resizable().scaledToFill() }
-            Image(systemName: "arrow.right").font(.system(size: 18, weight: .bold)).foregroundStyle(.white.opacity(0.8))
-            tile("After") {
-                ZStack {
-                    Canvas { ctx, size in
-                        let s: CGFloat = 12
-                        for y in 0..<Int(size.height / s) + 1 { for x in 0..<Int(size.width / s) + 1 {
-                            ctx.fill(Path(CGRect(x: CGFloat(x) * s, y: CGFloat(y) * s, width: s, height: s)), with: .color((x + y) % 2 == 0 ? Color(white: 0.95) : Color(white: 0.8)))
-                        } }
-                    }
-                    if let a = after { Image(nsImage: a).resizable().scaledToFit().padding(8) }
-                    else if failed { Text("—").foregroundStyle(.gray) } else { ProgressView().controlSize(.small) }
-                }
-            }
-        }
-        .padding(18)
-        .task { await render() }
-    }
-
-    private func tile<V: View>(_ title: String, @ViewBuilder _ content: () -> V) -> some View {
-        ZStack(alignment: .topLeading) {
-            content().frame(width: 190, height: 190).clipped()
-            Text(title).font(.system(size: 10, weight: .bold)).foregroundStyle(.white).padding(.horizontal, 7).padding(.vertical, 3)
-                .background(Capsule().fill(Color.black.opacity(0.6))).padding(8)
-        }
-        .frame(width: 190, height: 190).clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-        .shadow(color: .black.opacity(0.4), radius: 12, y: 6)
-    }
-
-    private func render() async {
-        guard #available(macOS 14.0, *) else { failed = true; return }
-        let url = HelpAssets.sampleURL
-        let img: CGImage? = await Task.detached {
-            guard let (cg, _) = try? ImageEngine.load(url, maxSide: 900), let s = try? BGSession(cg) else { return nil }
-            var o = BGOptions(); o.outline = true; o.outlineWidth = 9; o.soften = 1.5; o.cropToSubject = true
-            return try? s.render(o)
-        }.value
-        if let img = img { after = NSImage(cgImage: img, size: NSSize(width: img.width, height: img.height)) } else { failed = true }
-    }
-}
 
 private struct EnginesCard: View {
     @State private var tab = Int(ProcessInfo.processInfo.environment["MANDARINE_ENGINES_TAB"] ?? "") ?? 0     // 0 = Homebrew, 1 = sans Homebrew (téléchargement par l'app)
@@ -379,39 +290,6 @@ private struct EnginesCard: View {
     }
 }
 
-private struct TimelineMock: View {
-    var body: some View {
-        VStack(spacing: 14) {
-            card("Trim audio") {
-                TimeRangeSelector(duration: 3, start: .constant(0.55), end: .constant(2.2), playhead: nil) {
-                    ZStack { Theme.orange.opacity(0.08); WaveformView(peaks: (0..<90).map { i in
-                        let burst = (i > 12 && i < 38) || (i > 52 && i < 80)
-                        return burst ? Float(0.45 + 0.5 * abs(sin(Double(i) * 0.9))) : 0.02 }) }
-                }.frame(height: 78)
-            }
-            card("Trim video") {
-                TimeRangeSelector(duration: 4, start: .constant(0.8), end: .constant(3.1), playhead: nil) {
-                    HStack(spacing: 0) {
-                        ForEach(0..<10, id: \.self) { i in
-                            LinearGradient(colors: [Color(hue: 0.05 + Double(i) * 0.02, saturation: 0.7, brightness: 0.8), Color(hue: 0.02 + Double(i) * 0.02, saturation: 0.8, brightness: 0.45)], startPoint: .top, endPoint: .bottom)
-                        }
-                    }
-                }.frame(height: 62)
-            }
-        }
-        .padding(22)
-        .environment(\.colorScheme, .light)
-    }
-
-    private func card<V: View>(_ title: String, @ViewBuilder _ content: () -> V) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(title).font(.system(size: 12, weight: .semibold)).foregroundStyle(Theme.text)
-            content()
-        }
-        .padding(14).background(RoundedRectangle(cornerRadius: 18, style: .continuous).fill(Color.white.opacity(0.94)))
-        .shadow(color: .black.opacity(0.35), radius: 12, y: 6)
-    }
-}
 
 // MARK: Vue principale
 struct HelpView: View {
@@ -419,29 +297,20 @@ struct HelpView: View {
     let close: () -> Void
     @State private var page = 0
     @ObservedObject private var settings = AppSettings.shared
-    private let count = 10
-
-    private var sample: URL { HelpAssets.sampleURL }
+    private let count = 4
 
     private var pages: [HelpPage] {
         [
-            HelpPage(title: "First, set up the engines",
-                     subtitle: "Images, PDF, documents, archives and subtitles work right away. Video, audio and WebP need ffmpeg: Mandarine can download it itself (“Without Homebrew”), or you can use Homebrew.",
-                     bullets: [Bullet(symbol: "checkmark.seal", title: "Works without anything", text: "Convert and edit images, PDF, documents, slides, spreadsheets, subtitles, archives."),
-                               Bullet(symbol: "film", title: "Needs ffmpeg", text: "Video and audio conversion and tools, Export Video, and WebP."),
-                               Bullet(symbol: "arrow.down.circle", title: "One-click download", text: "Mandarine downloads ffmpeg, WebP, yt-dlp and the face model into its own folder — no Homebrew, no Terminal. Same buttons in Settings → Engines."),
-                               Bullet(symbol: "arrow.clockwise", title: "Then check", text: "The status below turns green. You can skip this and come back via Help.")],
-                     illustration: { AnyView(Desktop { EnginesCard() }) }),
             HelpPage(title: "Drag. Tap. Drop.",
                      subtitle: "Mandarine converts and edits files from a wheel that appears right under your cursor. No upload, no window to open: everything runs on your Mac.",
-                     bullets: [Bullet(symbol: "hand.draw", title: "Drag any file", text: "From Finder, the Desktop or any app."),
+                     bullets: [Bullet(symbol: "hand.draw", title: "Drag any file", text: "From Finder, the Desktop or any app. Links, text and folders work too."),
                                Bullet(symbol: "keyboard", title: "Tap a key", text: "⇧ converts, ⌘ opens tools, ⌃ runs actions."),
                                Bullet(symbol: "tray.and.arrow.down", title: "Drop on a petal", text: "The result is saved next to the original. Nothing is ever overwritten.")],
                      illustration: { AnyView(DragDemo()) }),
             HelpPage(title: "Three wheels, three keys",
                      subtitle: "The key you tap decides what the wheel offers. Tap another key while you drag to switch: the wheel stays where it is.",
                      bullets: [Bullet(symbol: "arrow.triangle.2.circlepath", title: "⇧ Convert formats", text: "Only the formats that make sense for this file."),
-                               Bullet(symbol: "slider.horizontal.3", title: "⌘ File tools", text: "Compress, crop, trim, redact, merge and more."),
+                               Bullet(symbol: "slider.horizontal.3", title: "⌘ File tools", text: "Compress, crop, trim, redact, merge… Related tools are grouped: rest on a petal and its choices open further out."),
                                Bullet(symbol: "square.and.arrow.up", title: "⌃ File actions", text: "AirDrop, Float, Copy, Move, Terminal… Works on folders too.")],
                      illustration: { AnyView(Desktop {
                          HStack(spacing: 0) {
@@ -450,74 +319,17 @@ struct HelpView: View {
                              column(.actions, "⌃", "control", hover: 2)
                          }
                      }) }),
-            HelpPage(title: "Convert anything",
-                     subtitle: "275 conversion paths across images, video, audio, documents, slides, spreadsheets, subtitles and archives. Only valid choices are shown for each file.",
-                     bullets: [Bullet(symbol: "photo.on.rectangle.angled", title: "Several images, one PDF", text: "Select many images and drop on PDF."),
-                               Bullet(symbol: "checkmark.shield", title: "Grayed petals", text: "A format your Mac or installed apps can't produce is dimmed."),
-                               Bullet(symbol: "internaldrive", title: "100% local", text: "Your files never leave your Mac.")],
-                     illustration: { AnyView(Desktop {
-                         LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 10), count: 3), spacing: 10) {
-                             FamilyCard(symbol: "photo", title: "Images", formats: "PNG WEBP HEIC TIFF AVIF BMP PDF")
-                             FamilyCard(symbol: "film", title: "Video", formats: "MP4 MKV WEBM AVI WMV GIF MP3")
-                             FamilyCard(symbol: "waveform", title: "Audio", formats: "M4A WAV FLAC OGG OPUS AIFF")
-                             FamilyCard(symbol: "doc.richtext", title: "PDF", formats: "DOCX PPTX XLSX JPG PNG EPUB")
-                             FamilyCard(symbol: "doc.text", title: "Documents", formats: "PAGES PDF TXT MD HTML EPUB")
-                             FamilyCard(symbol: "rectangle.on.rectangle", title: "Slides", formats: "PDF JPG PNG")
-                             FamilyCard(symbol: "tablecells", title: "Spreadsheets", formats: "ODS CSV TSV XLSX PDF")
-                             FamilyCard(symbol: "text.bubble", title: "Subtitles", formats: "SRT VTT TXT")
-                             FamilyCard(symbol: "archivebox", title: "Archives", formats: "ZIP TAR GZIP")
-                         }.padding(22)
-                     }) }),
-            HelpPage(title: "Real tools, live previews",
-                     subtitle: "Every tool has its own window with a live preview, so you never work blind.",
-                     bullets: [Bullet(symbol: "photo", title: "Images", text: "Edit, annotate, background, crop, resize, rotate, upscale, collage."),
-                               Bullet(symbol: "film", title: "Video", text: "Trim, crop, speed, join, split, snapshots, redact, HandBrake-style export."),
-                               Bullet(symbol: "folder.badge.gearshape", title: "Folders & code", text: "DaVinci project tree, open in VS Code. The ⌃ wheel can switch between the wheel and the Wii menu.")],
-                     illustration: { AnyView(Desktop {
-                         HStack(alignment: .top, spacing: 14) {
-                             ToolPicture(width: 432, height: 700, scale: 0.43) { FrameImageTool(urls: [sample], close: {}) }
-                             ToolPicture(width: 432, height: 640, scale: 0.43) { ResizeImageTool(urls: [sample], close: {}) }
-                         }.padding(.top, 22)
-                     }) }),
-            HelpPage(title: "Petals within petals",
-                     subtitle: "Related tools are grouped. Rest on a group petal and its choices open further out, on their own background.",
-                     bullets: [Bullet(symbol: "crop.rotate", title: "Transform", text: "Crop · Resize · Rotate & flip."),
-                               Bullet(symbol: "photo.on.rectangle", title: "BG", text: "Add a background, or remove the current one."),
-                               Bullet(symbol: "arrow.up.right", title: "Slide outward", text: "Move over the petal, then onto its choice, and drop.")],
-                     illustration: { AnyView(Desktop {
-                         HStack(spacing: -62) {
-                             WheelPicture(mode: .tools, urls: [HelpAssets.fakeImage], hover: 3, child: 1, scale: 0.58)
-                             WheelPicture(mode: .tools, urls: [HelpAssets.fakeImage], hover: 5, child: 0, scale: 0.58)
-                         }
-                     }) }),
-            HelpPage(title: "Remove backgrounds",
-                     subtitle: "Apple's on-device vision finds the subject. Then style the result before saving.",
-                     bullets: [Bullet(symbol: "circle.dashed", title: "Transparent, color or blur", text: "Replace the background with what you want."),
-                               Bullet(symbol: "scissors", title: "Edges and outline", text: "Soften, grow or shrink the edge, add a sticker outline."),
-                               Bullet(symbol: "person.2", title: "Pick the subject", text: "With several subjects, choose which to keep.")],
-                     illustration: { AnyView(Desktop { BeforeAfter() }) }),
-            HelpPage(title: "File actions",
-                     subtitle: "Quick things you do with a file, without opening anything. They work on folders and mixed selections too.",
-                     bullets: [Bullet(symbol: "airplayaudio", title: "AirDrop & Float", text: "Send it, or park it on a floating shelf to drag into another app."),
-                               Bullet(symbol: "doc.on.doc", title: "Copy · Copy path · Move", text: "Copy the file, its path, or move it to a chosen folder."),
-                               Bullet(symbol: "terminal", title: "Terminal · Preview · Code", text: "Open the folder in Terminal, preview it, or open a folder in VS Code.")],
-                     illustration: { AnyView(Desktop {
-                         HStack(spacing: -52) {
-                             WheelPicture(mode: .actions, urls: [HelpAssets.fakeImage], hover: 2, scale: 0.56)
-                             WheelPicture(mode: .actions, urls: [HelpAssets.fakeFolder], hover: 7, scale: 0.56)
-                         }
-                     }) }),
-            HelpPage(title: "Video & audio, frame by frame",
-                     subtitle: "Drag the orange bars to trim. The cut happens on the inside edge of each bar, and the preview matches the saved result.",
-                     bullets: [Bullet(symbol: "scissors", title: "Trim, split, join", text: "Frame-accurate for video, waveform for audio."),
-                               Bullet(symbol: "speaker.wave.3", title: "Normalize, channels, bleep", text: "Loudness targets, left/right volume up to 300%, bleep sections."),
-                               Bullet(symbol: "film.stack", title: "Export Video", text: "ProRes 4K → H.264 at 4K or 1080p: quality (RF) or bitrate, frame rate, original colors kept.")],
-                     illustration: { AnyView(Desktop { TimelineMock() }) }),
+            HelpPage(title: "Set up the engines",
+                     subtitle: "Images, PDF, documents, archives and subtitles work right away. Video, audio and WebP need ffmpeg: Mandarine can download it itself, no Homebrew and no Terminal.",
+                     bullets: [Bullet(symbol: "checkmark.seal", title: "Works without anything", text: "Images, PDF, documents, slides, spreadsheets, subtitles, archives."),
+                               Bullet(symbol: "film", title: "Needs ffmpeg", text: "Video and audio conversion and tools, Export Video, and WebP."),
+                               Bullet(symbol: "arrow.down.circle", title: "One click", text: "Also in Settings → Engines, with yt-dlp and the face model.")],
+                     illustration: { AnyView(Desktop { EnginesCard() }) }),
             HelpPage(title: "You're ready",
                      subtitle: "Drag a file and tap a key. You can reopen this guide anytime from the menu bar icon → Help.",
-                     bullets: [Bullet(symbol: "gearshape", title: "Settings", text: "Change the three keys, the terminal app, and launch at login."),
-                               Bullet(symbol: "lock.shield", title: "Private by design", text: "Files are processed on your Mac and never uploaded."),
-                               Bullet(symbol: "questionmark.circle", title: "Help", text: "Menu bar icon → Help reopens this guide.")],
+                     bullets: [Bullet(symbol: "gearshape", title: "Settings", text: "Change the three keys, the look of the menu, and which petals appear."),
+                               Bullet(symbol: "lock.shield", title: "Private by design", text: "Files are processed on your Mac and never uploaded.")],
+                     action: ("Browse all features", "square.grid.2x2", { FeaturesWindowController.show() }),
                      illustration: { AnyView(statusCard) })
         ]
     }
@@ -537,7 +349,7 @@ struct HelpView: View {
                     Image(nsImage: NSApp.applicationIconImage).resizable().frame(width: 56, height: 56)
                     VStack(alignment: .leading) {
                         Text("Mandarine").font(.system(size: 20, weight: .bold))
-                        Text("Version 0.1").font(.system(size: 11)).foregroundStyle(.white.opacity(0.6))
+                        Text("Version \(Updater.shared.currentVersion)").font(.system(size: 11)).foregroundStyle(.white.opacity(0.6))
                     }
                 }.foregroundStyle(.white)
                 VStack(spacing: 8) {
@@ -573,6 +385,20 @@ struct HelpView: View {
                             }
                         }
                     }.padding(.top, 6)
+                    if let act = p.action {
+                        Button { act.run() } label: {
+                            HStack(spacing: 8) {
+                                Image(systemName: act.symbol).font(.system(size: 13, weight: .semibold))
+                                Text(act.title).font(.system(size: 13, weight: .semibold))
+                                Spacer(minLength: 0)
+                                Image(systemName: "arrow.right").font(.system(size: 11, weight: .bold))
+                            }
+                            .foregroundStyle(Theme.orange).padding(.horizontal, 14).padding(.vertical, 11)
+                            .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Theme.orange.opacity(0.12)))
+                            .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).stroke(Theme.orange.opacity(0.35), lineWidth: 1))
+                            .contentShape(Rectangle())
+                        }.buttonStyle(.plain).padding(.top, 4)
+                    }
                     Spacer(minLength: 0)
                 }
                 .frame(width: 330, alignment: .leading)

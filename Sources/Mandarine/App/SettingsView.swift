@@ -9,13 +9,13 @@ struct SettingsView: View {
     @State private var tab: Tab
 
     enum Tab: String, CaseIterable, Identifiable {
-        case general, appearance, wheel, petals, engines, updates
+        case general, appearance, wheel, petals, engines, updates, download
         var id: String { rawValue }
         var title: String {
-            switch self { case .general: return "General"; case .appearance: return "Appearance"; case .wheel: return "Wheel keys"; case .petals: return "Petals"; case .engines: return "Engines"; case .updates: return "Updates" }
+            switch self { case .general: return "General"; case .appearance: return "Appearance"; case .wheel: return "Wheel keys"; case .petals: return "Petals"; case .engines: return "Engines"; case .updates: return "Updates"; case .download: return "Download" }
         }
         var symbol: String {
-            switch self { case .general: return "gearshape"; case .appearance: return "paintpalette"; case .wheel: return "circle.hexagongrid"; case .petals: return "leaf"; case .engines: return "wrench.and.screwdriver"; case .updates: return "arrow.triangle.2.circlepath" }
+            switch self { case .general: return "gearshape"; case .appearance: return "paintpalette"; case .wheel: return "circle.hexagongrid"; case .petals: return "leaf"; case .engines: return "wrench.and.screwdriver"; case .updates: return "arrow.triangle.2.circlepath"; case .download: return "arrow.down.circle" }
         }
     }
 
@@ -168,6 +168,8 @@ struct SettingsView: View {
                     }
                 }
             }
+        case .download:
+            DownloadTab()
         case .updates:
             Section("Updates") {
                 HStack {

@@ -33,6 +33,8 @@ final class Updater: ObservableObject {
         let b64 = env["MANDARINE_UPDATE_PUBKEY"] ?? (Bundle.main.object(forInfoDictionaryKey: "MandarineUpdatePublicKey") as? String) ?? ""
         return Data(base64Encoded: b64).flatMap { try? Curve25519.Signing.PublicKey(rawRepresentation: $0) }
     }
+    /// « propriétaire/nom » du dépôt GitHub qui publie les versions (nil si cette compilation n'en a pas).
+    var repoSlug: String? { repo }
     var isConfigured: Bool { feedURL != nil && publicKey != nil }
     private var targetApp: URL { env["MANDARINE_UPDATE_TARGET"].map { URL(fileURLWithPath: $0) } ?? Bundle.main.bundleURL }
 

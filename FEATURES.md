@@ -147,3 +147,17 @@ Pages web depuis un lien glissé : la roue ⌘ d'un lien propose, en plus de MP4
 
 Temps restant : un travail long (au moins 6 s de calcul, plus de 10 s à attendre) affiche « About 3 min left » sous sa description. L'estimation suit la vitesse des 30 dernières secondes, est arrondie (5 s, puis minutes, puis heures) et disparaît au début, à la fin ou si le travail est bloqué. Les travaux sans progression chiffrée (enregistrement de page, vérification d'un lien) n'en affichent pas.
 
+
+## Fenêtre « All features »
+Menu de la barre de menus → **All Features** (ou bouton « Browse all features » à la dernière page du guide). Un onglet par type de fichier
+(images, vidéos, audio, PDF, documents, slides, tableurs, EPUB, sous-titres, archives, dossiers, texte glissé, liens web, sélections mixtes),
+avec les formats (⇧), les outils (⌘) et les actions (⌃), chacun avec sa description ; les groupes de pétales montrent leurs sous-pétales et les
+fonctions réservées à 2+ fichiers sont étiquetées. La liste est construite à partir du vrai `Catalog` et de `WiiText.description` : un nouvel outil
+y apparaît seul. Recherche en haut (nom, description, format, type de fichier). Code : `App/FeaturesView.swift`.
+
+## Guide d'aide raccourci
+4 pages (glisser-taper-déposer, trois roues, moteurs, prêt) au lieu de 10 ; le détail des outils est dans « All features ».
+
+## Réglages → Download
+Lit les releases GitHub du dépôt (sans identifiant) : dernière version, versions précédentes, taille, date, lien vers les notes ; « Download » /
+« Get » enregistre le .dmg dans Téléchargements (avec progression) puis le montre dans le Finder. Code : `App/DownloadTab.swift`.

@@ -44,6 +44,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         hint.isEnabled = false
         m.addItem(hint)
         m.addItem(.separator())
+        m.addItem(withTitle: "All Features", action: #selector(showFeatures), keyEquivalent: "").target = self
         m.addItem(withTitle: "Help", action: #selector(showHelp), keyEquivalent: "?").target = self
         m.addItem(withTitle: "Check for Updates…", action: #selector(checkUpdates), keyEquivalent: "").target = self
         m.addItem(withTitle: "Choose File to Process…", action: #selector(chooseFile), keyEquivalent: "o").target = self
@@ -54,6 +55,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc private func showHelp() { HelpWindowController.show() }
+    @objc private func showFeatures() { FeaturesWindowController.show() }
     @objc private func checkUpdates() { Task { await Updater.shared.check(userInitiated: true) } }
 
     @objc private func chooseFile() {
@@ -682,6 +684,8 @@ extension AppDelegate {
             view = AnyView(BubbleMenuView(model: model).background(Color(white: 0.55)))
         } else if target[0] == "wiitiles" {
             view = AnyView(WiiTilesDebug().background(Color(white: 0.55)))
+        } else if target[0] == "features" {
+            view = AnyView(FeaturesView(startTab: target.count > 1 ? target[1] : "image", startQuery: target.count > 2 ? target[2] : "", close: {}))
         } else if target[0] == "help" {
             view = AnyView(HelpView(startPage: Int(target[1]) ?? 0, close: {}))
         } else if target[0] == "tool", let id = ToolID(rawValue: target[1]) {
