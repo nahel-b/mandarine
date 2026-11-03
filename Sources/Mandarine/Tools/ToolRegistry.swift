@@ -39,7 +39,7 @@ enum ToolRegistry {
         case .faceSelect: return AnyView(FaceSelectTool(urls: urls, close: close))
         case .mergePDF: return AnyView(MergePDFTool(urls: urls, close: close))
         case .organizePDF: return AnyView(OrganizePDFTool(url: urls[0], close: close))
-        case .splitPDF, .extractArchive, .muteVideo, .extractImages, .openInCode, .downloadMP3, .downloadMP4, .downloadWAV, .speakText, .zipFiles:
+        case .splitPDF, .extractArchive, .muteVideo, .extractImages, .openInCode, .downloadMP3, .downloadMP4, .downloadWAV, .savePagePDF, .savePageMarkdown, .savePageScreenshot, .speakText, .zipFiles:
             return AnyView(DirectToolView(id: id, urls: urls, close: close))
         default:
             return AnyView(ComingSoonTool(id: id, close: close))
@@ -73,6 +73,9 @@ struct DirectToolView: View {
                 Dispatcher.job("Extracting…", light: true) { _ in try files.map { try ArchiveEngine.extractNextTo($0) } }
             case .downloadMP3, .downloadMP4, .downloadWAV:
                 DownloadFlow.start(links: files, kind: id == .downloadMP3 ? .mp3 : (id == .downloadWAV ? .wav : .mp4))
+            case .savePagePDF, .savePageMarkdown, .savePageScreenshot:
+                let kind: WebCaptureKind = id == .savePagePDF ? .pdf : (id == .savePageMarkdown ? .markdown : .screenshot)
+                files.forEach { WebPages.save($0, kind: kind) }
             case .zipFiles:
                 Dispatcher.job("Zipping…") { _ in [try await ZipEngine.make(files)] }
             case .speakText:

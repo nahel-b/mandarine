@@ -19,9 +19,29 @@ final class JobQueue {
         let title: String, subtitle: String, heavy: Bool, count: Int, work: StatusWork
         var task: Task<Void, Never>?
         var started = false, cancelled = false
+        var startedAt = Date()
+        var samples: [(t: Double, p: Double)] = []      // progression relevée au fil du temps, pour estimer ce qui reste
+        var eta = ""
         init(title: String, subtitle: String, heavy: Bool, count: Int, work: @escaping StatusWork) {
             self.title = title; self.subtitle = subtitle; self.heavy = heavy; self.count = count; self.work = work
         }
+    }
+
+    /// Temps restant d'un travail long, d'après sa vitesse des dernières secondes (ou depuis le début s'il est trop récent).
+    /// Vide tant que l'estimation serait peu fiable (travail court, début, fin) ; arrondi pour ne pas clignoter.
+    static func etaText(samples: [(t: Double, p: Double)]) -> String {
+        guard let first = samples.first, let last = samples.last, last.p > 0.02, last.p < 0.98, last.t >= 6 else { return "" }
+        let recent = samples.filter { $0.t >= last.t - 30 }
+        let from = (recent.first.map { last.t - $0.t >= 6 } ?? false) ? recent.first! : first
+        let rate = (last.p - from.p) / max(last.t - from.t, 0.001)
+        guard rate > 0.00001 else { return "" }
+        let left = (1 - last.p) / rate
+        guard left >= 10 else { return "" }
+        if left < 60 { return "About \(Int((left / 5).rounded()) * 5) s left" }
+        let minutes = max(1, Int((left / 60).rounded()))
+        if minutes < 60 { return "About \(minutes) min left" }
+        let h = minutes / 60, m = (minutes % 60 / 5) * 5
+        return m == 0 ? "About \(h) h left" : "About \(h) h \(m) min left"
     }
 
     private var entries: [Entry] = []
@@ -75,12 +95,18 @@ final class JobQueue {
         Toast.shared.update(e.id) { $0.phase = .running; $0.subtitle = n > 1 ? "0 of \(n) done" : e.subtitle; $0.progress = n > 1 ? 0 : -1 }
         let id = e.id
         let queue = self
+        e.startedAt = Date()
         e.task = Task {
             do {
                 let outs = try await e.work({ p in
                     DispatchQueue.main.async {
+                        if p >= 0 { e.samples.append((Date().timeIntervalSince(e.startedAt), p)); if e.samples.count > 600 { e.samples.removeFirst(100) } }
+                        let eta = e.cancelled ? "" : Self.etaText(samples: e.samples)
+                        let changed = eta != e.eta
+                        e.eta = eta
                         Toast.shared.update(id) {
                             $0.progress = p
+                            if changed { $0.eta = eta }
                             if n > 1, $0.phase == .running { $0.subtitle = "\(min(max(Int((p * Double(n)).rounded(.down)), 0), n - 1)) of \(n) done" }
                         }
                     }
@@ -111,7 +137,7 @@ final class JobQueue {
             let title = outs.count == 1 ? "Saved" : "Saved \(outs.count) items"
             Toast.shared.update(e.id) {
                 $0.phase = .done; $0.title = title; $0.subtitle = Self.savedDetail(outs)
-                $0.progress = nil; $0.reveal = outs; $0.cancel = nil
+                $0.progress = nil; $0.reveal = outs; $0.cancel = nil; $0.eta = ""
             }
             if AppSettings.shared.revealAfterSave { NSWorkspace.shared.activateFileViewerSelecting(outs) }
         case .failure(let error):
@@ -119,7 +145,7 @@ final class JobQueue {
             if let part = error as? Partial, let first = part.outs.first {
                 Toast.shared.update(e.id) {
                     $0.phase = .done; $0.title = "Saved \(part.outs.count) of \(part.total)"
-                    $0.subtitle = "\(part.failed) failed\n\(part.message)"; $0.detail = part.message; $0.progress = nil; $0.reveal = part.outs; $0.cancel = nil
+                    $0.subtitle = "\(part.failed) failed\n\(part.message)"; $0.detail = part.message; $0.progress = nil; $0.reveal = part.outs; $0.cancel = nil; $0.eta = ""
                 }
                 if AppSettings.shared.revealAfterSave { NSWorkspace.shared.activateFileViewerSelecting(part.outs) }
                 _ = first
@@ -130,7 +156,7 @@ final class JobQueue {
                 let task = e.title.replacingOccurrences(of: "…", with: "")
                 let short = task.count <= 24
                 $0.phase = .failed; $0.title = short ? task + " failed" : "Failed"
-                $0.subtitle = short ? msg : task + "\n" + msg; $0.detail = msg; $0.progress = nil; $0.cancel = nil
+                $0.subtitle = short ? msg : task + "\n" + msg; $0.detail = msg; $0.progress = nil; $0.cancel = nil; $0.eta = ""
             }
         }
     }

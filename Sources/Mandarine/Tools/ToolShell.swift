@@ -621,7 +621,7 @@ enum ToolAvailability {
             return true
         case .openInCode:
             return VSCode.url != nil
-        case .downloadMP3, .downloadMP4, .downloadWAV, .speakText:
+        case .downloadMP3, .downloadMP4, .downloadWAV, .speakText, .savePagePDF, .savePageMarkdown, .savePageScreenshot:
             return true
         case .translateText:
             return SnippetEngine.canTranslate

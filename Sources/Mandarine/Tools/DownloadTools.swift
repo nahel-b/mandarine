@@ -7,6 +7,16 @@ enum DownloadKind {
     var label: String { self == .mp4 ? "MP4" : (self == .mp3 ? "MP3" : "WAV") }
 }
 
+/// Pages web enregistrées depuis un lien glissé : une ligne dans la pile par lien, résultat dans Téléchargements.
+enum WebPages {
+    static func save(_ link: URL, kind: WebCaptureKind) {
+        let downloads = FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask)[0]
+        JobQueue.shared.add(kind.jobTitle, subtitle: link.host ?? link.absoluteString) { _ in
+            [try await WebCapture.save(link, as: kind, to: downloads)]
+        }
+    }
+}
+
 /// Téléchargement de liens (YouTube et autres sites via yt-dlp) : lien simple, ou liste (playlist, album, chaîne) avec choix.
 enum DownloadFlow {
     private static var downloads: URL { FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask)[0] }

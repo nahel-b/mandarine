@@ -412,6 +412,52 @@ extension AppDelegate {
             }
             return
         }
+        if a.count >= 4, a[0] == "--webtest" {      // test : --webtest pdf|md|png adresse dossier (enregistre la page comme le fait le pétale)
+            let kind: WebCaptureKind = a[1] == "pdf" ? .pdf : (a[1] == "md" ? .markdown : .screenshot)
+            guard let link = URL(string: a[2]) else { print("adresse invalide"); exit(1) }
+            Task {
+                do {
+                    let t0 = Date()
+                    let out = try await WebCapture.save(link, as: kind, to: URL(fileURLWithPath: a[3]))
+                    print("OK", out.path, "·", out.fileSize, "octets ·", String(format: "%.1f s", Date().timeIntervalSince(t0)))
+                } catch { print("ÉCHEC :", error.localizedDescription) }
+                exit(0)
+            }
+            return
+        }
+        if a.first == "--etatest" {      // test : estimation du temps restant sur des relevés fictifs
+            func eta(_ label: String, _ s: [(t: Double, p: Double)]) { print(label, "→", JobQueue.etaText(samples: s).isEmpty ? "(rien)" : JobQueue.etaText(samples: s)) }
+            eta("début (3 s, 5 %)", [(0, 0), (3, 0.05)])
+            eta("20 s, 10 % (≈ 3 min)", [(0, 0), (10, 0.05), (20, 0.1)])
+            eta("60 s, 30 % (≈ 2 min)", (0...12).map { (Double($0) * 5, Double($0) * 5 / 200) })
+            eta("100 s, 80 % (≈ 25 s)", (0...20).map { (Double($0) * 5, Double($0) * 5 / 125) })
+            eta("1 h, 5 % (≈ 1 h 55)", (0...12).map { (Double($0) * 300, Double($0) * 300 / 72000) })
+            eta("fin (99 %)", [(0, 0), (50, 0.5), (99, 0.99)])
+            eta("bloqué", [(0, 0.3), (20, 0.3)])
+            exit(0)
+        }
+        if a.first == "--linkwheel" {      // test : liens web glissés, roue ⌘ (vidéo connue, article, deux liens)
+            for (label, links) in [("YouTube", ["https://www.youtube.com/watch?v=abc"]), ("article", ["https://www.lemonde.fr/article.html"]), ("deux liens", ["https://a.com/x", "https://b.org/y"])] {
+                let items = Catalog.items(mode: .tools, urls: links.compactMap(URL.init(string:)))
+                print(label, "→", items.map(\.label).joined(separator: " · "))
+            }
+            exit(0)
+        }
+        if a.count >= 2, a[0] == "--etashot" {      // test : --etashot sortie.png (un travail qui avance à vitesse constante ; capture la notification à 14 s)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                JobQueue.shared.add("Encoding…", subtitle: "holiday.mov") { progress in
+                    for i in 0..<400 { try Task.checkCancellation(); progress(Double(i) / 400); try await Task.sleep(nanoseconds: 100_000_000) }
+                    return []
+                }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 14) {
+                    guard let w = NSApp.windows.first(where: { $0 is NSPanel && $0.level == .statusBar && $0.frame.width > 200 }),
+                          let cg = CGWindowListCreateImage(.null, .optionIncludingWindow, CGWindowID(w.windowNumber), [.bestResolution]) else { print("capture impossible"); exit(1) }
+                    try? NSBitmapImageRep(cgImage: cg).representation(using: .png, properties: [:])?.write(to: URL(fileURLWithPath: a[1]))
+                    print("texte :", Toast.shared.center.items.map(\.eta)); exit(0)
+                }
+            }
+            return
+        }
         if a.count >= 2, a[0] == "--toastshot" {      // test : --toastshot sortie.png (capture la vraie notification, ombre comprise)
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
                 Toast.shared.done("Selected 4 of 17 files", subtitle: "in the Finder")

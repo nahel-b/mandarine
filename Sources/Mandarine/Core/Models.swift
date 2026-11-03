@@ -56,7 +56,7 @@ enum WheelMode: String, CaseIterable, Identifiable {
 }
 
 enum ToolID: String {
-    case compress, metadata, editImage, annotateImage, frameImage, cropImage, redactImage, createCollage, removeBackground, resizeImage, rotateImage, extractAudio, extractImages, quickLook, encodeVideo, openInCode, davinciTree, downloadMP3, downloadMP4, downloadWAV, faceSelect, scanDocument, translateText, summarizeText, speakText, zipFiles, quickSort, typeSelect
+    case compress, metadata, editImage, annotateImage, frameImage, cropImage, redactImage, createCollage, removeBackground, resizeImage, rotateImage, extractAudio, extractImages, quickLook, encodeVideo, openInCode, davinciTree, downloadMP3, downloadMP4, downloadWAV, savePagePDF, savePageMarkdown, savePageScreenshot, faceSelect, scanDocument, translateText, summarizeText, speakText, zipFiles, quickSort, typeSelect
     case trimVideo, cropVideo, changeVideoSpeed, joinVideos, videoSnapshots, splitVideo, redactVideo, muteVideo
     case normalizeAudio, audioToVideo, trimAudio, audioChannels, redactAudio
     case mergePDF, organizePDF, splitPDF, extractArchive, ocr
@@ -82,6 +82,9 @@ enum ToolID: String {
         case .downloadMP3: return "Download MP3"
         case .downloadMP4: return "Download MP4"
         case .downloadWAV: return "Download WAV"
+        case .savePagePDF: return "Save page as PDF"
+        case .savePageMarkdown: return "Save page as Markdown"
+        case .savePageScreenshot: return "Save page screenshot"
         case .faceSelect: return "Face Select"
         case .scanDocument: return "Scan Document"
         case .translateText: return "Translate"

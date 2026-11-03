@@ -15,6 +15,7 @@ struct ToastItem: Identifiable {
     var cancel: (() -> Void)? = nil      // présent tant que le travail peut être annulé
     var action: (title: String, run: () -> Void)? = nil      // bouton d'action (ex. « Update »)
     var sticky = false                   // ne disparaît pas seule
+    var eta = ""                          // « About 2 min left » : estimation du temps restant d'un travail long
     var files: [URL] = []                // fichiers que la ligne concerne sans les avoir créés (sélection, copie…) : glissables eux aussi
     var dragging = false                 // ses fichiers sont en train d'être glissés ailleurs : la ligne change d'apparence
 }
@@ -77,6 +78,9 @@ private struct ToastRow: View {
                         }
                     } else if !item.subtitle.isEmpty {
                         Text(item.subtitle).font(.system(size: 11)).foregroundStyle(.secondary).lineLimit(failed ? 5 : 2)
+                    }
+                    if item.phase == .running, !item.eta.isEmpty {
+                        Text(item.eta).font(.system(size: 11, weight: .medium).monospacedDigit()).foregroundStyle(.secondary).lineLimit(1)
                     }
                 }
                 Spacer(minLength: 8)

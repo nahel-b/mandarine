@@ -152,9 +152,14 @@ enum Catalog {
         // Liens web : la roue ⌘ propose le téléchargement en MP4 ou en MP3 (yt-dlp). Sites connus : affirmatif ; les autres sont « tentés ».
         if linksOnly && mode == .tools && urls.allSatisfy(YtDlp.isWebLink) {
             let known = urls.allSatisfy(YtDlp.isKnownSite)
-            return [WheelItem(id: ToolID.downloadMP4.rawValue, label: "MP4", caption: known ? "Download MP4" : "Try to download MP4", symbol: "film", payload: .tool(.downloadMP4)),
+            let page = [WheelItem(id: ToolID.savePagePDF.rawValue, label: "PDF", caption: "Save page as PDF", symbol: "doc.richtext", payload: .tool(.savePagePDF)),
+                        WheelItem(id: ToolID.savePageMarkdown.rawValue, label: "MARKDOWN", caption: "Save page as Markdown", symbol: "text.alignleft", payload: .tool(.savePageMarkdown)),
+                        WheelItem(id: ToolID.savePageScreenshot.rawValue, label: "SCREENSHOT", caption: "Save page screenshot", symbol: "camera.viewfinder", payload: .tool(.savePageScreenshot))]
+            let media = [WheelItem(id: ToolID.downloadMP4.rawValue, label: "MP4", caption: known ? "Download MP4" : "Try to download MP4", symbol: "film", payload: .tool(.downloadMP4)),
                     WheelItem(id: ToolID.downloadMP3.rawValue, label: "MP3", caption: known ? "Download MP3" : "Try to download MP3", symbol: "music.note", payload: .tool(.downloadMP3)),
                     WheelItem(id: ToolID.downloadWAV.rawValue, label: "WAV", caption: known ? "Download WAV" : "Try to download WAV", symbol: "waveform", payload: .tool(.downloadWAV))]
+            // site de vidéo connu : les téléchargements d'abord ; sinon c'est sans doute un article, on propose d'abord de garder la page
+            return known ? media + page : page + media
         }
         if linksOnly && mode != .actions { return [] }
         switch mode {
