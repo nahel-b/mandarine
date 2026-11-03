@@ -26,7 +26,7 @@ enum FileActions {
             if urls.allSatisfy({ !$0.isFileURL }) {
                 Toast.shared.done(urls.count == 1 ? "Link copied" : "\(urls.count) links copied", subtitle: urls[0].absoluteString)
             } else {
-                Toast.shared.done(urls.count == 1 ? "Copied \(urls[0].lastPathComponent)" : "Copied \(urls.count) files", subtitle: "Ready to paste in Finder")
+                Toast.shared.done(urls.count == 1 ? "Copied" : "Copied \(urls.count) files", subtitle: (urls.count == 1 ? urls[0].lastPathComponent + "\n" : "") + "Ready to paste in Finder", files: urls)
             }
         case .copyPath:
             let pb = NSPasteboard.general
@@ -59,9 +59,9 @@ enum FileActions {
         for u in urls {
             let dest = OutputNaming.unique(folder: dir, base: u.deletingPathExtension().lastPathComponent, ext: u.pathExtension)
             do { try FileManager.default.moveItem(at: u, to: dest); moved.append(dest) }
-            catch { Toast.shared.fail("Couldn't move \(u.lastPathComponent)", subtitle: error.localizedDescription); return }
+            catch { Toast.shared.fail("Couldn't move file", subtitle: "\(u.lastPathComponent)\n\(error.localizedDescription)"); return }
         }
-        if let f = moved.first { Toast.shared.done("Moved \(moved.count == 1 ? f.lastPathComponent : "\(moved.count) items")", subtitle: dir.path, reveal: moved) }
+        if let f = moved.first { Toast.shared.done(moved.count == 1 ? "Moved" : "Moved \(moved.count) items", subtitle: (moved.count == 1 ? f.lastPathComponent + "\n" : "") + "to " + dir.lastPathComponent, reveal: moved) }
     }
 
     private static func openTerminal(_ urls: [URL]) {

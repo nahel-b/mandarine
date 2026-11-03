@@ -4,7 +4,13 @@ import SwiftUI
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusItems: [NSStatusItem] = []
-    private let monitor = DragMonitor()
+    private let monitor = DragMonitor.shared
+    private static func find<V: NSView>(_ type: V.Type, in view: NSView?) -> V? {
+        guard let view = view else { return nil }
+        if let v = view as? V { return v }
+        for sub in view.subviews { if let v = find(type, in: sub) { return v } }
+        return nil
+    }
     private var settingsWindow: NSWindow?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -367,6 +373,45 @@ extension AppDelegate {
             }
             return
         }
+        if a.count >= 2, a[0] == "--toastdragtest" {      // test : --toastdragtest fichier (événements synthétiques : la notification lance-t-elle un vrai glisser du fichier ?)
+            let file = URL(fileURLWithPath: a[1])          // « - » : une notification sans fichier (elle emporte son texte)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                if a[1] == "-" { Toast.shared.done("Link copied", subtitle: "https://example.com/une/adresse") }
+                else { Toast.shared.done("Saved", subtitle: "\(file.lastPathComponent)\nin test", reveal: file) }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                    guard let w = NSApp.windows.first(where: { $0 is NSPanel && $0.level == .statusBar && $0.frame.width > 200 }),
+                          let handle = Self.find(FileDragView.self, in: w.contentView) else { print("poignée introuvable"); exit(1) }
+                    print("poignée trouvée, fichiers :", handle.urls.map(\.lastPathComponent), "· texte :", handle.text.replacingOccurrences(of: "\n", with: " / "), "· aide :", handle.toolTip ?? "-")
+                    if let cv = w.contentView {
+                        let hf = handle.convert(handle.bounds, to: nil)
+                        let y = hf.midY
+                        for (name, x) in [("marge gauche", hf.minX - 10), ("icône", hf.minX + 25), ("titre", hf.midX), ("bouton Show", w.frame.width - 30 - 14 - 18 - 12 - 35), ("bouton ✕", w.frame.width - 30 - 14 - 9)] {
+                            let hit = cv.hitTest(cv.convert(NSPoint(x: x, y: y), from: nil))
+                            print("clic sur", name, "→", hit.map { String(describing: type(of: $0)) } ?? "rien")
+                        }
+                        print("zone de la poignée :", hf, "· fenêtre :", w.frame.size)
+                    }
+                    handle.onBegin = { print("glisser commencé") }
+                    handle.onEnd = { print("glisser terminé") }
+                    func event(_ type: NSEvent.EventType, _ x: CGFloat) -> NSEvent {
+                        let hf = handle.convert(handle.bounds, to: nil)
+                        return NSEvent.mouseEvent(with: type, location: NSPoint(x: hf.midX + x, y: hf.midY), modifierFlags: [], timestamp: ProcessInfo.processInfo.systemUptime,
+                                           windowNumber: w.windowNumber, context: nil, eventNumber: 0, clickCount: 1, pressure: 1)!
+                    }
+                    w.sendEvent(event(.leftMouseDown, 0))          // par le chemin réel : fenêtre → hitTest → poignée
+                    w.sendEvent(event(.leftMouseDragged, 30))
+                    let urls = (NSPasteboard(name: .drag).readObjects(forClasses: [NSURL.self], options: nil) as? [URL]) ?? []
+                    print("presse-papiers de glissement :", urls.map(\.lastPathComponent), "· texte :", NSPasteboard(name: .drag).string(forType: .string) ?? "-")
+                    if let id = Toast.shared.center.items.last?.id { Toast.shared.update(id) { $0.dragging = true } }          // apparence « saisie »
+                    RunLoop.current.run(until: Date().addingTimeInterval(0.8))
+                    if a.count >= 3, let cg = CGWindowListCreateImage(.null, .optionIncludingWindow, CGWindowID(w.windowNumber), [.bestResolution]) {          // --toastdragtest fichier sortie.png : capture aussi la notification
+                        try? NSBitmapImageRep(cgImage: cg).representation(using: .png, properties: [:])?.write(to: URL(fileURLWithPath: a[2]))
+                    }
+                    exit(0)
+                }
+            }
+            return
+        }
         if a.count >= 2, a[0] == "--toastshot" {      // test : --toastshot sortie.png (capture la vraie notification, ombre comprise)
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
                 Toast.shared.done("Selected 4 of 17 files", subtitle: "in the Finder")
@@ -567,7 +612,7 @@ extension AppDelegate {
             let ids = (1...4).map { JobQueue.shared.add("Encoding clip \($0)…", subtitle: "clip\($0).mov", work: fake(Double($0))) }
             JobQueue.shared.add("Saving text…", subtitle: "notes.png", light: true, work: fake(1))
             JobQueue.shared.cancel(ids[0])
-            Toast.shared.done("Saved photo.png", subtitle: "/Users/me/Pictures", reveal: URL(fileURLWithPath: "/tmp"))
+            Toast.shared.done("Saved", subtitle: "photo.png\nin Pictures", reveal: URL(fileURLWithPath: "/tmp"))
             Toast.shared.fail("Conversion failed", subtitle: "ffmpeg a échoué (code 1).")
             view = AnyView(ToastStack(center: Toast.shared.center).background(Color(white: 0.55)))
         } else if target[0] == "settings" {

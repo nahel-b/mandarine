@@ -4,10 +4,12 @@ import AppKit
 /// quand l'utilisateur tape la touche d'une des trois roues. Les modificateurs sont lus par interrogation
 /// (`NSEvent.modifierFlags`), donc aucune permission d'accessibilité n'est nécessaire.
 final class DragMonitor {
+    static let shared = DragMonitor()
     private var monitors: [Any] = []
     private var timer: Timer?
     private var downChangeCount = 0
     private var dragging = false
+    private var internalDrag = false          // le glisser vient d'une notification de Mandarine
     private var draggedURLs: [URL] = []
     private var seenCount = 0                 // état du presse-papiers de glissement lors de la dernière lecture
     private var dragText: String?             // texte déjà converti en petit fichier (évite d'en refaire un à chaque lecture)
@@ -45,23 +47,49 @@ final class DragMonitor {
             dragging = true
             lastFlags = NSEvent.modifierFlags.intersection(.deviceIndependentFlagsMask)
             startPolling()
-        case .leftMouseUp:
-            // Le relâchement est vu ici AVANT que la roue reçoive le dépôt : si un segment est survolé, on attend
-            // le dépôt (qui ferme la roue). Sans réponse après un court délai, on exécute le segment survolé
-            // nous-mêmes ; sinon (dépôt hors de la roue) on referme.
-            if wheel.isVisible {
-                if wheel.hoveredItemEnabled {
-                    Feedback.shared.drop(); wheel.dropSoundFired = Date()          // son et haptique au relâchement exact du bouton
-                    let hovered = wheel.model.hover, hoveredChild = wheel.model.hoverChild
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [wheel] in
-                        if wheel.isVisible { wheel.model.hover = hovered; wheel.model.hoverChild = hoveredChild; if !wheel.drop() { wheel.dismiss() } }
-                    }
-                } else { wheel.dismiss() }
-            }
-            dragging = false
-            timer?.invalidate(); timer = nil
+        case .leftMouseUp: released()
         default: break
         }
+    }
+
+    /// Le bouton est relâché. Le relâchement est vu ici AVANT que la roue reçoive le dépôt : si un segment est survolé, on attend
+    /// le dépôt (qui ferme la roue). Sans réponse après un court délai, on exécute le segment survolé
+    /// nous-mêmes ; sinon (dépôt hors de la roue) on referme.
+    private func released() {
+        if wheel.isVisible {
+            if wheel.hoveredItemEnabled {
+                Feedback.shared.drop(); wheel.dropSoundFired = Date()          // son et haptique au relâchement exact du bouton
+                let hovered = wheel.model.hover, hoveredChild = wheel.model.hoverChild
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [wheel] in
+                    if wheel.isVisible { wheel.model.hover = hovered; wheel.model.hoverChild = hoveredChild; if !wheel.drop() { wheel.dismiss() } }
+                }
+            } else { wheel.dismiss() }
+        }
+        dragging = false
+        timer?.invalidate(); timer = nil
+    }
+
+    /// Glisser commencé dans Mandarine même (le fichier d'une notification) : les événements de souris de notre propre app
+    /// n'arrivent pas aux moniteurs globaux, donc la notification annonce elle-même le début et la fin du glisser.
+    /// La roue s'ouvre ensuite avec les touches habituelles, et le fichier peut y être déposé.
+    /// `text` : sans fichier, la notification emporte son texte (traité comme un texte glissé, si ce réglage est actif).
+    func beginInternalDrag(_ files: [URL], text: String) {
+        reset()
+        var urls = files
+        if urls.isEmpty, settings.enableTextDrag, let snippet = SnippetStore.make(text) { urls = [snippet]; dragText = text }
+        guard !urls.isEmpty else { return }          // rien que la roue puisse traiter (texte glissé désactivé) : le glisser reste ordinaire
+        draggedURLs = urls
+        seenCount = NSPasteboard(name: .drag).changeCount
+        dragging = true
+        internalDrag = true
+        lastFlags = NSEvent.modifierFlags.intersection(.deviceIndependentFlagsMask)
+        startPolling()
+    }
+
+    func endInternalDrag() {
+        guard internalDrag else { return }
+        internalDrag = false
+        released()
     }
 
     /// Ce qui est en train d'être glissé : fichiers, sinon liens, sinon texte (petit fichier). nil si rien d'exploitable.
@@ -132,6 +160,7 @@ final class DragMonitor {
 
     private func reset() {
         otherKeyHeld = false
+        internalDrag = false
         dragging = false
         draggedURLs = []
         timer?.invalidate()

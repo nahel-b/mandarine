@@ -94,6 +94,13 @@ final class JobQueue {
         }
     }
 
+    /// Description d'un travail terminé : le nom du fichier (ou « et 2 autres »), puis le dossier.
+    private static func savedDetail(_ outs: [URL]) -> String {
+        guard let first = outs.first else { return "" }
+        let folder = "in " + first.deletingLastPathComponent().lastPathComponent
+        return (outs.count == 1 ? first.lastPathComponent : "\(first.lastPathComponent) and \(outs.count - 1) more") + "\n" + folder
+    }
+
     private func finish(_ e: Entry, _ result: Result<[URL], Error>) {
         entries.removeAll { $0 === e }
         defer { pump() }
@@ -101,9 +108,9 @@ final class JobQueue {
         switch result {
         case .success(let outs):
             guard let first = outs.first else { Toast.shared.remove(e.id); return }
-            let title = outs.count == 1 ? "Saved \(first.lastPathComponent)" : "Saved \(outs.count) items"
+            let title = outs.count == 1 ? "Saved" : "Saved \(outs.count) items"
             Toast.shared.update(e.id) {
-                $0.phase = .done; $0.title = title; $0.subtitle = first.deletingLastPathComponent().path
+                $0.phase = .done; $0.title = title; $0.subtitle = Self.savedDetail(outs)
                 $0.progress = nil; $0.reveal = outs; $0.cancel = nil
             }
             if AppSettings.shared.revealAfterSave { NSWorkspace.shared.activateFileViewerSelecting(outs) }
@@ -111,8 +118,8 @@ final class JobQueue {
             if error is CancellationError { Toast.shared.remove(e.id); return }
             if let part = error as? Partial, let first = part.outs.first {
                 Toast.shared.update(e.id) {
-                    $0.phase = .done; $0.title = "Saved \(part.outs.count) of \(part.total) — \(part.failed) failed"
-                    $0.subtitle = part.message; $0.detail = part.message; $0.progress = nil; $0.reveal = part.outs; $0.cancel = nil
+                    $0.phase = .done; $0.title = "Saved \(part.outs.count) of \(part.total)"
+                    $0.subtitle = "\(part.failed) failed\n\(part.message)"; $0.detail = part.message; $0.progress = nil; $0.reveal = part.outs; $0.cancel = nil
                 }
                 if AppSettings.shared.revealAfterSave { NSWorkspace.shared.activateFileViewerSelecting(part.outs) }
                 _ = first
@@ -120,8 +127,10 @@ final class JobQueue {
             }
             let msg = error.localizedDescription
             Toast.shared.update(e.id) {
-                $0.phase = .failed; $0.title = e.title.replacingOccurrences(of: "…", with: "") + " failed"
-                $0.subtitle = msg; $0.detail = msg; $0.progress = nil; $0.cancel = nil
+                let task = e.title.replacingOccurrences(of: "…", with: "")
+                let short = task.count <= 24
+                $0.phase = .failed; $0.title = short ? task + " failed" : "Failed"
+                $0.subtitle = short ? msg : task + "\n" + msg; $0.detail = msg; $0.progress = nil; $0.cancel = nil
             }
         }
     }

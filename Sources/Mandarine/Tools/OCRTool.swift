@@ -61,7 +61,7 @@ struct OCRTool: View {
                 }.value
                 all.append((f.lastPathComponent, pages))
             } catch {
-                Toast.shared.fail("Couldn't read \(f.lastPathComponent)", subtitle: error.localizedDescription)
+                Toast.shared.fail("Couldn't read file", subtitle: "\(f.lastPathComponent)\n\(error.localizedDescription)")
             }
         }
         results = all
