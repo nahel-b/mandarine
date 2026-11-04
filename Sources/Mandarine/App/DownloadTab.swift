@@ -9,6 +9,8 @@ final class ReleaseList: ObservableObject {
     struct Release: Identifiable {
         let tag: String, version: String, date: Date?, page: URL, prerelease: Bool
         let dmg: (url: URL, size: Int64)?
+        let dmgCount: Int, zipCount: Int          // téléchargements du .dmg (à la main) et du .zip (mises à jour automatiques)
+        var total: Int { dmgCount + zipCount }
         var id: String { tag }
     }
     enum State { case idle, loading, loaded, failed(String) }
@@ -23,7 +25,7 @@ final class ReleaseList: ObservableObject {
     var releasesURL: URL? { repoURL?.appendingPathComponent("releases") }
 
     func load(force: Bool = false) async {
-        guard let repo = repo, let api = URL(string: "https://api.github.com/repos/\(repo)/releases?per_page=12") else { return }
+        guard let repo = repo, let api = URL(string: "https://api.github.com/repos/\(repo)/releases?per_page=50") else { return }
         if !force, let t = loadedAt, Date().timeIntervalSince(t) < 300, !releases.isEmpty { return }
         state = .loading
         do {
@@ -39,8 +41,9 @@ final class ReleaseList: ObservableObject {
                     guard let u = (a["browser_download_url"] as? String).flatMap(URL.init(string:)) else { return nil }
                     return (u, (a["size"] as? Int64) ?? Int64((a["size"] as? Int) ?? 0))
                 }
+                func count(_ suffix: String) -> Int { assets.first { ($0["name"] as? String)?.hasSuffix(suffix) == true }.flatMap { $0["download_count"] as? Int } ?? 0 }
                 return Release(tag: tag, version: tag.hasPrefix("v") ? String(tag.dropFirst()) : tag, date: (j["published_at"] as? String).flatMap { iso.date(from: $0) },
-                               page: page, prerelease: (j["prerelease"] as? Bool) == true, dmg: dmg)
+                               page: page, prerelease: (j["prerelease"] as? Bool) == true, dmg: dmg, dmgCount: count(".dmg"), zipCount: count(".zip"))
             }
             loadedAt = Date()
             state = .loaded
@@ -100,6 +103,7 @@ struct DownloadTab: View {
                     Button("Try again") { Task { await list.load(force: true) } }
                 }
             default:
+                Section("Downloads") { stats }
                 if let latest = list.releases.first(where: { !$0.prerelease }) ?? list.releases.first {
                     Section("Latest version") { row(latest, latest: true) }
                     let older = list.releases.filter { $0.id != latest.id }
@@ -118,6 +122,47 @@ struct DownloadTab: View {
         .task { await list.load() }
     }
 
+    private var stats: some View {
+        let all = list.releases
+        let peak = max(all.map(\.total).max() ?? 1, 1)
+        return VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 10) {
+                tile("\(all.reduce(0) { $0 + $1.total })", "downloads in all", Theme.orange)
+                tile("\(all.reduce(0) { $0 + $1.dmgCount })", "disk images (.dmg)", .blue)
+                tile("\(all.reduce(0) { $0 + $1.zipCount })", "updates (.zip)", .green)
+            }
+            if all.count > 1 {
+                VStack(alignment: .leading, spacing: 5) {
+                    Text("Per version").font(.caption).foregroundStyle(.secondary)
+                    ForEach(all.prefix(12)) { r in
+                        HStack(spacing: 8) {
+                            Text(r.version).font(.system(size: 11).monospacedDigit()).frame(width: 44, alignment: .leading)
+                            GeometryReader { g in
+                                HStack(spacing: 0) {
+                                    Rectangle().fill(Color.blue.opacity(0.75)).frame(width: g.size.width * CGFloat(r.dmgCount) / CGFloat(peak))
+                                    Rectangle().fill(Color.green.opacity(0.75)).frame(width: g.size.width * CGFloat(r.zipCount) / CGFloat(peak))
+                                    Spacer(minLength: 0)
+                                }.clipShape(Capsule())
+                            }.frame(height: 7)
+                            Text("\(r.total)").font(.system(size: 11).monospacedDigit()).foregroundStyle(.secondary).frame(width: 28, alignment: .trailing)
+                        }
+                    }
+                }
+            }
+            Text("The .zip is what installed copies fetch when they update, so it also counts those updates.").font(.caption2).foregroundStyle(.secondary)
+        }
+        .padding(.vertical, 2)
+    }
+
+    private func tile(_ value: String, _ label: String, _ color: Color) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(value).font(.system(size: 22, weight: .bold).monospacedDigit()).foregroundStyle(color)
+            Text(label).font(.caption).foregroundStyle(.secondary)
+        }
+        .padding(10).frame(maxWidth: .infinity, alignment: .leading)
+        .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(color.opacity(0.1)))
+    }
+
     private func row(_ r: ReleaseList.Release, latest: Bool) -> some View {
         let installed = r.version == updater.currentVersion
         return HStack(spacing: 10) {
@@ -128,7 +173,7 @@ struct DownloadTab: View {
                     if installed { badge("Installed", .green) }
                     if r.prerelease { badge("Pre-release", .gray) }
                 }
-                Text([r.date.map { Self.dateFormat.string(from: $0) }, r.dmg.map { ByteCountFormatter.string(fromByteCount: $0.size, countStyle: .file) }]
+                Text([r.date.map { Self.dateFormat.string(from: $0) }, "\(r.total) download\(r.total == 1 ? "" : "s")", r.dmg.map { ByteCountFormatter.string(fromByteCount: $0.size, countStyle: .file) }]
                         .compactMap { $0 }.joined(separator: " · ")).font(.caption).foregroundStyle(.secondary)
             }
             Spacer()
