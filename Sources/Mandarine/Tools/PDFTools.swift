@@ -6,13 +6,13 @@ struct MergePDFTool: View {
     let close: () -> Void
     @State private var thumbs: [URL: NSImage] = [:]
     var body: some View {
-        ToolShell(title: "Merge PDFs", close: close) {
+        ToolShell(title: L("Merge PDFs"), close: close) {
             OrderEditor(urls: $urls, thumbs: thumbs, accepts: ["pdf"], noun: "document", types: [.pdf])
         } footer: {
-            Button("Merge PDFs") {
+            Button(L("Merge PDFs")) {
                 let files = urls
                 close()
-                Dispatcher.job("Merging PDFs…", light: true) { _ in
+                Dispatcher.job(L("Merging PDFs…"), light: true) { _ in
                     let out = OutputNaming.sibling(of: files[0], suffix: " merged")
                     try await Task.detached { try PDFEngine.merge(files, to: out) }.value
                     return [out]
@@ -69,12 +69,12 @@ struct OrganizePDFTool: View {
     }
 
     var body: some View {
-        ToolShell(title: "Organize PDF", close: close) {
+        ToolShell(title: L("Organize PDF"), close: close) {
             VStack(spacing: 12) {
                 HStack {
-                    Text("\(m.pages.count) page\(m.pages.count == 1 ? "" : "s")").sectionLabel()
+                    Text(L("\(m.pages.count) page\(m.pages.count == 1 ? "" : "s")")).sectionLabel()
                     Spacer()
-                    Button("Reset Order") { m.pages = (0..<m.doc.pageCount).map { PDFPageItem(sourceIndex: $0) } }
+                    Button(L("Reset Order")) { m.pages = (0..<m.doc.pageCount).map { PDFPageItem(sourceIndex: $0) } }
                         .buttonStyle(WiiPlainButtonStyle()).font(.system(size: 11)).foregroundStyle(m.isModified ? Theme.text : Theme.muted.opacity(0.5))
                         .disabled(!m.isModified)
                 }
@@ -84,11 +84,11 @@ struct OrganizePDFTool: View {
                     }.padding(4)
                 }.frame(height: 360)
                 Divider()
-                Toggle("Make all pages the same width", isOn: $m.sameWidth)
-                Text("Pages are scaled proportionally to match the narrowest page; their heights may still differ.").sectionLabel()
+                Toggle(L("Make all pages the same width"), isOn: $m.sameWidth)
+                Text(L("Pages are scaled proportionally to match the narrowest page; their heights may still differ.")).sectionLabel()
             }.frame(width: 560, alignment: .leading)
         } footer: {
-            Button("Save Organized PDF") { save() }.buttonStyle(PillButtonStyle()).disabled(m.pages.isEmpty).keyboardShortcut(.defaultAction)
+            Button(L("Save Organized PDF")) { save() }.buttonStyle(PillButtonStyle()).disabled(m.pages.isEmpty).keyboardShortcut(.defaultAction)
         }
     }
 
@@ -125,7 +125,7 @@ struct OrganizePDFTool: View {
     private func save() {
         let items = m.pages, doc = m.doc, same = m.sameWidth, file = url
         close()
-        Dispatcher.job("Saving PDF…", light: true) { _ in
+        Dispatcher.job(L("Saving PDF…"), light: true) { _ in
             let out = OutputNaming.sibling(of: file, suffix: " organized")
             try await Task.detached {
                 let result = PDFDocument()
@@ -147,7 +147,7 @@ struct OrganizePDFTool: View {
                         if s != 1 { page.setBounds(CGRect(x: b.minX, y: b.minY, width: b.width, height: b.height), for: .mediaBox) }
                     }
                 }
-                guard result.write(to: out) else { throw MandarineError("Écriture impossible.") }
+                guard result.write(to: out) else { throw MandarineError(L("Écriture impossible.")) }
             }.value
             return [out]
         }

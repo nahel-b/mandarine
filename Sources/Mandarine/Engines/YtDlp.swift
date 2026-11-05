@@ -67,7 +67,7 @@ enum YtDlp {
             entries.append(.init(id: entries.count, url: url, title: shown, duration: e["duration"] as? Double))
         }
         guard entries.count >= 2 else { return nil }
-        return Playlist(title: (j["title"] as? String) ?? "Playlist", entries: entries)
+        return Playlist(title: (j["title"] as? String) ?? L("Playlist"), entries: entries)
     }
 
     /// Lance yt-dlp et retourne sa sortie standard (annulable, 90 s maximum).
@@ -90,7 +90,7 @@ enum YtDlp {
                     err.fileHandleForReading.readabilityHandler = nil
                     if box.cancelled { cont.resume(throwing: CancellationError()); return }
                     if p.terminationStatus == 0 { cont.resume(returning: data) }
-                    else { cont.resume(throwing: MandarineError("yt-dlp a échoué (code \(p.terminationStatus)).")) }
+                    else { cont.resume(throwing: MandarineError(L("yt-dlp a échoué (code \(p.terminationStatus))."))) }
                 }
             }
         } onCancel: { box.cancel() }
@@ -134,7 +134,7 @@ enum YtDlp {
     /// `maxHeight` : hauteur maximale en pixels (nil = la meilleure). `namePrefix` : par ex. « 03 - » pour numéroter une liste.
     static func download(_ link: URL, audio: Bool, audioFormat: String = "mp3", to dir: URL, maxHeight: Int? = nil, namePrefix: String = "", progress: @escaping (Double) -> Void) async throws -> URL {
         if audio { return try await run(link, audio: true, audioFormat: audioFormat, dir: dir, format: "", namePrefix: namePrefix, progress: progress) }
-        var lastError: Error = MandarineError("Téléchargement impossible.")
+        var lastError: Error = MandarineError(L("Téléchargement impossible."))
         let cap = maxHeight.map { "[height<=\($0)]" } ?? ""
         for format in ["bv*\(cap)[vcodec^=avc1]+ba[acodec^=mp4a]/b\(cap)[ext=mp4]", "bv*\(cap)+ba/b\(cap)"] {
             do {
@@ -190,7 +190,7 @@ enum YtDlp {
                 if p.terminationStatus == 0, let f = finalPath, FileManager.default.fileExists(atPath: f) { cont.resume(returning: URL(fileURLWithPath: f)) }
                 else {
                     let msg = errText.split(separator: "\n").suffix(3).joined(separator: "\n")
-                    cont.resume(throwing: MandarineError((msg.isEmpty ? "yt-dlp a échoué (code \(p.terminationStatus))." : msg) + "\nIf it keeps failing, update yt-dlp in Settings → Engines."))
+                    cont.resume(throwing: MandarineError((msg.isEmpty ? L("yt-dlp a échoué (code \(p.terminationStatus)).") : msg) + L("\nIf it keeps failing, update yt-dlp in Settings → Engines.")))
                 }
             }
           }

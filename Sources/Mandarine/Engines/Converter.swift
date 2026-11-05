@@ -43,10 +43,10 @@ enum Converter {
     /// Convertit un ou plusieurs fichiers. Retourne les fichiers produits.
     static func run(urls: [URL], to ext: String, progress: @escaping (Double) -> Void) async throws -> [URL] {
         let e = Catalog.normalized(ext)
-        guard let first = urls.first, let kind = FileKind.common(of: urls) else { throw MandarineError("Sélection mixte non prise en charge.") }
+        guard let first = urls.first, let kind = FileKind.common(of: urls) else { throw MandarineError(L("Sélection mixte non prise en charge.")) }
 
         if urls.count > 1 {
-            guard kind == .image, e == "pdf" else { throw MandarineError("Cette conversion ne s'applique qu'à un seul fichier.") }
+            guard kind == .image, e == "pdf" else { throw MandarineError(L("Cette conversion ne s'applique qu'à un seul fichier.")) }
             let out = OutputNaming.sibling(of: first, suffix: " combined", ext: "pdf")
             var imgs: [(CGImage, [String: Any])] = []
             for u in urls { let (i, p) = try ImageEngine.load(u); imgs.append((i, p)) }
@@ -66,7 +66,7 @@ enum Converter {
         case .subtitle: return [try SubtitleEngine.convert(first, to: e)]
         case .archive: return [try await Task.detached { try ArchiveEngine.convert(first, to: e) }.value]
         case .snippet: return [try await SnippetEngine.convert(first, to: e)]
-        case .folder, .other: throw MandarineError("Type de fichier non pris en charge.")
+        case .folder, .other: throw MandarineError(L("Type de fichier non pris en charge."))
         }
     }
 
@@ -104,7 +104,7 @@ enum Converter {
             let out = OutputNaming.sibling(of: url, ext: "pages")
             try AppleApps.pagesImport(tmp, to: out)
             return out
-        default: throw MandarineError("PDF vers .\(e) non pris en charge.")
+        default: throw MandarineError(L("PDF vers .\(e) non pris en charge."))
         }
     }
 
@@ -165,7 +165,7 @@ enum Converter {
         } else if let soffice = libreOffice {
             try Shell.run(soffice.path, ["--headless", "--convert-to", "pdf", "--outdir", tmp.path, url.path])
         } else {
-            throw MandarineError("La conversion de présentations nécessite Keynote ou LibreOffice.")
+            throw MandarineError(L("La conversion de présentations nécessite Keynote ou LibreOffice."))
         }
         if e == "pdf" {
             let out = OutputNaming.sibling(of: url, ext: "pdf")

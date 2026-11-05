@@ -7,7 +7,7 @@ enum EncoderKind: String, CaseIterable, Identifiable {
         switch self {
         case .x264: return "H.264 (x264)"
         case .x265: return "H.265 (x265)"
-        case .hardware264: return "H.264 (VideoToolbox, fast)"
+        case .hardware264: return L("H.264 (VideoToolbox, fast)")
         }
     }
 }
@@ -41,22 +41,22 @@ struct EncodePreset: Identifiable {
 }
 
 enum VideoEncoder {
-    static let presets: [EncodePreset] = [
-        .init(id: "prores-1080", title: "ProRes / 4K → 1080p30 (high quality)") { o in
+    static var presets: [EncodePreset] { [
+        .init(id: "prores-1080", title: L("ProRes / 4K → 1080p30 (high quality)")) { o in
             o.container = "mp4"; o.encoder = .x264; o.longSide = 1920; o.fps = 30; o.mode = .quality; o.crf = 18; o.preset = "slow"; o.tenBit = false; o.audioKbps = 256; o.preserveColor = true },
-        .init(id: "prores-4k", title: "ProRes / 4K → 4K H.264 (high quality)") { o in
+        .init(id: "prores-4k", title: L("ProRes / 4K → 4K H.264 (high quality)")) { o in
             o.container = "mp4"; o.encoder = .x264; o.longSide = 3840; o.fps = 0; o.mode = .quality; o.crf = 18; o.preset = "slow"; o.tenBit = false; o.audioKbps = 256; o.preserveColor = true },
-        .init(id: "super-hq", title: "Super HQ 1080p30") { o in
+        .init(id: "super-hq", title: L("Super HQ 1080p30")) { o in
             o.container = "mp4"; o.encoder = .x264; o.longSide = 1920; o.fps = 30; o.mode = .quality; o.crf = 16; o.preset = "slower"; o.audioKbps = 256 },
-        .init(id: "fast-1080", title: "Fast 1080p30") { o in
+        .init(id: "fast-1080", title: L("Fast 1080p30")) { o in
             o.container = "mp4"; o.encoder = .x264; o.longSide = 1920; o.fps = 30; o.mode = .quality; o.crf = 22; o.preset = "veryfast"; o.audioKbps = 160 },
-        .init(id: "fast-720", title: "Very Fast 720p30 (small)") { o in
+        .init(id: "fast-720", title: L("Very Fast 720p30 (small)")) { o in
             o.container = "mp4"; o.encoder = .x264; o.longSide = 1280; o.fps = 30; o.mode = .quality; o.crf = 24; o.preset = "veryfast"; o.audioKbps = 128 },
-        .init(id: "keep-4k", title: "4K H.264, keep frame rate") { o in
+        .init(id: "keep-4k", title: L("4K H.264, keep frame rate")) { o in
             o.container = "mp4"; o.encoder = .x264; o.longSide = 0; o.fps = 0; o.mode = .quality; o.crf = 19; o.preset = "medium"; o.audioKbps = 256 },
-        .init(id: "web-bitrate", title: "1080p30 at 8 Mb/s (2-pass)") { o in
+        .init(id: "web-bitrate", title: L("1080p30 at 8 Mb/s (2-pass)")) { o in
             o.container = "mp4"; o.encoder = .x264; o.longSide = 1920; o.fps = 30; o.mode = .bitrate; o.bitrateKbps = 8000; o.twoPass = true; o.preset = "slow"; o.audioKbps = 192 }
-    ]
+    ] }
 
     static let x264Presets = ["ultrafast", "superfast", "veryfast", "faster", "fast", "medium", "slow", "slower", "veryslow"]
 

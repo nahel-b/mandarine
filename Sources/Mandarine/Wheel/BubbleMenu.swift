@@ -229,7 +229,7 @@ struct BubbleMenuView: View {
                     if let sym = item.symbol {
                         Image(systemName: sym).font(.system(size: d * 0.36, weight: .semibold))
                     } else {
-                        Text(item.label).font(.system(size: d * 0.2, weight: .heavy, design: .rounded)).lineLimit(2).minimumScaleFactor(0.5).multilineTextAlignment(.center).padding(.horizontal, 7)
+                        Text(L(item.label)).font(.system(size: d * 0.2, weight: .heavy, design: .rounded)).lineLimit(2).minimumScaleFactor(0.5).multilineTextAlignment(.center).padding(.horizontal, 7)
                     }
                 }
                 .foregroundStyle(glyphColor(look, base: c, active: active, enabled: item.enabled))
@@ -242,7 +242,7 @@ struct BubbleMenuView: View {
             .opacity(item.enabled ? 1 : 0.5)
             .scaleEffect(grow)
             if labelVisible {          // nom dans une petite capsule posée à cheval sur le bas de la bulle
-                Text(labelText)
+                Text(L(labelText))
                     .font(.system(size: active ? 11.5 : 10.5, weight: .semibold)).foregroundStyle(active ? Color.white : Theme.text.opacity(0.9))
                     .fixedSize()
                     .padding(.horizontal, 10).padding(.vertical, 3.5)
@@ -271,18 +271,18 @@ struct BubbleMenuView: View {
             VStack(spacing: 1) {
                 Spacer()
                 if model.replacing {                  // voyant : ce dépôt remplacera le fichier d'origine
-                    Label("Replaces the original", systemImage: "arrow.triangle.2.circlepath").font(.system(size: 9.5, weight: .heavy)).foregroundStyle(.white)
+                    Label(L("Replaces the original"), systemImage: "arrow.triangle.2.circlepath").font(.system(size: 9.5, weight: .heavy)).foregroundStyle(.white)
                         .padding(.horizontal, 8).padding(.vertical, 3).background(Capsule().fill(Theme.orange))
                 } else {
                     ForEach(Array(lines.enumerated()), id: \.offset) { i, line in
-                        Text(line).font(.system(size: i == 0 ? 11 : 8.5, weight: i == 0 ? .bold : .medium)).foregroundStyle(Theme.text.opacity(i == 0 ? 0.95 : 0.65))
+                        Text(L(line)).font(.system(size: i == 0 ? 11 : 8.5, weight: i == 0 ? .bold : .medium)).foregroundStyle(Theme.text.opacity(i == 0 ? 0.95 : 0.65))
                             .lineLimit(1).minimumScaleFactor(0.6)
                     }
                 }
             }
             .padding(.horizontal, 14).padding(.bottom, 11)
             if model.fileCount > 4 {
-                Text("+\(model.fileCount - 4)").font(.system(size: 10.5, weight: .bold)).foregroundStyle(.white)
+                Text(L("+\(model.fileCount - 4)")).font(.system(size: 10.5, weight: .bold)).foregroundStyle(.white)
                     .padding(.horizontal, 6).padding(.vertical, 2.5).background(Capsule().fill(Theme.orange)).offset(x: D * 0.36, y: -D * 0.34)
             }
         }
@@ -329,7 +329,7 @@ struct BubbleMenuView: View {
             RoundedRectangle(cornerRadius: 8, style: .continuous).fill(LinearGradient(colors: [tone(c, light: 0.12), tone(c, dark: 0.1)], startPoint: .top, endPoint: .bottom))
             Path { p in p.move(to: CGPoint(x: w - 13, y: 0)); p.addLine(to: CGPoint(x: w, y: 13)); p.addLine(to: CGPoint(x: w - 13, y: 13)); p.closeSubpath() }
                 .fill(Color.white.opacity(0.3)).frame(width: w, height: h, alignment: .topLeading)
-            Text(ext).font(.system(size: ext.count > 3 ? 10 : 12, weight: .heavy, design: .rounded)).foregroundStyle(.white).lineLimit(1).minimumScaleFactor(0.6)
+            Text(L(ext)).font(.system(size: ext.count > 3 ? 10 : 12, weight: .heavy, design: .rounded)).foregroundStyle(.white).lineLimit(1).minimumScaleFactor(0.6)
                 .padding(.leading, 5).padding(.bottom, 5)
         }
         .frame(width: w, height: h).clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))

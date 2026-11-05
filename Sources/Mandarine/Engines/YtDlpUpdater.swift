@@ -68,13 +68,13 @@ final class YtDlpUpdater: ObservableObject {
         req.setValue("Mandarine", forHTTPHeaderField: "User-Agent")
         req.timeoutInterval = 30
         let (data, resp) = try await URLSession.shared.data(for: req)
-        guard (resp as? HTTPURLResponse)?.statusCode == 200 else { throw MandarineError("The server answered with an error (\((resp as? HTTPURLResponse)?.statusCode ?? 0)).") }
+        guard (resp as? HTTPURLResponse)?.statusCode == 200 else { throw MandarineError(L("The server answered with an error (\((resp as? HTTPURLResponse)?.statusCode ?? 0)).")) }
         return (data, resp.url)
     }
 
     nonisolated static func latestVersion() async throws -> String {
         let (data, _) = try await fetch(api)
-        guard let j = try? JSONSerialization.jsonObject(with: data) as? [String: Any], let tag = j["tag_name"] as? String else { throw MandarineError("Unexpected answer from GitHub.") }
+        guard let j = try? JSONSerialization.jsonObject(with: data) as? [String: Any], let tag = j["tag_name"] as? String else { throw MandarineError(L("Unexpected answer from GitHub.")) }
         return tag
     }
 
@@ -93,9 +93,9 @@ final class YtDlpUpdater: ObservableObject {
         let (binary, _) = try await fetch(releases + name)
         let (sums, _) = try await fetch(releases + "SHA2-256SUMS")
         let line = String(data: sums, encoding: .utf8)?.split(separator: "\n").first { $0.split(separator: " ").last.map(String.init) == name }
-        guard let expected = line?.split(separator: " ").first.map(String.init) else { throw MandarineError("The published checksum for yt-dlp wasn't found.") }
+        guard let expected = line?.split(separator: " ").first.map(String.init) else { throw MandarineError(L("The published checksum for yt-dlp wasn't found.")) }
         let actual = SHA256.hash(data: binary).map { String(format: "%02x", $0) }.joined()
-        guard actual == expected.lowercased() else { throw MandarineError("The download doesn't match its published checksum — nothing was installed.") }
+        guard actual == expected.lowercased() else { throw MandarineError(L("The download doesn't match its published checksum — nothing was installed.")) }
 
         let fm = FileManager.default
         try fm.createDirectory(at: destination, withIntermediateDirectories: true)
@@ -110,7 +110,7 @@ final class YtDlpUpdater: ObservableObject {
             let out = Pipe(); p.standardOutput = out; p.standardError = Pipe()
             try p.run()
             let d = out.fileHandleForReading.readDataToEndOfFile(); p.waitUntilExit()
-            guard p.terminationStatus == 0 else { throw MandarineError("The downloaded yt-dlp doesn't start on this Mac.") }
+            guard p.terminationStatus == 0 else { throw MandarineError(L("The downloaded yt-dlp doesn't start on this Mac.")) }
             return String(data: d, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         }.value
         let final = destination.appendingPathComponent("yt-dlp")

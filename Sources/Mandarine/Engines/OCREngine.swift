@@ -27,7 +27,7 @@ enum OCREngine {
         if url.pathExtension.lowercased() == "pdf" {
             let doc = try PDFEngine.open(url)
             let n = doc.pageCount
-            guard n > 0 else { throw MandarineError("PDF vide.") }
+            guard n > 0 else { throw MandarineError(L("PDF vide.")) }
             var out: [[String]] = []
             for i in 0..<n {
                 try Task.checkCancellation()

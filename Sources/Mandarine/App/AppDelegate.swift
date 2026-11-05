@@ -20,9 +20,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         for (name, image) in list.reversed() {                // ordre inversé : la barre empile les icônes de droite à gauche
             let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
             item.button?.image = image
-            item.button?.toolTip = list.count > 1 ? "Mandarine — \(name)" : "Mandarine"
+            item.button?.toolTip = list.count > 1 ? L("Mandarine — \(name)") : L("Mandarine")
             item.menu = buildMenu()
             statusItems.append(item)
+        }
+        NotificationCenter.default.addObserver(forName: L10n.changed, object: nil, queue: .main) { [weak self] _ in
+            guard let self = self else { return }
+            for item in self.statusItems { item.menu = self.buildMenu() }          // le menu de la barre de menus change de langue tout de suite
         }
         SnippetStore.cleanup()
         FaceCache.purge()
@@ -38,22 +42,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func buildMenu() -> NSMenu {
         let m = NSMenu()
-        let title = NSMenuItem(title: "Mandarine", action: nil, keyEquivalent: "")
+        let title = NSMenuItem(title: L("Mandarine"), action: nil, keyEquivalent: "")
         title.isEnabled = false
         m.addItem(title)
         m.addItem(.separator())
-        let hint = NSMenuItem(title: "Drag a file, then tap ⇧ ⌘ or ⌃", action: nil, keyEquivalent: "")
+        let hint = NSMenuItem(title: L("Drag a file, then tap ⇧ ⌘ or ⌃"), action: nil, keyEquivalent: "")
         hint.isEnabled = false
         m.addItem(hint)
         m.addItem(.separator())
-        m.addItem(withTitle: "All Features", action: #selector(showFeatures), keyEquivalent: "").target = self
-        m.addItem(withTitle: "What's New", action: #selector(showWhatsNew), keyEquivalent: "").target = self
-        m.addItem(withTitle: "Help", action: #selector(showHelp), keyEquivalent: "?").target = self
-        m.addItem(withTitle: "Check for Updates…", action: #selector(checkUpdates), keyEquivalent: "").target = self
-        m.addItem(withTitle: "Choose File to Process…", action: #selector(chooseFile), keyEquivalent: "o").target = self
+        m.addItem(withTitle: L("All Features"), action: #selector(showFeatures), keyEquivalent: "").target = self
+        m.addItem(withTitle: L("What's New"), action: #selector(showWhatsNew), keyEquivalent: "").target = self
+        m.addItem(withTitle: L("Help"), action: #selector(showHelp), keyEquivalent: "?").target = self
+        m.addItem(withTitle: L("Check for Updates…"), action: #selector(checkUpdates), keyEquivalent: "").target = self
+        m.addItem(withTitle: L("Choose File to Process…"), action: #selector(chooseFile), keyEquivalent: "o").target = self
         m.addItem(.separator())
-        m.addItem(withTitle: "Settings…", action: #selector(openSettings), keyEquivalent: ",").target = self
-        m.addItem(withTitle: "Quit Mandarine", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
+        m.addItem(withTitle: L("Settings…"), action: #selector(openSettings), keyEquivalent: ",").target = self
+        m.addItem(withTitle: L("Quit Mandarine"), action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         return m
     }
 
@@ -80,7 +84,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     @objc private func openSettings() {
         if settingsWindow == nil {
             let w = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 720, height: 540), styleMask: [.titled, .closable], backing: .buffered, defer: false)
-            w.title = "Mandarine Settings"
+            w.title = L("Mandarine Settings")
             w.contentView = NSHostingView(rootView: SettingsView())
             w.isReleasedWhenClosed = false
             w.center()
@@ -606,6 +610,10 @@ extension AppDelegate {
             }
             return
         }
+        if a.first == "--l10ntest" {      // test : traductions (MANDARINE_LANG=fr)
+            for t in ["Compress", "Saved 3 items", "photo.png\nin Downloads", "Unknown text"] { print(t.replacingOccurrences(of: "\n", with: "⏎"), "→", L(t).replacingOccurrences(of: "\n", with: "⏎")) }
+            exit(0)
+        }
         if a.first == "--etatest" {      // test : estimation du temps restant sur des relevés fictifs
             func eta(_ label: String, _ s: [(t: Double, p: Double)]) { print(label, "→", JobQueue.etaText(samples: s).isEmpty ? "(rien)" : JobQueue.etaText(samples: s)) }
             eta("début (3 s, 5 %)", [(0, 0), (3, 0.05)])
@@ -868,7 +876,7 @@ extension AppDelegate {
         } else if target[0] == "toaststyles" {
             view = AnyView(ToastLab(page: Int(target.count > 1 ? target[1] : "1") ?? 1))
         } else if target[0] == "whatsnew" {
-            view = AnyView(WhatsNewView(releases: WhatsNew.releases, highlighted: ["1.5.1", "1.5.0"], close: {}))
+            view = AnyView(WhatsNewView(releases: WhatsNew.releases, highlighted: ["1.6.0", "1.5.1"], close: {}))
         } else if target[0] == "features" {
             view = AnyView(FeaturesView(startTab: target.count > 1 ? target[1] : "image", startQuery: target.count > 2 ? target[2] : "", close: {}))
         } else if target[0] == "help" {

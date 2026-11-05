@@ -31,8 +31,8 @@ final class ReleaseList: ObservableObject {
         do {
             var req = URLRequest(url: api); req.setValue("Mandarine", forHTTPHeaderField: "User-Agent"); req.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept"); req.timeoutInterval = 20
             let (data, resp) = try await URLSession.shared.data(for: req)
-            if let h = resp as? HTTPURLResponse, h.statusCode != 200 { throw MandarineError(h.statusCode == 403 ? "GitHub is limiting requests for now. Try again in a few minutes." : "GitHub answered with an error (\(h.statusCode)).") }
-            guard let list = try JSONSerialization.jsonObject(with: data) as? [[String: Any]] else { throw MandarineError("Unexpected answer from GitHub.") }
+            if let h = resp as? HTTPURLResponse, h.statusCode != 200 { throw MandarineError(h.statusCode == 403 ? L("GitHub is limiting requests for now. Try again in a few minutes.") : L("GitHub answered with an error (\(h.statusCode)).")) }
+            guard let list = try JSONSerialization.jsonObject(with: data) as? [[String: Any]] else { throw MandarineError(L("Unexpected answer from GitHub.")) }
             let iso = ISO8601DateFormatter()
             releases = list.compactMap { j in
                 guard (j["draft"] as? Bool) != true, let tag = j["tag_name"] as? String, let page = (j["html_url"] as? String).flatMap(URL.init(string:)) else { return nil }
@@ -59,13 +59,13 @@ final class ReleaseList: ObservableObject {
         defer { progress[r.tag] = nil }
         do {
             let (tmp, resp) = try await Downloader.fetch(dmg.url) { p in DispatchQueue.main.async { ReleaseList.shared.progress[r.tag] = p } }
-            if let h = resp as? HTTPURLResponse, h.statusCode != 200 { try? FileManager.default.removeItem(at: tmp); throw MandarineError("The download failed (\(h.statusCode)).") }
+            if let h = resp as? HTTPURLResponse, h.statusCode != 200 { try? FileManager.default.removeItem(at: tmp); throw MandarineError(L("The download failed (\(h.statusCode)).")) }
             let dest = OutputNaming.unique(folder: FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask)[0], base: "Mandarine-\(r.version)", ext: "dmg")
             try FileManager.default.moveItem(at: tmp, to: dest)
-            Toast.shared.done("Downloaded", subtitle: "\(dest.lastPathComponent)\nin Downloads", reveal: dest)
+            Toast.shared.done(L("Downloaded"), subtitle: L("\(dest.lastPathComponent)\nin Downloads"), reveal: dest)
             NSWorkspace.shared.activateFileViewerSelecting([dest])
         } catch {
-            Toast.shared.fail("Download failed", subtitle: error.localizedDescription)
+            Toast.shared.fail(L("Download failed"), subtitle: error.localizedDescription)
         }
     }
 }
@@ -79,42 +79,42 @@ struct DownloadTab: View {
 
     var body: some View {
         Group {
-            Section("Mandarine on GitHub") {
+            Section(L("Mandarine on GitHub")) {
                 HStack(spacing: 12) {
                     Image(systemName: "chevron.left.forwardslash.chevron.right").font(.system(size: 15, weight: .semibold)).foregroundStyle(.white)
                         .frame(width: 36, height: 36).background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(Color.black.opacity(0.82)))
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(list.repo ?? "No repository set").font(.system(size: 13, weight: .semibold))
-                        Text("Open source · every version is published here").font(.caption).foregroundStyle(.secondary)
+                        Text(list.repo ?? L("No repository set")).font(.system(size: 13, weight: .semibold))
+                        Text(L("Open source · every version is published here")).font(.caption).foregroundStyle(.secondary)
                     }
                     Spacer()
-                    if let u = list.repoURL { Link("Repository", destination: u) }
-                    if let u = list.releasesURL { Link("All releases", destination: u) }
+                    if let u = list.repoURL { Link(L("Repository"), destination: u) }
+                    if let u = list.releasesURL { Link(L("All releases"), destination: u) }
                 }
             }
             switch list.state {
             case _ where list.repo == nil:
-                Section("Versions") { Text("This build has no GitHub repository set (GITHUB_REPO in Scripts/update.conf).").font(.caption).foregroundStyle(.secondary) }
+                Section(L("Versions")) { Text(L("This build has no GitHub repository set (GITHUB_REPO in Scripts/update.conf).")).font(.caption).foregroundStyle(.secondary) }
             case .idle, .loading where list.releases.isEmpty:
-                Section("Versions") { HStack { ProgressView().controlSize(.small); Text("Reading the releases…").foregroundStyle(.secondary) } }
+                Section(L("Versions")) { HStack { ProgressView().controlSize(.small); Text(L("Reading the releases…")).foregroundStyle(.secondary) } }
             case .failed(let m) where list.releases.isEmpty:
-                Section("Versions") {
-                    Text(m).font(.caption).foregroundStyle(.red).fixedSize(horizontal: false, vertical: true)
-                    Button("Try again") { Task { await list.load(force: true) } }
+                Section(L("Versions")) {
+                    Text(L(m)).font(.caption).foregroundStyle(.red).fixedSize(horizontal: false, vertical: true)
+                    Button(L("Try again")) { Task { await list.load(force: true) } }
                 }
             default:
-                Section("Downloads") { stats }
+                Section(L("Downloads")) { stats }
                 if let latest = list.releases.first(where: { !$0.prerelease }) ?? list.releases.first {
-                    Section("Latest version") { row(latest, latest: true) }
+                    Section(L("Latest version")) { row(latest, latest: true) }
                     let older = list.releases.filter { $0.id != latest.id }
-                    if !older.isEmpty { Section("Earlier versions") { ForEach(older) { row($0, latest: false) } } }
+                    if !older.isEmpty { Section(L("Earlier versions")) { ForEach(older) { row($0, latest: false) } } }
                 }
                 Section {
                     HStack {
-                        Text("The disk image (.dmg) goes to your Downloads folder. Installed copies keep themselves up to date from the Updates tab.")
+                        Text(L("The disk image (.dmg) goes to your Downloads folder. Installed copies keep themselves up to date from the Updates tab."))
                             .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                         Spacer()
-                        Button("Refresh") { Task { await list.load(force: true) } }
+                        Button(L("Refresh")) { Task { await list.load(force: true) } }
                     }
                 }
             }
@@ -133,10 +133,10 @@ struct DownloadTab: View {
             }
             if all.count > 1 {
                 VStack(alignment: .leading, spacing: 5) {
-                    Text("Per version").font(.caption).foregroundStyle(.secondary)
+                    Text(L("Per version")).font(.caption).foregroundStyle(.secondary)
                     ForEach(all.prefix(12)) { r in
                         HStack(spacing: 8) {
-                            Text(r.version).font(.system(size: 11).monospacedDigit()).frame(width: 44, alignment: .leading)
+                            Text(L(r.version)).font(.system(size: 11).monospacedDigit()).frame(width: 44, alignment: .leading)
                             GeometryReader { g in
                                 HStack(spacing: 0) {
                                     Rectangle().fill(Color.blue.opacity(0.75)).frame(width: g.size.width * CGFloat(r.dmgCount) / CGFloat(peak))
@@ -144,20 +144,20 @@ struct DownloadTab: View {
                                     Spacer(minLength: 0)
                                 }.clipShape(Capsule())
                             }.frame(height: 7)
-                            Text("\(r.total)").font(.system(size: 11).monospacedDigit()).foregroundStyle(.secondary).frame(width: 28, alignment: .trailing)
+                            Text(L("\(r.total)")).font(.system(size: 11).monospacedDigit()).foregroundStyle(.secondary).frame(width: 28, alignment: .trailing)
                         }
                     }
                 }
             }
-            Text("The .zip is what installed copies fetch when they update, so it also counts those updates.").font(.caption2).foregroundStyle(.secondary)
+            Text(L("The .zip is what installed copies fetch when they update, so it also counts those updates.")).font(.caption2).foregroundStyle(.secondary)
         }
         .padding(.vertical, 2)
     }
 
     private func tile(_ value: String, _ label: String, _ color: Color) -> some View {
         VStack(alignment: .leading, spacing: 2) {
-            Text(value).font(.system(size: 22, weight: .bold).monospacedDigit()).foregroundStyle(color)
-            Text(label).font(.caption).foregroundStyle(.secondary)
+            Text(L(value)).font(.system(size: 22, weight: .bold).monospacedDigit()).foregroundStyle(color)
+            Text(L(label)).font(.caption).foregroundStyle(.secondary)
         }
         .padding(10).frame(maxWidth: .infinity, alignment: .leading)
         .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(color.opacity(0.1)))
@@ -168,26 +168,26 @@ struct DownloadTab: View {
         return HStack(spacing: 10) {
             VStack(alignment: .leading, spacing: 3) {
                 HStack(spacing: 6) {
-                    Text("Mandarine \(r.version)").font(.system(size: 13, weight: latest ? .semibold : .regular))
-                    if latest { badge("Latest", Theme.orange) }
-                    if installed { badge("Installed", .green) }
-                    if r.prerelease { badge("Pre-release", .gray) }
+                    Text(L("Mandarine \(r.version)")).font(.system(size: 13, weight: latest ? .semibold : .regular))
+                    if latest { badge(L("Latest"), Theme.orange) }
+                    if installed { badge(L("Installed"), .green) }
+                    if r.prerelease { badge(L("Pre-release"), .gray) }
                 }
-                Text([r.date.map { Self.dateFormat.string(from: $0) }, "\(r.total) download\(r.total == 1 ? "" : "s")", r.dmg.map { ByteCountFormatter.string(fromByteCount: $0.size, countStyle: .file) }]
+                Text([r.date.map { Self.dateFormat.string(from: $0) }, L("\(r.total) download\(r.total == 1 ? "" : "s")"), r.dmg.map { ByteCountFormatter.string(fromByteCount: $0.size, countStyle: .file) }]
                         .compactMap { $0 }.joined(separator: " · ")).font(.caption).foregroundStyle(.secondary)
             }
             Spacer()
-            Link("Notes", destination: r.page).font(.caption)
+            Link(L("Notes"), destination: r.page).font(.caption)
             if let p = list.progress[r.tag] {
                 ProgressView(value: p).frame(width: 70)
             } else if r.dmg != nil {
-                Button(latest ? "Download" : "Get") { Task { await list.download(r) } }
+                Button(latest ? L("Download") : L("Get")) { Task { await list.download(r) } }
             }
         }
     }
 
     private func badge(_ text: String, _ color: Color) -> some View {
-        Text(text).font(.system(size: 10, weight: .semibold)).foregroundStyle(color)
+        Text(L(text)).font(.system(size: 10, weight: .semibold)).foregroundStyle(color)
             .padding(.horizontal, 6).padding(.vertical, 1.5).background(Capsule().fill(color.opacity(0.14)))
     }
 }

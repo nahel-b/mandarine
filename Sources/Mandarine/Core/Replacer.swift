@@ -11,13 +11,13 @@ struct Replacement {
 /// Remplacement des fichiers d'origine par les résultats d'un travail. Jamais de suppression : l'original va à la Corbeille.
 enum Replacer {
     static func replace(originals: [URL], outputs: [URL]) throws -> [Replacement] {
-        guard originals.count == outputs.count, !originals.isEmpty else { throw MandarineError("Nothing to replace here.") }
+        guard originals.count == outputs.count, !originals.isEmpty else { throw MandarineError(L("Nothing to replace here.")) }
         let fm = FileManager.default
         // tout est vérifié avant de toucher à quoi que ce soit
         for (o, r) in zip(originals, outputs) {
-            guard fm.fileExists(atPath: o.path) else { throw MandarineError("\(o.lastPathComponent) is no longer there.") }
-            guard fm.fileExists(atPath: r.path), r.fileSize > 0 || r.hasDirectoryPath else { throw MandarineError("The result for \(o.lastPathComponent) is missing.") }
-            guard o.standardizedFileURL != r.standardizedFileURL else { throw MandarineError("The result is the original itself.") }
+            guard fm.fileExists(atPath: o.path) else { throw MandarineError(L("\(o.lastPathComponent) is no longer there.")) }
+            guard fm.fileExists(atPath: r.path), r.fileSize > 0 || r.hasDirectoryPath else { throw MandarineError(L("The result for \(o.lastPathComponent) is missing.")) }
+            guard o.standardizedFileURL != r.standardizedFileURL else { throw MandarineError(L("The result is the original itself.")) }
         }
         var done: [Replacement] = []
         do {
@@ -44,7 +44,7 @@ enum Replacer {
         for r in list.reversed() {
             if r.final != r.output, fm.fileExists(atPath: r.final.path), !fm.fileExists(atPath: r.output.path) { try fm.moveItem(at: r.final, to: r.output) }
             if fm.fileExists(atPath: r.trashed.path), !fm.fileExists(atPath: r.original.path) { try fm.moveItem(at: r.trashed, to: r.original) }
-            else if !fm.fileExists(atPath: r.original.path) { throw MandarineError("Put \(r.original.lastPathComponent) back from the Trash (Finder → Put Back).") }
+            else if !fm.fileExists(atPath: r.original.path) { throw MandarineError(L("Put \(r.original.lastPathComponent) back from the Trash (Finder → Put Back).")) }
         }
     }
 }

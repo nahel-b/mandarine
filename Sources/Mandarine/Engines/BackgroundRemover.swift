@@ -12,16 +12,16 @@ enum BackgroundRemover {
 
     /// Détoure le sujet : image RGBA, fond transparent.
     static func cutout(_ cg: CGImage) throws -> CGImage {
-        guard #available(macOS 14.0, *) else { throw MandarineError("Remove Background nécessite macOS 14 ou plus récent.") }
+        guard #available(macOS 14.0, *) else { throw MandarineError(L("Remove Background nécessite macOS 14 ou plus récent.")) }
         let request = VNGenerateForegroundInstanceMaskRequest()
         let handler = VNImageRequestHandler(cgImage: cg, options: [:])
         try handler.perform([request])
         guard let obs = request.results?.first, !obs.allInstances.isEmpty else {
-            throw MandarineError("Aucun sujet détecté.")
+            throw MandarineError(L("Aucun sujet détecté."))
         }
         let buffer = try obs.generateMaskedImage(ofInstances: obs.allInstances, from: handler, croppedToInstancesExtent: false)
         let ci = CIImage(cvPixelBuffer: buffer)
-        guard let out = CIContext().createCGImage(ci, from: ci.extent) else { throw MandarineError("Rendu impossible.") }
+        guard let out = CIContext().createCGImage(ci, from: ci.extent) else { throw MandarineError(L("Rendu impossible.")) }
         return out
     }
 

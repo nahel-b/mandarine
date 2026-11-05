@@ -96,10 +96,10 @@ struct ReplaceButton: View {
             action()
             ReplaceMode.shared.clickBase = nil
         } label: {
-            if replacing { Label("Replace original", systemImage: "arrow.triangle.2.circlepath") } else { Text(title) }
+            if replacing { Label(L("Replace original"), systemImage: L("arrow.triangle.2.circlepath")) } else { Text(title) }
         }
         .buttonStyle(PillButtonStyle(prominent: replacing || prominent))
-        .help(replacing ? "The result replaces the original; the original goes to the Trash. Hold \(mode.symbol) to keep both instead." : "Hold \(mode.symbol) to replace the original instead of keeping both.")
+        .help(replacing ? L("The result replaces the original; the original goes to the Trash. Hold \(mode.symbol) to keep both instead.") : L("Hold \(mode.symbol) to replace the original instead of keeping both."))
         if isDefault { button.keyboardShortcut(.defaultAction) } else { button }
     }
 }

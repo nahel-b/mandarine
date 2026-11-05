@@ -192,7 +192,7 @@ struct PillPicker<T: Hashable>: View {
     private var classic: some View {
         HStack(spacing: 0) {
             ForEach(Array(options.enumerated()), id: \.offset) { _, o in
-                Text(o.1)
+                Text(L(o.1))
                     .font(.system(size: 13))
                     .padding(.horizontal, 14).padding(.vertical, 5)
                     .background(selection == o.0 ? Color.black.opacity(0.14) : Color.clear)

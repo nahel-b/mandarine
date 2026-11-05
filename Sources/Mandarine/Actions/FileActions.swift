@@ -7,7 +7,7 @@ enum FileActions {
         case .airDrop:
             NSApp.activate(ignoringOtherApps: true)
             if let s = NSSharingService(named: .sendViaAirDrop), s.canPerform(withItems: urls) { s.perform(withItems: urls) }
-            else { Toast.shared.fail("AirDrop unavailable", subtitle: "Turn on Wi‑Fi and Bluetooth to use AirDrop.") }
+            else { Toast.shared.fail(L("AirDrop unavailable"), subtitle: L("Turn on Wi‑Fi and Bluetooth to use AirDrop.")) }
         case .float:
             FloatShelf.shared.add(urls)
         case .searchWeb:
@@ -19,21 +19,21 @@ enum FileActions {
             pb.clearContents()
             if urls.count == 1, SnippetStore.isSnippet(urls[0]) {          // texte glissé : on copie le texte, pas un fichier
                 pb.setString(SnippetStore.text(of: urls[0]), forType: .string)
-                Toast.shared.done("Text copied", subtitle: "\(SnippetStore.wordCount(SnippetStore.text(of: urls[0]))) words")
+                Toast.shared.done(L("Text copied"), subtitle: L("\(SnippetStore.wordCount(SnippetStore.text(of: urls[0]))) words"))
                 return
             }
             pb.writeObjects(urls as [NSURL])
             if urls.allSatisfy({ !$0.isFileURL }) {
-                Toast.shared.done(urls.count == 1 ? "Link copied" : "\(urls.count) links copied", subtitle: urls[0].absoluteString)
+                Toast.shared.done(urls.count == 1 ? L("Link copied") : L("\(urls.count) links copied"), subtitle: urls[0].absoluteString)
             } else {
-                Toast.shared.done(urls.count == 1 ? "Copied" : "Copied \(urls.count) files", subtitle: (urls.count == 1 ? urls[0].lastPathComponent + "\n" : "") + "Ready to paste in Finder", files: urls)
+                Toast.shared.done(urls.count == 1 ? L("Copied") : L("Copied \(urls.count) files"), subtitle: (urls.count == 1 ? urls[0].lastPathComponent + "\n" : "") + L("Ready to paste in Finder"), files: urls)
             }
         case .copyPath:
             let pb = NSPasteboard.general
             pb.clearContents()
             let isLink = urls.allSatisfy { !$0.isFileURL }
             pb.setString(urls.map { isLink ? $0.absoluteString : $0.path }.joined(separator: "\n"), forType: .string)
-            Toast.shared.done(isLink ? (urls.count == 1 ? "Link copied" : "\(urls.count) links copied") : (urls.count == 1 ? "Path copied" : "\(urls.count) paths copied"),
+            Toast.shared.done(isLink ? (urls.count == 1 ? L("Link copied") : L("\(urls.count) links copied")) : (urls.count == 1 ? L("Path copied") : L("\(urls.count) paths copied")),
                               subtitle: isLink ? urls[0].absoluteString : urls[0].path)
         case .move:
             move(urls)
@@ -42,7 +42,7 @@ enum FileActions {
         case .switchView:
             let s = AppSettings.shared
             s.appearance = s.appearance == .wii ? .wheel : .wii
-            Toast.shared.done(s.appearance == .wii ? "Wii view" : "Wheel view", subtitle: "Menu style changed — you can switch back from the ⌃ menu or Settings")
+            Toast.shared.done(s.appearance == .wii ? L("Wii view") : L("Wheel view"), subtitle: L("Menu style changed — you can switch back from the ⌃ menu or Settings"))
         }
     }
 
@@ -59,9 +59,9 @@ enum FileActions {
         for u in urls {
             let dest = OutputNaming.unique(folder: dir, base: u.deletingPathExtension().lastPathComponent, ext: u.pathExtension)
             do { try FileManager.default.moveItem(at: u, to: dest); moved.append(dest) }
-            catch { Toast.shared.fail("Couldn't move file", subtitle: "\(u.lastPathComponent)\n\(error.localizedDescription)"); return }
+            catch { Toast.shared.fail(L("Couldn't move file"), subtitle: L("\(u.lastPathComponent)\n\(error.localizedDescription)")); return }
         }
-        if let f = moved.first { Toast.shared.done(moved.count == 1 ? "Moved" : "Moved \(moved.count) items", subtitle: (moved.count == 1 ? f.lastPathComponent + "\n" : "") + "to " + dir.lastPathComponent, reveal: moved) }
+        if let f = moved.first { Toast.shared.done(moved.count == 1 ? L("Moved") : L("Moved \(moved.count) items"), subtitle: (moved.count == 1 ? f.lastPathComponent + "\n" : "") + L("to ") + dir.lastPathComponent, reveal: moved) }
     }
 
     private static func openTerminal(_ urls: [URL]) {
@@ -74,7 +74,7 @@ enum FileActions {
         }
         let bundle = AppSettings.shared.terminalApp == .iterm ? "com.googlecode.iterm2" : "com.apple.Terminal"
         guard let app = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundle) else {
-            Toast.shared.fail("\(AppSettings.shared.terminalApp.title) not found", subtitle: "Choose another terminal in Settings.")
+            Toast.shared.fail(L("\(AppSettings.shared.terminalApp.title) not found"), subtitle: L("Choose another terminal in Settings."))
             return
         }
         NSWorkspace.shared.open(dirs, withApplicationAt: app, configuration: NSWorkspace.OpenConfiguration())
@@ -96,11 +96,11 @@ private struct FloatShelfView: View {
     var body: some View {
         VStack(spacing: 8) {
             HStack {
-                Text("Float").font(.system(size: 12, weight: .semibold)).foregroundStyle(.primary)
+                Text(L("Float")).font(.system(size: 12, weight: .semibold)).foregroundStyle(.primary)
                 Spacer()
-                Button { onEdge(.left) } label: { Image(systemName: "sidebar.left") }.buttonStyle(.plain)
-                Button { onEdge(.right) } label: { Image(systemName: "sidebar.right") }.buttonStyle(.plain)
-                Button { model.files.removeAll() } label: { Image(systemName: "trash") }.buttonStyle(.plain)
+                Button { onEdge(.left) } label: { Image(systemName: L("sidebar.left")) }.buttonStyle(.plain)
+                Button { onEdge(.right) } label: { Image(systemName: L("sidebar.right")) }.buttonStyle(.plain)
+                Button { model.files.removeAll() } label: { Image(systemName: L("trash")) }.buttonStyle(.plain)
                 Button(action: onClose) { Image(systemName: "xmark.circle.fill") }.buttonStyle(.plain)
             }
             .foregroundStyle(Theme.muted)
@@ -116,7 +116,7 @@ private struct FloatShelfView: View {
                             }
                             Text(u.isFileURL ? u.lastPathComponent : (u.host ?? "") + u.path).font(.system(size: 12)).lineLimit(1).truncationMode(.middle)
                             Spacer()
-                            Button { model.files.removeAll { $0 == u } } label: { Image(systemName: "xmark") }
+                            Button { model.files.removeAll { $0 == u } } label: { Image(systemName: L("xmark")) }
                                 .buttonStyle(.plain).foregroundStyle(Theme.muted)
                         }
                         .padding(6)
@@ -125,7 +125,7 @@ private struct FloatShelfView: View {
                     }
                 }
             }
-            if model.files.isEmpty { Text("Drop files here").font(.system(size: 12)).foregroundStyle(Theme.muted).frame(maxHeight: .infinity) }
+            if model.files.isEmpty { Text(L("Drop files here")).font(.system(size: 12)).foregroundStyle(Theme.muted).frame(maxHeight: .infinity) }
         }
         .padding(12)
         .frame(width: 240, height: 300)
@@ -185,11 +185,11 @@ enum VSCode {
     }
     static func open(_ folders: [URL]) {
         guard let app = url else {
-            Toast.shared.fail("VS Code not found", subtitle: "Install Visual Studio Code to use this action.")
+            Toast.shared.fail(L("VS Code not found"), subtitle: L("Install Visual Studio Code to use this action."))
             return
         }
         NSWorkspace.shared.open(folders, withApplicationAt: app, configuration: NSWorkspace.OpenConfiguration()) { _, err in
-            if let err = err { DispatchQueue.main.async { Toast.shared.fail("Couldn't open VS Code", subtitle: err.localizedDescription) } }
+            if let err = err { DispatchQueue.main.async { Toast.shared.fail(L("Couldn't open VS Code"), subtitle: err.localizedDescription) } }
         }
     }
 }

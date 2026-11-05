@@ -79,7 +79,7 @@ private struct ToastPill: View {
     var body: some View {
         HStack(spacing: 4) {
             if let s = symbol { Image(systemName: s).font(.system(size: 10.5, weight: .semibold)) }
-            Text(text).font(.system(size: 11.5, weight: .semibold)).lineLimit(1)
+            Text(L(text)).font(.system(size: 11.5, weight: .semibold)).lineLimit(1)
         }
         .foregroundStyle(ink).padding(.horizontal, 11).frame(height: height)
         .background(Capsule().fill(fill)).shadow(color: fill.opacity(0.28), radius: 4, y: 2)
@@ -128,10 +128,10 @@ private struct ToastRow: View {
 
     private var failed: Bool { item.phase == .failed }
     private var finished: Bool { item.phase == .done || item.phase == .failed }
-    private var lines: [String] { item.subtitle.split(separator: "\n", omittingEmptySubsequences: true).map(String.init) }
+    private var lines: [String] { item.subtitle.split(separator: "\n", omittingEmptySubsequences: true).map { L(String($0)) } }
     /// Message libre (erreur, astuce…) : son texte s'affiche en entier ; sinon ce sont des lignes « fichier / dossier / remarque ».
     private var isMessage: Bool { failed || item.sticky || lines.isEmpty }
-    private var shortAction: String { item.action.map { $0.title == "Replace original" ? "Replace" : $0.title } ?? "" }
+    private var shortAction: String { item.action.map { $0.title == L("Replace original") ? L("Replace") : $0.title } ?? "" }
 
     private func copyError() { NSPasteboard.general.clearContents(); NSPasteboard.general.setString(item.detail, forType: .string) }
     private func show() { NSWorkspace.shared.activateFileViewerSelecting(item.reveal) }
@@ -163,7 +163,7 @@ private struct ToastRow: View {
             HStack(spacing: 9) {
                 statusIcon
                 VStack(alignment: .leading, spacing: 0) {
-                    Text(item.title).font(.system(size: 12.5, weight: .bold)).foregroundStyle(ToastInk.text).lineLimit(1)
+                    Text(L(item.title)).font(.system(size: 12.5, weight: .bold)).foregroundStyle(ToastInk.text).lineLimit(1)
                     capsuleCaption
                 }
                 Spacer(minLength: 0)
@@ -171,9 +171,9 @@ private struct ToastRow: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .overlay { FileDragHandle(urls: dragURLs, text: dragText, onBegin: dragBegan, onEnd: dragEnded) }
             HStack(spacing: 6) {
-                if let cancel = item.cancel { Button(action: cancel) { ToastRound(symbol: "xmark", size: 22, fill: Color(white: 0.9)) }.buttonStyle(.plain).help("Stop this job") }
-                if failed && !item.detail.isEmpty { Button(action: copyError) { ToastPill(text: "Copy", fill: Color(white: 0.4)) }.buttonStyle(.plain).help("Copy the full error message") }
-                if !item.reveal.isEmpty { Button(action: show) { ToastRound(symbol: "eye", size: 26) }.buttonStyle(.plain).help("Show in Finder") }
+                if let cancel = item.cancel { Button(action: cancel) { ToastRound(symbol: "xmark", size: 22, fill: Color(white: 0.9)) }.buttonStyle(.plain).help(L("Stop this job")) }
+                if failed && !item.detail.isEmpty { Button(action: copyError) { ToastPill(text: L("Copy"), fill: Color(white: 0.4)) }.buttonStyle(.plain).help(L("Copy the full error message")) }
+                if !item.reveal.isEmpty { Button(action: show) { ToastRound(symbol: "eye", size: 26) }.buttonStyle(.plain).help(L("Show in Finder")) }
                 if let a = item.action { Button(action: a.run) { ToastPill(text: shortAction) }.buttonStyle(.plain).help(a.title) }
             }
         }
@@ -183,13 +183,13 @@ private struct ToastRow: View {
             RoundedRectangle(cornerRadius: r, style: .continuous).fill(Color.white)
             RoundedRectangle(cornerRadius: r - 4, style: .continuous).fill(Color(white: 0.955)).padding(4)
         })
-        .overlay(alignment: .topTrailing) { if finished { Button(action: dismiss) { ToastRound(symbol: "xmark", size: 19, fill: Color(white: 0.6), ink: .white, rim: true) }.buttonStyle(.plain).help("Dismiss").offset(x: 3, y: -6) } }
+        .overlay(alignment: .topTrailing) { if finished { Button(action: dismiss) { ToastRound(symbol: "xmark", size: 19, fill: Color(white: 0.6), ink: .white, rim: true) }.buttonStyle(.plain).help(L("Dismiss")).offset(x: 3, y: -6) } }
         .overlay(RoundedRectangle(cornerRadius: r, style: .continuous).strokeBorder(Theme.orange.opacity(0.8), style: StrokeStyle(lineWidth: 1.5, dash: [5, 4])).opacity(item.dragging ? 1 : 0))
     }
 
     @ViewBuilder private var capsuleCaption: some View {
         if isMessage && !lines.isEmpty {
-            Text(item.subtitle).font(.system(size: 10.5)).foregroundStyle(ToastInk.muted).lineLimit(failed || item.sticky ? 5 : 2).fixedSize(horizontal: false, vertical: true)
+            Text(L(item.subtitle)).font(.system(size: 10.5)).foregroundStyle(ToastInk.muted).lineLimit(failed || item.sticky ? 5 : 2).fixedSize(horizontal: false, vertical: true)
         } else {
             let first = Array(lines.prefix(2)).joined(separator: " · ")
             let eta = item.phase == .running ? item.eta : ""
@@ -239,9 +239,9 @@ private struct ToastRow: View {
                     }
                 }
                 VStack(alignment: .leading, spacing: 1) {
-                    if !caption.isEmpty { Text(caption).font(.system(size: 10, weight: .medium)).foregroundStyle(ToastInk.muted).lineLimit(1) }
-                    Text(headline).font(.system(size: 14.5, weight: .bold)).foregroundStyle(ToastInk.text).lineLimit(1).truncationMode(.middle)
-                    if isMessage && !lines.isEmpty { Text(item.subtitle).font(.system(size: 10.5)).foregroundStyle(ToastInk.muted).lineLimit(failed || item.sticky ? 5 : 2).fixedSize(horizontal: false, vertical: true).padding(.top, 1) }
+                    if !caption.isEmpty { Text(L(caption)).font(.system(size: 10, weight: .medium)).foregroundStyle(ToastInk.muted).lineLimit(1) }
+                    Text(L(headline)).font(.system(size: 14.5, weight: .bold)).foregroundStyle(ToastInk.text).lineLimit(1).truncationMode(.middle)
+                    if isMessage && !lines.isEmpty { Text(L(item.subtitle)).font(.system(size: 10.5)).foregroundStyle(ToastInk.muted).lineLimit(failed || item.sticky ? 5 : 2).fixedSize(horizontal: false, vertical: true).padding(.top, 1) }
                     else if !extra.isEmpty || !eta.isEmpty {
                         (Text(extra).foregroundColor(ToastInk.muted) + Text((extra.isEmpty || eta.isEmpty ? "" : " · ") + eta).foregroundColor(ToastInk.eta).fontWeight(.medium))
                             .font(.system(size: 10.5)).lineLimit(1).truncationMode(.middle)
@@ -255,13 +255,13 @@ private struct ToastRow: View {
                     if let p = item.progress, p >= 0 {
                         ZStack(alignment: .leading) { Capsule().fill(Color.black.opacity(0.08)); GeometryReader { g in Capsule().fill(ToastInk.sage).frame(width: g.size.width * p) } }.frame(height: 5)
                     } else { ProgressView().progressViewStyle(.linear).tint(ToastInk.sage) }
-                    if let cancel = item.cancel { Button(action: cancel) { ToastPill(text: "Cancel", fill: Color(white: 0.9), ink: ToastInk.text) }.buttonStyle(.plain).help("Stop this job") }
+                    if let cancel = item.cancel { Button(action: cancel) { ToastPill(text: L("Cancel"), fill: Color(white: 0.9), ink: ToastInk.text) }.buttonStyle(.plain).help(L("Stop this job")) }
                 }
             } else if !item.reveal.isEmpty || item.action != nil || (failed && !item.detail.isEmpty) {
                 HStack(spacing: 6) {
-                    if !item.reveal.isEmpty { Button(action: show) { ToastPill(text: "Show", symbol: "eye", fill: .white, ink: ToastInk.muted) }.buttonStyle(.plain) }
+                    if !item.reveal.isEmpty { Button(action: show) { ToastPill(text: L("Show"), symbol: "eye", fill: .white, ink: ToastInk.muted) }.buttonStyle(.plain) }
                     Spacer(minLength: 4)
-                    if failed && !item.detail.isEmpty { Button(action: copyError) { ToastPill(text: "Copy error", symbol: "doc.on.doc", fill: Color(white: 0.4)) }.buttonStyle(.plain) }
+                    if failed && !item.detail.isEmpty { Button(action: copyError) { ToastPill(text: L("Copy error"), symbol: "doc.on.doc", fill: Color(white: 0.4)) }.buttonStyle(.plain) }
                     if let a = item.action { Button(action: a.run) { ToastPill(text: a.title, symbol: a.title.hasPrefix("Replace") ? "arrow.triangle.2.circlepath" : nil) }.buttonStyle(.plain) }
                 }
             }
@@ -272,7 +272,7 @@ private struct ToastRow: View {
             RoundedRectangle(cornerRadius: 22, style: .continuous).fill(Color.white)
             RoundedRectangle(cornerRadius: 17, style: .continuous).fill(Color(white: 0.955)).padding(5)
         })
-        .overlay(alignment: .topTrailing) { if finished { Button(action: dismiss) { ToastRound(symbol: "xmark", size: 21, fill: Color(white: 0.6), ink: .white, rim: true) }.buttonStyle(.plain).help("Dismiss").offset(x: 4, y: -7) } }
+        .overlay(alignment: .topTrailing) { if finished { Button(action: dismiss) { ToastRound(symbol: "xmark", size: 21, fill: Color(white: 0.6), ink: .white, rim: true) }.buttonStyle(.plain).help(L("Dismiss")).offset(x: 4, y: -7) } }
         .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous).strokeBorder(Theme.orange.opacity(0.8), style: StrokeStyle(lineWidth: 1.5, dash: [5, 4])).opacity(item.dragging ? 1 : 0))
     }
 }

@@ -12,7 +12,7 @@ struct FileDragHandle: NSViewRepresentable {
     func makeNSView(context: Context) -> FileDragView { FileDragView() }
     func updateNSView(_ v: FileDragView, context: Context) {
         v.urls = urls; v.text = text; v.onBegin = onBegin; v.onEnd = onEnd
-        v.toolTip = urls.isEmpty ? "Drag this message anywhere" : (urls.count == 1 ? "Drag this file anywhere" : "Drag these \(urls.count) files anywhere")
+        v.toolTip = urls.isEmpty ? L("Drag this message anywhere") : (urls.count == 1 ? L("Drag this file anywhere") : L("Drag these \(urls.count) files anywhere"))
     }
 }
 

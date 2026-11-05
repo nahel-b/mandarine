@@ -7,7 +7,7 @@ enum AnnotationKind: CaseIterable {
         switch self {
         case .arrow: return "arrow.up.left"
         case .pen: return "pencil.tip"
-        case .text: return "textformat"
+        case .text: return L("textformat")
         case .rect: return "rectangle"
         case .ellipse: return "circle"
         case .highlighter: return "highlighter"
@@ -20,7 +20,7 @@ enum AnnotationKind: CaseIterable {
         switch self {
         case .arrow: return "Drag from the tail toward the arrowhead. Drag an annotation to move it."
         case .pen: return "Draw freely on the photo."
-        case .text: return "Click to place text, then type below."
+        case .text: return L("Click to place text, then type below.")
         case .rect: return "Drag to draw a rectangle."
         case .ellipse: return "Drag to draw an ellipse."
         case .highlighter: return "Draw to highlight."
@@ -70,14 +70,14 @@ enum AnnotationRenderer {
                 let p = a.kind == .rect ? Path(roundedRect: r, cornerRadius: 3 * unit) : Path(ellipseIn: r)
                 ctx.stroke(p, with: .color(a.color), style: StrokeStyle(lineWidth: lw))
             case .text:
-                let t = Text(a.text.isEmpty ? "Text" : a.text).font(.system(size: 22 * unit, weight: .bold)).foregroundColor(a.color)
+                let t = Text(a.text.isEmpty ? L("Text") : a.text).font(.system(size: 22 * unit, weight: .bold)).foregroundColor(a.color)
                 ctx.draw(ctx.resolve(t), at: P(f), anchor: .topLeading)
             case .number:
                 let d = 30 * unit
                 let c = Path(ellipseIn: CGRect(x: P(f).x - d / 2, y: P(f).y - d / 2, width: d, height: d))
                 ctx.fill(c, with: .color(a.color))
                 ctx.stroke(c, with: .color(.white), style: StrokeStyle(lineWidth: 2 * unit))
-                ctx.draw(ctx.resolve(Text("\(a.number)").font(.system(size: 16 * unit, weight: .bold)).foregroundColor(.white)), at: P(f), anchor: .center)
+                ctx.draw(ctx.resolve(Text(L("\(a.number)")).font(.system(size: 16 * unit, weight: .bold)).foregroundColor(.white)), at: P(f), anchor: .center)
             case .magnifier:
                 let r = rect(f, l, size)
                 let d = max(r.width, r.height)
@@ -128,7 +128,7 @@ struct AnnotateTool: View {
     }
 
     var body: some View {
-        ToolShell(title: "Annotate Photo", close: close) {
+        ToolShell(title: L("Annotate Photo"), close: close) {
             VStack(spacing: 12) {
                 canvas.frame(width: 420, height: 420)
                 HStack(spacing: 4) {
@@ -143,17 +143,17 @@ struct AnnotateTool: View {
                 HStack {
                     ColorPicker("", selection: $color).labelsHidden()
                     if let i = anns.firstIndex(where: { $0.id == selected }), anns[i].kind == .text {
-                        TextField("Text", text: $anns[i].text).textFieldStyle(.roundedBorder)
+                        TextField(L("Text"), text: $anns[i].text).textFieldStyle(.roundedBorder)
                     }
                     Spacer()
                     smallButton("arrow.uturn.backward", enabled: !anns.isEmpty) { _ = anns.popLast() }
                     smallButton("trash", enabled: selected != nil) { anns.removeAll { $0.id == selected }; selected = nil }
                 }
-                Text(tool.hint).font(.system(size: 11)).foregroundStyle(Theme.muted).frame(maxWidth: .infinity, alignment: .leading)
+                Text(L(tool.hint)).font(.system(size: 11)).foregroundStyle(Theme.muted).frame(maxWidth: .infinity, alignment: .leading)
             }.frame(width: 420)
         } footer: {
-            Button("Reset") { anns = []; nextNumber = 1; selected = nil }.buttonStyle(PillButtonStyle())
-            ReplaceButton("Save Annotated Copy") { save() }
+            Button(L("Reset")) { anns = []; nextNumber = 1; selected = nil }.buttonStyle(PillButtonStyle())
+            ReplaceButton(L("Save Annotated Copy")) { save() }
         }
     }
 
@@ -229,7 +229,7 @@ struct AnnotateTool: View {
     @MainActor private func save() {
         let list = anns, file = urls[0]
         close()
-        Dispatcher.job("Saving annotated copy…", light: true, replaces: [file]) { _ in
+        Dispatcher.job(L("Saving annotated copy…"), light: true, replaces: [file]) { _ in
             try await MainActor.run {
                 let (cg, props) = try ImageEngine.load(file)
                 let size = CGSize(width: cg.width, height: cg.height)
@@ -240,7 +240,7 @@ struct AnnotateTool: View {
                         .frame(width: size.width, height: size.height)
                 }.frame(width: size.width, height: size.height)
                 let r = ImageRenderer(content: view); r.scale = 1
-                guard let out = r.cgImage else { throw MandarineError("Rendu impossible.") }
+                guard let out = r.cgImage else { throw MandarineError(L("Rendu impossible.")) }
                 let dest = OutputNaming.sibling(of: file, suffix: " annotated")
                 try ImageEngine.write(out, properties: props, to: dest, ext: file.pathExtension, quality: 0.95)
                 return [dest]

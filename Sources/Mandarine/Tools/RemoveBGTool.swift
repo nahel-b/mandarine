@@ -37,15 +37,15 @@ struct RemoveBGTool: View {
     @State private var hoverPoint: CGPoint?
 
     var body: some View {
-        ToolShell(title: "Remove Background", close: close) {
+        ToolShell(title: L("Remove Background"), close: close) {
             VStack(alignment: .leading, spacing: 11) {
                 ZStack {
                     Theme.previewBG
                     Checkerboard()
                     if let p = preview { Image(nsImage: p).resizable().scaledToFit().padding(8) }
-                    if busy { VStack(spacing: 6) { ProgressView().controlSize(.small); Text(status).font(.system(size: 11)).foregroundStyle(.white.opacity(0.8)) }
+                    if busy { VStack(spacing: 6) { ProgressView().controlSize(.small); Text(L(status)).font(.system(size: 11)).foregroundStyle(.white.opacity(0.8)) }
                         .padding(10).background(RoundedRectangle(cornerRadius: 10).fill(.black.opacity(0.45))) }
-                    if failed { Text(status).font(.system(size: 12)).foregroundStyle(.white).padding() }
+                    if failed { Text(L(status)).font(.system(size: 12)).foregroundStyle(.white).padding() }
                     if touch != .off { strokeOverlay }
                 }
                 .frame(width: 380, height: 270).clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
@@ -57,23 +57,23 @@ struct RemoveBGTool: View {
                 .onContinuousHover { phase in if case .active(let p) = phase { hoverPoint = p } else { hoverPoint = nil } }
 
                 if urls.count == 1 {
-                    row("Touch up") { PillPicker(options: [(Touch.off, "Off"), (.erase, "Eraser"), (.brush, "Brush")], selection: $touch) }
+                    row(L("Touch up")) { PillPicker(options: [(Touch.off, "Off"), (.erase, "Eraser"), (.brush, "Brush")], selection: $touch) }
                     if touch != .off {
-                        slider("Size", $brushSize, 4...50, "%.0f")
+                        slider(L("Size"), $brushSize, 4...50, "%.0f")
                         HStack(spacing: 8) {
-                            Text(touch == .erase ? "Paint over what should become transparent." : "Paint over what should come back.").sectionLabel()
+                            Text(touch == .erase ? L("Paint over what should become transparent.") : L("Paint over what should come back.")).sectionLabel()
                             Spacer()
-                            Button("Undo") { if !edits.isEmpty { edits.removeLast() } }.buttonStyle(PillButtonStyle()).disabled(edits.isEmpty)
-                            Button("Clear") { edits = [] }.buttonStyle(PillButtonStyle()).disabled(edits.isEmpty)
+                            Button(L("Undo")) { if !edits.isEmpty { edits.removeLast() } }.buttonStyle(PillButtonStyle()).disabled(edits.isEmpty)
+                            Button(L("Clear")) { edits = [] }.buttonStyle(PillButtonStyle()).disabled(edits.isEmpty)
                         }
                     }
                 }
 
                 if ids.count > 1 && urls.count == 1 {
                     HStack(spacing: 6) {
-                        Text("Subjects").sectionLabel()
+                        Text(L("Subjects")).sectionLabel()
                         ForEach(ids, id: \.self) { id in
-                            Text("\(id)").font(.system(size: 12, weight: .semibold)).frame(width: 28, height: 24)
+                            Text(L("\(id)")).font(.system(size: 12, weight: .semibold)).frame(width: 28, height: 24)
                                 .background(RoundedRectangle(cornerRadius: 7).fill(chosen.contains(id) ? Theme.orange : Color.black.opacity(0.08)))
                                 .foregroundStyle(chosen.contains(id) ? .white : Theme.text)
                                 .wiiHoverGrow().onTapGesture { toggle(id) }
@@ -81,24 +81,24 @@ struct RemoveBGTool: View {
                         Spacer()
                     }
                 }
-                row("Background") { PillPicker(options: [(BGFill.transparent, "Transparent"), (.color, "Color"), (.blur, "Blur")], selection: $o.fill) }
-                if o.fill == .color { row("Color") { ColorPicker("", selection: $fillColor).labelsHidden() } }
-                if o.fill == .blur { slider("Blur", $o.blur, 4...50, "%.0f") }
-                slider("Soften edges", $o.soften, 0...14, "%.0f")
-                slider("Edge shift", $o.shift, -10...10, "%+.0f")
+                row(L("Background")) { PillPicker(options: [(BGFill.transparent, "Transparent"), (.color, "Color"), (.blur, "Blur")], selection: $o.fill) }
+                if o.fill == .color { row(L("Color")) { ColorPicker("", selection: $fillColor).labelsHidden() } }
+                if o.fill == .blur { slider(L("Blur"), $o.blur, 4...50, "%.0f") }
+                slider(L("Soften edges"), $o.soften, 0...14, "%.0f")
+                slider(L("Edge shift"), $o.shift, -10...10, "%+.0f")
                 HStack {
-                    Toggle("Sticker outline", isOn: $o.outline).font(.system(size: 12))
+                    Toggle(L("Sticker outline"), isOn: $o.outline).font(.system(size: 12))
                     if o.outline { ColorPicker("", selection: $outlineColor).labelsHidden(); Slider(value: $o.outlineWidth, in: 2...30).controlSize(.small) }
                 }
-                Toggle("Crop to subject", isOn: $o.cropToSubject).font(.system(size: 12))
-                row("Format") {
+                Toggle(L("Crop to subject"), isOn: $o.cropToSubject).font(.system(size: 12))
+                row(L("Format")) {
                     PillPicker(options: [("png", "PNG"), ("webp", "WebP"), ("heic", "HEIC"), ("jpg", "JPG")], selection: $format)
                 }
-                if format == "jpg" && o.fill == .transparent { Text("JPG has no transparency: the background will be white.").sectionLabel() }
+                if format == "jpg" && o.fill == .transparent { Text(L("JPG has no transparency: the background will be white.")).sectionLabel() }
             }.frame(width: 380, alignment: .leading)
         } footer: {
-            Button("Reset") { o = BGOptions(); chosen = Set(ids); edits = []; touch = .off }.buttonStyle(PillButtonStyle())
-            ReplaceButton("Remove Background") { save() }.disabled(failed || busy)
+            Button(L("Reset")) { o = BGOptions(); chosen = Set(ids); edits = []; touch = .off }.buttonStyle(PillButtonStyle())
+            ReplaceButton(L("Remove Background")) { save() }.disabled(failed || busy)
         }
         .task { await start() }
         .task(id: renderKey) { await rerender() }
@@ -148,9 +148,9 @@ struct RemoveBGTool: View {
         }.allowsHitTesting(false)
     }
 
-    private func row<V: View>(_ t: String, @ViewBuilder _ v: () -> V) -> some View { HStack { Text(t).sectionLabel(); Spacer(); v() } }
+    private func row<V: View>(_ t: String, @ViewBuilder _ v: () -> V) -> some View { HStack { Text(L(t)).sectionLabel(); Spacer(); v() } }
     private func slider(_ t: String, _ b: Binding<Double>, _ r: ClosedRange<Double>, _ f: String) -> some View {
-        HStack { Text(t).sectionLabel().frame(width: 90, alignment: .leading); Slider(value: b, in: r).controlSize(.small)
+        HStack { Text(L(t)).sectionLabel().frame(width: 90, alignment: .leading); Slider(value: b, in: r).controlSize(.small)
             Text(String(format: f, b.wrappedValue)).font(.system(size: 11).monospacedDigit()).foregroundStyle(Theme.muted).frame(width: 34, alignment: .trailing) }
     }
 
@@ -195,8 +195,8 @@ struct RemoveBGTool: View {
         opts.edits = urls.count == 1 ? edits : []
         let (files, fmt, final) = (urls, format, opts)
         close()
-        Dispatcher.job("Removing background…", count: files.count, replaces: files) { progress in
-            guard #available(macOS 14.0, *) else { throw MandarineError("Remove Background nécessite macOS 14 ou plus récent.") }
+        Dispatcher.job(L("Removing background…"), count: files.count, replaces: files) { progress in
+            guard #available(macOS 14.0, *) else { throw MandarineError(L("Remove Background nécessite macOS 14 ou plus récent.")) }
             var outs: [URL] = []
             for (i, f) in files.enumerated() {
                 let out = try await Task.detached { () -> URL in

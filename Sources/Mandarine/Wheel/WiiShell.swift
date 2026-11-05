@@ -140,7 +140,7 @@ struct WiiToolFrame<Content: View, Footer: View>: View {
 
     private var bar: some View {
         HStack(spacing: 14) {
-            Button { host.back() } label: { Text(host.hasMenu ? "Wii Menu" : "Close") }
+            Button { host.back() } label: { Text(host.hasMenu ? L("Wii Menu") : L("Close")) }
                 .buttonStyle(PillButtonStyle()).environment(\.toolStyle, .wii)
             Spacer(minLength: 10).background(DragZone())
             footer.environment(\.toolStyle, .wii)
@@ -167,7 +167,7 @@ struct WiiToolFrame<Content: View, Footer: View>: View {
             .fill(LinearGradient(colors: [Color(red: 0.40, green: 0.82, blue: 0.97), Color(red: 0.16, green: 0.62, blue: 0.90)], startPoint: .top, endPoint: .bottom))
             .overlay(WiiTabShape().stroke(Color.white.opacity(0.55), lineWidth: 1.2))
             .overlay(alignment: .trailing) {
-                Text(title).font(.system(size: 15, weight: .semibold, design: .rounded)).foregroundStyle(.white).lineLimit(1)
+                Text(L(title)).font(.system(size: 15, weight: .semibold, design: .rounded)).foregroundStyle(.white).lineLimit(1)
                     .shadow(color: Color(red: 0.1, green: 0.4, blue: 0.7).opacity(0.6), radius: 1, y: 1).padding(.trailing, 36)
             }
             .frame(width: w, height: 42)
@@ -252,7 +252,7 @@ struct WiiChoiceGroup<T: Hashable>: View {
     var body: some View {
         FlowLayout(spacing: 9) {
             ForEach(Array(options.enumerated()), id: \.offset) { _, o in
-                WiiChoiceRow(selected: selection == o.0, action: { selection = o.0 }) { Text(o.1) }
+                WiiChoiceRow(selected: selection == o.0, action: { selection = o.0 }) { Text(L(o.1)) }
             }
         }
     }

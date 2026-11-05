@@ -83,9 +83,9 @@ enum MetadataIO {
     }
 
     static func writeImage(_ url: URL, rows: [MetaRow], removeAll: Bool) throws -> URL {
-        guard let src = CGImageSourceCreateWithURL(url as CFURL, nil), let type = CGImageSourceGetType(src) else { throw MandarineError("Image illisible.") }
+        guard let src = CGImageSourceCreateWithURL(url as CFURL, nil), let type = CGImageSourceGetType(src) else { throw MandarineError(L("Image illisible.")) }
         let out = OutputNaming.sibling(of: url, suffix: removeAll ? " clean" : " metadata")
-        guard let dest = CGImageDestinationCreateWithURL(out as CFURL, type, 1, nil) else { throw MandarineError("Écriture impossible.") }
+        guard let dest = CGImageDestinationCreateWithURL(out as CFURL, type, 1, nil) else { throw MandarineError(L("Écriture impossible.")) }
         let md: CGMutableImageMetadata
         var opts: [CFString: Any] = [kCGImageDestinationMergeMetadata: false]
         if removeAll {
@@ -93,7 +93,7 @@ enum MetadataIO {
             opts[kCGImageMetadataShouldExcludeGPS] = true
             opts[kCGImageMetadataShouldExcludeXMP] = true
         } else {
-            guard let orig = CGImageSourceCopyMetadataAtIndex(src, 0, nil), let copy = CGImageMetadataCreateMutableCopy(orig) else { throw MandarineError("Métadonnées illisibles.") }
+            guard let orig = CGImageSourceCopyMetadataAtIndex(src, 0, nil), let copy = CGImageMetadataCreateMutableCopy(orig) else { throw MandarineError(L("Métadonnées illisibles.")) }
             md = copy
             for r in rows {
                 if r.removed { CGImageMetadataRemoveTagWithPath(md, nil, r.path as CFString) }
@@ -105,18 +105,18 @@ enum MetadataIO {
         var err: Unmanaged<CFError>?
         guard CGImageDestinationCopyImageSource(dest, src, opts as CFDictionary, &err) else {
             try? FileManager.default.removeItem(at: out)
-            throw MandarineError((err?.takeRetainedValue() as Error?)?.localizedDescription ?? "Écriture impossible.")
+            throw MandarineError((err?.takeRetainedValue() as Error?)?.localizedDescription ?? L("Écriture impossible."))
         }
         return out
     }
 
     static func writePDF(_ url: URL, rows: [MetaRow], removeAll: Bool) throws -> URL {
-        guard let d = PDFDocument(url: url) else { throw MandarineError("PDF illisible.") }
+        guard let d = PDFDocument(url: url) else { throw MandarineError(L("PDF illisible.")) }
         var attrs: [AnyHashable: Any] = [:]
         if !removeAll { for r in rows where !r.removed { attrs[PDFDocumentAttribute(rawValue: r.path)] = r.value } }
         d.documentAttributes = attrs
         let out = OutputNaming.sibling(of: url, suffix: removeAll ? " clean" : " metadata")
-        guard d.write(to: out) else { throw MandarineError("Écriture impossible.") }
+        guard d.write(to: out) else { throw MandarineError(L("Écriture impossible.")) }
         return out
     }
 
@@ -140,21 +140,21 @@ struct MetadataTool: View {
     private var groups: [String] { Array(Set(rows.map(\.group))).sorted() }
 
     var body: some View {
-        ToolShell(title: "Metadata", close: close) {
+        ToolShell(title: L("Metadata"), close: close) {
             VStack(alignment: .leading, spacing: 10) {
                 HStack {
                     Text(urls[0].lastPathComponent).sectionLabel()
                     Spacer()
-                    TextField("Search metadata", text: $query).textFieldStyle(.roundedBorder).frame(width: 190)
+                    TextField(L("Search metadata"), text: $query).textFieldStyle(.roundedBorder).frame(width: 190)
                 }
                 ScrollView {
                     VStack(alignment: .leading, spacing: 4) {
                         if loading { ProgressView().frame(maxWidth: .infinity).padding() }
-                        else if rows.isEmpty { Text("No metadata found.").foregroundStyle(Theme.muted).frame(maxWidth: .infinity).padding() }
+                        else if rows.isEmpty { Text(L("No metadata found.")).foregroundStyle(Theme.muted).frame(maxWidth: .infinity).padding() }
                         ForEach(groups, id: \.self) { g in
                             let items = rows.indices.filter { rows[$0].group == g && matches(rows[$0]) && !rows[$0].removed }
                             if !items.isEmpty {
-                                Text(g).font(.system(size: 11, weight: .semibold)).foregroundStyle(Theme.muted).padding(.top, 8)
+                                Text(L(g)).font(.system(size: 11, weight: .semibold)).foregroundStyle(Theme.muted).padding(.top, 8)
                                 Divider()
                                 ForEach(items, id: \.self) { i in
                                     HStack(spacing: 10) {
@@ -162,19 +162,19 @@ struct MetadataTool: View {
                                         TextField("", text: $rows[i].value).textFieldStyle(.plain).font(.system(size: 12))
                                             .padding(.horizontal, 6).padding(.vertical, 3)
                                             .background(RoundedRectangle(cornerRadius: 5).fill(Color.black.opacity(rows[i].value != rows[i].original ? 0.1 : 0.05)))
-                                        Button { rows[i].removed = true } label: { Image(systemName: "minus.circle").foregroundStyle(Theme.muted) }.buttonStyle(WiiPlainButtonStyle())
+                                        Button { rows[i].removed = true } label: { Image(systemName: L("minus.circle")).foregroundStyle(Theme.muted) }.buttonStyle(WiiPlainButtonStyle())
                                     }
                                 }
                             }
                         }
                     }.padding(.trailing, 8)
                 }.frame(height: 330)
-                Text("For photos, Remove All also clears hidden camera and processing data. HDR and portrait effects may change.")
+                Text(L("For photos, Remove All also clears hidden camera and processing data. HDR and portrait effects may change."))
                     .sectionLabel().fixedSize(horizontal: false, vertical: true)
             }.frame(width: 520)
         } footer: {
-            ReplaceButton("Remove All", isDefault: false) { run(removeAll: true) }
-            ReplaceButton("Save") { run(removeAll: false) }.disabled(!rows.contains { $0.removed || $0.value != $0.original })
+            ReplaceButton(L("Remove All"), isDefault: false) { run(removeAll: true) }
+            ReplaceButton(L("Save")) { run(removeAll: false) }.disabled(!rows.contains { $0.removed || $0.value != $0.original })
         }
         .task { rows = await MetadataIO.read(urls[0]); loading = false }
     }
@@ -186,7 +186,7 @@ struct MetadataTool: View {
     private func run(removeAll: Bool) {
         let files = urls, rs = rows
         close()
-        Dispatcher.job(removeAll ? "Removing metadata…" : "Saving metadata…", light: true, replaces: files) { _ in
+        Dispatcher.job(removeAll ? L("Removing metadata…") : L("Saving metadata…"), light: true, replaces: files) { _ in
             var outs: [URL] = []
             for (i, f) in files.enumerated() { outs.append(try await MetadataIO.write(url: f, rows: i == 0 ? rs : [], removeAll: removeAll || i > 0)) }
             return outs

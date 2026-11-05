@@ -41,14 +41,14 @@ enum Catalog {
 
     static func normalized(_ ext: String) -> String {
         switch ext.lowercased() {
-        case "jpeg": return "jpg"
-        case "tif": return "tiff"
-        case "gz": return "gzip"
-        case "markdown": return "md"
-        case "htm": return "html"
-        case "aif": return "aiff"
-        case "m4v": return "mp4"
-        case "mpeg": return "mpg"
+        case "jpeg": return L("jpg")
+        case "tif": return L("tiff")
+        case "gz": return L("gzip")
+        case "markdown": return L("md")
+        case "htm": return L("html")
+        case "aif": return L("aiff")
+        case "m4v": return L("mp4")
+        case "mpeg": return L("mpg")
         case let x: return x
         }
     }
@@ -152,12 +152,12 @@ enum Catalog {
         // Liens web : la roue ⌘ propose le téléchargement en MP4 ou en MP3 (yt-dlp). Sites connus : affirmatif ; les autres sont « tentés ».
         if linksOnly && mode == .tools && urls.allSatisfy(YtDlp.isWebLink) {
             let known = urls.allSatisfy(YtDlp.isKnownSite)
-            let page = [WheelItem(id: ToolID.savePagePDF.rawValue, label: "PDF", caption: "Save page as PDF", symbol: "doc.richtext", payload: .tool(.savePagePDF)),
-                        WheelItem(id: ToolID.savePageMarkdown.rawValue, label: "MARKDOWN", caption: "Save page as Markdown", symbol: "text.alignleft", payload: .tool(.savePageMarkdown)),
-                        WheelItem(id: ToolID.savePageScreenshot.rawValue, label: "SCREENSHOT", caption: "Save page screenshot", symbol: "camera.viewfinder", payload: .tool(.savePageScreenshot))]
-            let media = [WheelItem(id: ToolID.downloadMP4.rawValue, label: "MP4", caption: known ? "Download MP4" : "Try to download MP4", symbol: "film", payload: .tool(.downloadMP4)),
-                    WheelItem(id: ToolID.downloadMP3.rawValue, label: "MP3", caption: known ? "Download MP3" : "Try to download MP3", symbol: "music.note", payload: .tool(.downloadMP3)),
-                    WheelItem(id: ToolID.downloadWAV.rawValue, label: "WAV", caption: known ? "Download WAV" : "Try to download WAV", symbol: "waveform", payload: .tool(.downloadWAV))]
+            let page = [WheelItem(id: ToolID.savePagePDF.rawValue, label: L("PDF"), caption: L("Save page as PDF"), symbol: "doc.richtext", payload: .tool(.savePagePDF)),
+                        WheelItem(id: ToolID.savePageMarkdown.rawValue, label: L("MARKDOWN"), caption: L("Save page as Markdown"), symbol: "text.alignleft", payload: .tool(.savePageMarkdown)),
+                        WheelItem(id: ToolID.savePageScreenshot.rawValue, label: L("SCREENSHOT"), caption: L("Save page screenshot"), symbol: "camera.viewfinder", payload: .tool(.savePageScreenshot))]
+            let media = [WheelItem(id: ToolID.downloadMP4.rawValue, label: L("MP4"), caption: known ? L("Download MP4") : L("Try to download MP4"), symbol: "film", payload: .tool(.downloadMP4)),
+                    WheelItem(id: ToolID.downloadMP3.rawValue, label: L("MP3"), caption: known ? L("Download MP3") : L("Try to download MP3"), symbol: "music.note", payload: .tool(.downloadMP3)),
+                    WheelItem(id: ToolID.downloadWAV.rawValue, label: L("WAV"), caption: known ? L("Download WAV") : L("Try to download WAV"), symbol: "waveform", payload: .tool(.downloadWAV))]
             // site de vidéo connu : les téléchargements d'abord ; sinon c'est sans doute un article, on propose d'abord de garder la page
             return known ? media + page : page + media
         }
@@ -169,7 +169,7 @@ enum Catalog {
                 : linksOnly ? [.airDrop, .float, .copy, .copyPath] : FileAction.allCases.filter { $0 != .searchWeb }
             return actions.map {
                 let isLink = linksOnly && $0 == .copyPath
-                return WheelItem(id: $0.rawValue, label: isLink ? "COPY LINK" : $0.label, caption: isLink ? "Copy Link" : $0.caption,
+                return WheelItem(id: $0.rawValue, label: isLink ? L("COPY LINK") : $0.label, caption: isLink ? L("Copy Link") : $0.caption,
                                  symbol: $0.symbol, payload: .action($0))
             }
         case .convert:
@@ -180,8 +180,8 @@ enum Catalog {
             return convertTargets(for: kind, inputExt: sameExt ? first.pathExtension : "").map { ext in
                 let combine = urls.count > 1 && kind == .image && ext == "pdf"
                 let label = kind == .snippet ? (ext == "m4a" ? "SPEECH" : ext == "qr" ? "QR CODE" : displayName(ext)) : displayName(ext)
-                return WheelItem(id: combine ? "multi-pdf" : ext, label: label,
-                                 caption: kind == .snippet ? (ext == "qr" ? "Make a QR code" : ext == "m4a" ? "Read it into an audio file" : "Save as \(displayName(ext))") : ext == "m4r" ? "Save as a \(AppSettings.shared.ringtoneSeconds) s ringtone" : combine ? "Combine into one PDF" : (urls.count > 1 ? "Convert \(urls.count) files to \(displayName(ext))" : "Convert to \(displayName(ext))"),
+                return WheelItem(id: combine ? "multi-pdf" : ext, label: L(label),
+                                 caption: kind == .snippet ? (ext == "qr" ? L("Make a QR code") : ext == "m4a" ? L("Read it into an audio file") : L("Save as \(displayName(ext))")) : ext == "m4r" ? L("Save as a \(AppSettings.shared.ringtoneSeconds) s ringtone") : combine ? L("Combine into one PDF") : (urls.count > 1 ? L("Convert \(urls.count) files to \(displayName(ext))") : L("Convert to \(displayName(ext))")),
                                  symbol: nil, payload: .convert(ext),
                                  enabled: Converter.supports(kind: kind, from: first.pathExtension, to: ext))
             }
@@ -196,7 +196,7 @@ enum Catalog {
             if urls.count > 1, AppSettings.shared.enableTypeSelect { list.append((.typeSelect, "TYPE", "line.3.horizontal.decrease.circle")) }
             var items: [WheelItem] = list.map { t in
                 let (id, label, symbol) = t
-                return WheelItem(id: id.rawValue, label: label, caption: id.title, symbol: symbol, payload: .tool(id),
+                return WheelItem(id: id.rawValue, label: L(label), caption: id.title, symbol: symbol, payload: .tool(id),
                                  enabled: ToolAvailability.isImplemented(id))
             }
             // Groupes à 2ᵉ niveau : le survol d'un pétale fait apparaître ses sous-pétales plus loin du centre.
@@ -208,22 +208,22 @@ enum Catalog {
                 items.removeAll { item in ids.map(\.rawValue).contains(item.id) }
                 items.insert(g, at: min(first, items.count))
             }
-            group([.scanDocument, .ocr], id: "document", label: "DOCUMENT", caption: "Document", symbol: "doc.viewfinder")
-            group([.faceSelect, .quickSort, .typeSelect], id: "select", label: "SELECT", caption: "Select", symbol: "line.3.horizontal.decrease.circle")
-            group([.editImage, .annotateImage, .redactImage], id: "edit", label: "EDIT", caption: "Edit", symbol: "slider.horizontal.3")
-            group([.cropImage, .resizeImage, .rotateImage], id: "transform", label: "TRANSFORM", caption: "Transform", symbol: "crop.rotate")
-            group([.frameImage, .removeBackground], id: "bg", label: "BG", caption: "Background", symbol: "photo.on.rectangle")
+            group([.scanDocument, .ocr], id: "document", label: L("DOCUMENT"), caption: L("Document"), symbol: "doc.viewfinder")
+            group([.faceSelect, .quickSort, .typeSelect], id: "select", label: L("SELECT"), caption: L("Select"), symbol: "line.3.horizontal.decrease.circle")
+            group([.editImage, .annotateImage, .redactImage], id: "edit", label: L("EDIT"), caption: L("Edit"), symbol: "slider.horizontal.3")
+            group([.cropImage, .resizeImage, .rotateImage], id: "transform", label: L("TRANSFORM"), caption: L("Transform"), symbol: "crop.rotate")
+            group([.frameImage, .removeBackground], id: "bg", label: L("BG"), caption: L("Background"), symbol: "photo.on.rectangle")
             // Vidéo : Trim / Crop / Speed dans un groupe, Mute / Extract audio dans « AUDIO »
-            group([.trimVideo, .cropVideo, .changeVideoSpeed, .redactVideo], id: "vtransform", label: "TRANSFORM", caption: "Transform", symbol: "slider.horizontal.below.rectangle")
-            group([.muteVideo, .extractAudio], id: "vaudio", label: "AUDIO", caption: "Audio", symbol: "speaker.wave.2")
+            group([.trimVideo, .cropVideo, .changeVideoSpeed, .redactVideo], id: "vtransform", label: L("TRANSFORM"), caption: L("Transform"), symbol: "slider.horizontal.below.rectangle")
+            group([.muteVideo, .extractAudio], id: "vaudio", label: L("AUDIO"), caption: L("Audio"), symbol: "speaker.wave.2")
             // Ajouts transversaux de la roue ⌘ : projet DaVinci (dossiers et médias) et ouverture dans VS Code (tout fichier ou dossier)
             // Ajouts réservés aux dossiers : projet DaVinci et ouverture dans VS Code
             if kind == .folder {
                 if AppSettings.shared.enableDavinci {
-                    items.append(WheelItem(id: ToolID.davinciTree.rawValue, label: "DAVINCI", caption: "DaVinci Project", symbol: "folder.badge.gearshape", payload: .tool(.davinciTree)))
+                    items.append(WheelItem(id: ToolID.davinciTree.rawValue, label: L("DAVINCI"), caption: L("DaVinci Project"), symbol: "folder.badge.gearshape", payload: .tool(.davinciTree)))
                 }
                 if VSCode.url != nil && AppSettings.shared.enableCode {
-                    items.append(WheelItem(id: ToolID.openInCode.rawValue, label: "CODE", caption: "Code", symbol: "chevron.left.forwardslash.chevron.right", payload: .tool(.openInCode)))
+                    items.append(WheelItem(id: ToolID.openInCode.rawValue, label: L("CODE"), caption: L("Code"), symbol: "chevron.left.forwardslash.chevron.right", payload: .tool(.openInCode)))
                 }
             }
             return items

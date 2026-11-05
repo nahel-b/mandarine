@@ -14,7 +14,7 @@ struct KeyRecorder: View {
             Button {
                 recording ? stop() : start()
             } label: {
-                Text(recording ? "press a key…" : key.uppercased())
+                Text(recording ? L("press a key…") : key.uppercased())
                     .font(.system(size: recording ? 11 : 15, weight: .semibold, design: .rounded))
                     .frame(width: 70, height: 30)
                     .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(recording ? Theme.orange.opacity(0.3) : Color.primary.opacity(0.1)))

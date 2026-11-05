@@ -28,14 +28,14 @@ enum AppleApps {
         try p.run()
         if done.wait(timeout: .now() + timeout) == .timedOut {
             p.terminate()
-            throw MandarineError("\(app) ne répond pas. Ouvrez-la une fois, fermez son écran d'accueil ou ses boîtes de dialogue, puis réessayez.")
+            throw MandarineError(L("\(app) ne répond pas. Ouvrez-la une fois, fermez son écran d'accueil ou ses boîtes de dialogue, puis réessayez."))
         }
         let o = out.fileHandleForReading.readDataToEndOfFile()
         let e = err.fileHandleForReading.readDataToEndOfFile()
         guard p.terminationStatus == 0 else {
             let msg = String(data: e, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-            if msg.contains("-1743") { throw MandarineError("Autorisez Mandarine à contrôler \(app) dans Réglages Système → Confidentialité et sécurité → Automatisation.") }
-            throw MandarineError(msg.isEmpty ? "Le script a échoué." : msg)
+            if msg.contains("-1743") { throw MandarineError(L("Autorisez Mandarine à contrôler \(app) dans Réglages Système → Confidentialité et sécurité → Automatisation.")) }
+            throw MandarineError(msg.isEmpty ? L("Le script a échoué.") : msg)
         }
         return String(data: o, encoding: .utf8) ?? ""
     }
@@ -99,7 +99,7 @@ enum AppleApps {
 // MARK: PDF → PPTX (une diapositive par page, image pleine page)
 enum PPTXWriter {
     static func write(pages: [(jpeg: Data, size: CGSize)], to url: URL) throws {
-        guard let first = pages.first else { throw MandarineError("PDF vide.") }
+        guard let first = pages.first else { throw MandarineError(L("PDF vide.")) }
         let fm = FileManager.default
         let tmp = fm.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? fm.removeItem(at: tmp) }

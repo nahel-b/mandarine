@@ -83,7 +83,7 @@ final class Updater: ObservableObject {
         let previousCheck = lastCheck
         lastCheck = Date()
         guard let feed = feedURL, publicKey != nil else {
-            if userInitiated { Toast.shared.fail("Updates aren't set up", subtitle: "This build has no update source. Set GITHUB_REPO in Scripts/update.conf and rebuild.") }
+            if userInitiated { Toast.shared.fail(L("Updates aren't set up"), subtitle: L("This build has no update source. Set GITHUB_REPO in Scripts/update.conf and rebuild.")) }
             return
         }
         state = .checking
@@ -91,19 +91,19 @@ final class Updater: ObservableObject {
             var req = URLRequest(url: feed); req.setValue("Mandarine", forHTTPHeaderField: "User-Agent"); req.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept"); req.timeoutInterval = 20
             let (data, resp) = try await URLSession.shared.data(for: req)
             if let h = resp as? HTTPURLResponse, h.statusCode != 200 {
-                throw MandarineError(h.statusCode == 404 ? "No published release found in the repository." : "GitHub answered with an error (\(h.statusCode)).")
+                throw MandarineError(h.statusCode == 404 ? L("No published release found in the repository.") : L("GitHub answered with an error (\(h.statusCode))."))
             }
             guard let j = try JSONSerialization.jsonObject(with: data) as? [String: Any], let tag = j["tag_name"] as? String,
-                  let assets = j["assets"] as? [[String: Any]] else { throw MandarineError("Unexpected answer from GitHub.") }
+                  let assets = j["assets"] as? [[String: Any]] else { throw MandarineError(L("Unexpected answer from GitHub.")) }
             func asset(_ name: String) -> URL? { assets.first { $0["name"] as? String == name }.flatMap { $0["browser_download_url"] as? String }.flatMap(URL.init(string:)) }
             let version = tag.hasPrefix("v") ? String(tag.dropFirst()) : tag
             guard YtDlpUpdater.isNewer(version, than: currentVersion) else {
                 UserDefaults.standard.removeObject(forKey: "pendingUpdateVersion")
                 state = .upToDate
-                if userInitiated { Toast.shared.done("Mandarine is up to date", subtitle: "Version \(currentVersion)") }
+                if userInitiated { Toast.shared.done(L("Mandarine is up to date"), subtitle: L("Version \(currentVersion)")) }
                 return
             }
-            guard let zip = asset("Mandarine.zip"), let sig = asset("Mandarine.zip.sig") else { throw MandarineError("Release \(tag) has no signed Mandarine.zip.") }
+            guard let zip = asset("Mandarine.zip"), let sig = asset("Mandarine.zip.sig") else { throw MandarineError(L("Release \(tag) has no signed Mandarine.zip.")) }
             let notes = ((j["body"] as? String) ?? "").split(separator: "\n").first.map(String.init) ?? ""
             release = Release(version: version, zip: zip, signature: sig, notes: notes)
             state = .available(version)
@@ -112,7 +112,7 @@ final class Updater: ObservableObject {
         } catch {
             state = .failed(error.localizedDescription)
             if !userInitiated { lastCheck = previousCheck }          // échec (réseau coupé…) : le contrôle horaire réessaiera, sans attendre un jour de plus
-            if userInitiated { Toast.shared.fail("Couldn't check for updates", subtitle: error.localizedDescription) }
+            if userInitiated { Toast.shared.fail(L("Couldn't check for updates"), subtitle: error.localizedDescription) }
         }
     }
 
@@ -125,7 +125,7 @@ final class Updater: ObservableObject {
     private func announce() {
         guard let r = release else { return }
         if let id = toastID { Toast.shared.remove(id) }
-        toastID = Toast.shared.add(ToastItem(id: UUID(), phase: .done, title: "New update", subtitle: r.version,
+        toastID = Toast.shared.add(ToastItem(id: UUID(), phase: .done, title: L("New update"), subtitle: r.version,
                                               action: ("Update", { [weak self] in Task { @MainActor in await self?.install() } }), sticky: true))
     }
 
@@ -145,39 +145,39 @@ final class Updater: ObservableObject {
         guard !busy, let r = release, let key = publicKey else { return }
         busy = true; defer { busy = false }
         if let id = toastID { Toast.shared.remove(id) }
-        let id = Toast.shared.add(ToastItem(id: UUID(), phase: .running, title: "Updating to Mandarine \(r.version)…", subtitle: "Downloading", progress: 0))
+        let id = Toast.shared.add(ToastItem(id: UUID(), phase: .running, title: L("Updating to Mandarine \(r.version)…"), subtitle: L("Downloading"), progress: 0))
         toastID = id
         let work = FileManager.default.temporaryDirectory.appendingPathComponent("mandarine-update-" + UUID().uuidString)
         do {
             state = .downloading(0)
             let (zipFile, resp) = try await Downloader.fetch(r.zip) { p in DispatchQueue.main.async { Toast.shared.update(id) { $0.progress = p } } }
             defer { try? FileManager.default.removeItem(at: zipFile) }
-            if let h = resp as? HTTPURLResponse, h.statusCode != 200 { throw MandarineError("The download failed (\(h.statusCode)).") }
+            if let h = resp as? HTTPURLResponse, h.statusCode != 200 { throw MandarineError(L("The download failed (\(h.statusCode)).")) }
             let (sigData, _) = try await URLSession.shared.data(from: r.signature)
-            guard let sig = Data(base64Encoded: String(decoding: sigData, as: UTF8.self).trimmingCharacters(in: .whitespacesAndNewlines)) else { throw MandarineError("The update signature is unreadable.") }
+            guard let sig = Data(base64Encoded: String(decoding: sigData, as: UTF8.self).trimmingCharacters(in: .whitespacesAndNewlines)) else { throw MandarineError(L("The update signature is unreadable.")) }
             let zipData = try Data(contentsOf: zipFile, options: .mappedIfSafe)
-            guard key.isValidSignature(sig, for: zipData) else { throw MandarineError("The update's signature is invalid — it was NOT installed.") }
+            guard key.isValidSignature(sig, for: zipData) else { throw MandarineError(L("The update's signature is invalid — it was NOT installed.")) }
 
             state = .installing
-            Toast.shared.update(id) { $0.subtitle = "Installing"; $0.progress = -1 }
+            Toast.shared.update(id) { $0.subtitle = L("Installing"); $0.progress = -1 }
             try FileManager.default.createDirectory(at: work, withIntermediateDirectories: true)
             let unzip = try Self.run("/usr/bin/ditto", ["-x", "-k", zipFile.path, work.path])
-            guard unzip.status == 0 else { throw MandarineError("Couldn't unpack the update.") }
+            guard unzip.status == 0 else { throw MandarineError(L("Couldn't unpack the update.")) }
             let newApp = work.appendingPathComponent("Mandarine.app")
             guard let info = NSDictionary(contentsOf: newApp.appendingPathComponent("Contents/Info.plist")),
                   info["CFBundleIdentifier"] as? String == Bundle.main.bundleIdentifier ?? "com.mandarine.app",
-                  info["CFBundleShortVersionString"] as? String == r.version else { throw MandarineError("The downloaded app isn't the expected version.") }
+                  info["CFBundleShortVersionString"] as? String == r.version else { throw MandarineError(L("The downloaded app isn't the expected version.")) }
             let dest = targetApp
             guard FileManager.default.isWritableFile(atPath: dest.deletingLastPathComponent().path) else {
-                throw MandarineError("Mandarine can't replace itself in \(dest.deletingLastPathComponent().path). Move it to your Applications folder, or reinstall it from the latest DMG.")
+                throw MandarineError(L("Mandarine can't replace itself in \(dest.deletingLastPathComponent().path). Move it to your Applications folder, or reinstall it from the latest DMG."))
             }
             try Self.swapAndRelaunch(newApp: newApp, dest: dest, work: work, relaunch: env["MANDARINE_UPDATE_NORELAUNCH"] == nil)
-            Toast.shared.update(id) { $0.phase = .done; $0.title = "Mandarine \(r.version) installed"; $0.subtitle = "Restarting…"; $0.progress = nil }
+            Toast.shared.update(id) { $0.phase = .done; $0.title = L("Mandarine \(r.version) installed"); $0.subtitle = L("Restarting…"); $0.progress = nil }
             if env["MANDARINE_UPDATE_NORELAUNCH"] == nil { NSApp.terminate(nil) }
         } catch {
             try? FileManager.default.removeItem(at: work)
             state = .failed(error.localizedDescription)
-            Toast.shared.update(id) { $0.phase = .failed; $0.title = "Update failed"; $0.subtitle = error.localizedDescription; $0.detail = error.localizedDescription; $0.progress = nil }
+            Toast.shared.update(id) { $0.phase = .failed; $0.title = L("Update failed"); $0.subtitle = error.localizedDescription; $0.detail = error.localizedDescription; $0.progress = nil }
         }
     }
 
@@ -212,6 +212,6 @@ final class Updater: ObservableObject {
         p.arguments = [script.path, relaunch ? String(ProcessInfo.processInfo.processIdentifier) : "-", newApp.path, dest.path, work.path, relaunch ? "1" : "0"]
         p.standardOutput = FileHandle.nullDevice; p.standardError = FileHandle.nullDevice; p.standardInput = FileHandle.nullDevice
         try p.run()
-        if !relaunch { p.waitUntilExit(); if p.terminationStatus != 0 { throw MandarineError("The new version couldn't be put in place.") } }
+        if !relaunch { p.waitUntilExit(); if p.terminationStatus != 0 { throw MandarineError(L("The new version couldn't be put in place.")) } }
     }
 }

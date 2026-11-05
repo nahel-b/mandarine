@@ -19,8 +19,8 @@ private struct Keycap: View {
     var pressed = false
     var body: some View {
         VStack(spacing: 2) {
-            Text(symbol).font(.system(size: 17, weight: .medium))
-            Text(name).font(.system(size: 8, weight: .medium)).foregroundStyle(.secondary)
+            Text(L(symbol)).font(.system(size: 17, weight: .medium))
+            Text(L(name)).font(.system(size: 8, weight: .medium)).foregroundStyle(.secondary)
         }
         .frame(width: 58, height: 52)
         .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(pressed ? Theme.orange : Color.white.opacity(0.92)))
@@ -75,7 +75,7 @@ private struct FileChip: View {
         VStack(spacing: 3) {
             Image(systemName: "photo.fill").font(.system(size: 26)).foregroundStyle(.white)
                 .frame(width: 46, height: 46).background(RoundedRectangle(cornerRadius: 10).fill(LinearGradient(colors: [Color.blue, Color.cyan], startPoint: .top, endPoint: .bottom)))
-            Text(name).font(.system(size: 9, weight: .medium)).foregroundStyle(.white).padding(.horizontal, 5).padding(.vertical, 1)
+            Text(L(name)).font(.system(size: 9, weight: .medium)).foregroundStyle(.white).padding(.horizontal, 5).padding(.vertical, 1)
                 .background(Capsule().fill(Color.blue.opacity(0.85)))
         }
     }
@@ -120,7 +120,7 @@ private struct DragDemo: View {
                 if t > 4.6 && t < 6.6 {
                     HStack(spacing: 8) {
                         Image(systemName: "checkmark.circle.fill").foregroundStyle(Theme.orange)
-                        VStack(alignment: .leading, spacing: 1) { Text("Saved photo.png").font(.system(size: 12, weight: .semibold)); Text("next to the original").font(.system(size: 10)).foregroundStyle(.secondary) }
+                        VStack(alignment: .leading, spacing: 1) { Text(L("Saved photo.png")).font(.system(size: 12, weight: .semibold)); Text(L("next to the original")).font(.system(size: 10)).foregroundStyle(.secondary) }
                     }
                     .padding(.horizontal, 12).padding(.vertical, 8)
                     .background(RoundedRectangle(cornerRadius: 12).fill(.regularMaterial).environment(\.colorScheme, .light))
@@ -166,8 +166,8 @@ private struct StatusRow: View {
     var body: some View {
         HStack(spacing: 8) {
             Image(systemName: ok ? "checkmark.circle.fill" : "minus.circle").foregroundStyle(ok ? Color.green : Theme.muted)
-            Text(name).font(.system(size: 12, weight: .semibold))
-            Text(detail).font(.system(size: 11)).foregroundStyle(Theme.muted)
+            Text(L(name)).font(.system(size: 12, weight: .semibold))
+            Text(L(detail)).font(.system(size: 11)).foregroundStyle(Theme.muted)
             Spacer()
         }
     }
@@ -189,22 +189,22 @@ private struct EnginesCard: View {
         VStack(alignment: .leading, spacing: 4) {
             HStack(spacing: 10) {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(title).font(.system(size: 11, weight: .semibold))
-                    Text(detail).font(.system(size: 9.5)).foregroundStyle(Theme.muted)
+                    Text(L(title)).font(.system(size: 11, weight: .semibold))
+                    Text(L(detail)).font(.system(size: 9.5)).foregroundStyle(Theme.muted)
                 }
                 Spacer()
                 if ready {
-                    Label("Installed", systemImage: "checkmark.circle.fill").font(.system(size: 10, weight: .semibold)).foregroundStyle(.green)
+                    Label(L("Installed"), systemImage: "checkmark.circle.fill").font(.system(size: 10, weight: .semibold)).foregroundStyle(.green)
                 } else if let w = working {
                     if w > 0 { ProgressView(value: w).frame(width: 80) } else { ProgressView().controlSize(.small) }
                 } else {
                     Button(action: action) {
-                        Label("Download", systemImage: "arrow.down.circle.fill").font(.system(size: 10, weight: .semibold)).foregroundStyle(.white)
+                        Label(L("Download"), systemImage: "arrow.down.circle.fill").font(.system(size: 10, weight: .semibold)).foregroundStyle(.white)
                             .padding(.horizontal, 10).padding(.vertical, 5).background(Capsule().fill(Theme.orange))
                     }.buttonStyle(.plain)
                 }
             }
-            if let e = error { Text(e).font(.system(size: 9.5)).foregroundStyle(.red).fixedSize(horizontal: false, vertical: true) }
+            if let e = error { Text(L(e)).font(.system(size: 9.5)).foregroundStyle(.red).fixedSize(horizontal: false, vertical: true) }
         }
         .padding(10).background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Color.white.opacity(0.94))).foregroundStyle(Theme.text)
     }
@@ -234,19 +234,19 @@ private struct EnginesCard: View {
     private func block(_ id: String, _ title: String, _ code: String) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack {
-                Text(title).font(.system(size: 10, weight: .semibold)).foregroundStyle(.white.opacity(0.75))
+                Text(L(title)).font(.system(size: 10, weight: .semibold)).foregroundStyle(.white.opacity(0.75))
                 Spacer()
                 Button {
                     NSPasteboard.general.clearContents(); NSPasteboard.general.setString(code, forType: .string)
                     copied = id; DispatchQueue.main.asyncAfter(deadline: .now() + 1.6) { if copied == id { copied = "" } }
                 } label: {
-                    Label(copied == id ? "Copied" : "Copy", systemImage: copied == id ? "checkmark" : "doc.on.doc")
+                    Label(copied == id ? L("Copied") : L("Copy"), systemImage: copied == id ? L("checkmark") : L("doc.on.doc"))
                         .font(.system(size: 10, weight: .semibold)).foregroundStyle(Theme.text)
                         .padding(.horizontal, 9).padding(.vertical, 4)
                         .background(Capsule().fill(Color.white.opacity(0.94)))
                 }.buttonStyle(.plain)
             }
-            Text(code).font(.system(size: 9.5, design: .monospaced)).foregroundStyle(Color(white: 0.92))
+            Text(L(code)).font(.system(size: 9.5, design: .monospaced)).foregroundStyle(Color(white: 0.92))
                 .textSelection(.enabled).fixedSize(horizontal: false, vertical: true).frame(maxWidth: .infinity, alignment: .leading)
         }
         .padding(10)
@@ -262,25 +262,25 @@ private struct EnginesCard: View {
                 block("brew", "1 · Paste in Terminal", Self.homebrew)
                 block("brewinstall", "No Homebrew yet? Install it first (official script)", Self.homebrewInstall)
             } else {
-                installerRow("ffmpeg + ffprobe", "Video and audio. Downloaded by Mandarine into its own folder — nothing else to install.", .ffmpeg, ready: FFmpeg.ffmpeg != nil && FFmpeg.ffprobe != nil)
-                installerRow("WebP", "Needed to create .webp images.", .cwebp, ready: FFmpeg.locate("cwebp") != nil || FFmpeg.hasEncoder("libwebp"))
+                installerRow(L("ffmpeg + ffprobe"), "Video and audio. Downloaded by Mandarine into its own folder — nothing else to install.", .ffmpeg, ready: FFmpeg.ffmpeg != nil && FFmpeg.ffprobe != nil)
+                installerRow(L("WebP"), "Needed to create .webp images.", .cwebp, ready: FFmpeg.locate("cwebp") != nil || FFmpeg.hasEncoder("libwebp"))
                 ytRow
             }
             VStack(spacing: 6) {
-                StatusRow(name: "ffmpeg", detail: FFmpeg.ffmpeg?.deletingLastPathComponent().path ?? "not found", ok: FFmpeg.ffmpeg != nil)
-                StatusRow(name: "ffprobe", detail: FFmpeg.ffprobe?.deletingLastPathComponent().path ?? "not found", ok: FFmpeg.ffprobe != nil)
-                StatusRow(name: "yt-dlp", detail: YtDlp.url?.deletingLastPathComponent().path ?? "not found", ok: YtDlp.url != nil)
-                StatusRow(name: "WebP", detail: (FFmpeg.locate("cwebp") != nil || FFmpeg.hasEncoder("libwebp")) ? "available" : "not available yet", ok: FFmpeg.locate("cwebp") != nil || FFmpeg.hasEncoder("libwebp"))
+                StatusRow(name: "ffmpeg", detail: FFmpeg.ffmpeg?.deletingLastPathComponent().path ?? L("not found"), ok: FFmpeg.ffmpeg != nil)
+                StatusRow(name: "ffprobe", detail: FFmpeg.ffprobe?.deletingLastPathComponent().path ?? L("not found"), ok: FFmpeg.ffprobe != nil)
+                StatusRow(name: "yt-dlp", detail: YtDlp.url?.deletingLastPathComponent().path ?? L("not found"), ok: YtDlp.url != nil)
+                StatusRow(name: "WebP", detail: (FFmpeg.locate(L("cwebp")) != nil || FFmpeg.hasEncoder(L("libwebp"))) ? L("available") : L("not available yet"), ok: FFmpeg.locate("cwebp") != nil || FFmpeg.hasEncoder("libwebp"))
             }
             .padding(10).background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Color.white.opacity(0.94))).foregroundStyle(Theme.text)
             HStack {
                 Button { NSWorkspace.shared.open(FFmpeg.enginesFolder.deletingLastPathComponent()) } label: {
-                    Label("Open folder", systemImage: "folder").font(.system(size: 10, weight: .medium)).foregroundStyle(Theme.text)
+                    Label(L("Open folder"), systemImage: L("folder")).font(.system(size: 10, weight: .medium)).foregroundStyle(Theme.text)
                         .padding(.horizontal, 10).padding(.vertical, 5).background(Capsule().fill(Color.white.opacity(0.94)))
                 }.buttonStyle(.plain)
                 Spacer()
                 Button { tick += 1 } label: {
-                    Label("Check again", systemImage: "arrow.clockwise").font(.system(size: 10, weight: .medium)).foregroundStyle(Theme.text)
+                    Label(L("Check again"), systemImage: L("arrow.clockwise")).font(.system(size: 10, weight: .medium)).foregroundStyle(Theme.text)
                         .padding(.horizontal, 10).padding(.vertical, 5).background(Capsule().fill(Color.white.opacity(0.94)))
                 }.buttonStyle(.plain)
             }
@@ -301,17 +301,17 @@ struct HelpView: View {
 
     private var pages: [HelpPage] {
         [
-            HelpPage(title: "Drag. Tap. Drop.",
-                     subtitle: "Mandarine converts and edits files from a wheel that appears right under your cursor. No upload, no window to open: everything runs on your Mac.",
-                     bullets: [Bullet(symbol: "hand.draw", title: "Drag any file", text: "From Finder, the Desktop or any app. Links, text and folders work too."),
-                               Bullet(symbol: "keyboard", title: "Tap a key", text: "⇧ converts, ⌘ opens tools, ⌃ runs actions."),
-                               Bullet(symbol: "tray.and.arrow.down", title: "Drop on a petal", text: "The result is saved next to the original. Nothing is ever overwritten.")],
+            HelpPage(title: L("Drag. Tap. Drop."),
+                     subtitle: L("Mandarine converts and edits files from a wheel that appears right under your cursor. No upload, no window to open: everything runs on your Mac."),
+                     bullets: [Bullet(symbol: "hand.draw", title: L("Drag any file"), text: L("From Finder, the Desktop or any app. Links, text and folders work too.")),
+                               Bullet(symbol: "keyboard", title: L("Tap a key"), text: L("⇧ converts, ⌘ opens tools, ⌃ runs actions.")),
+                               Bullet(symbol: "tray.and.arrow.down", title: L("Drop on a petal"), text: L("The result is saved next to the original. Nothing is ever overwritten."))],
                      illustration: { AnyView(DragDemo()) }),
-            HelpPage(title: "Three wheels, three keys",
-                     subtitle: "The key you tap decides what the wheel offers. Tap another key while you drag to switch: the wheel stays where it is.",
-                     bullets: [Bullet(symbol: "arrow.triangle.2.circlepath", title: "⇧ Convert formats", text: "Only the formats that make sense for this file."),
-                               Bullet(symbol: "slider.horizontal.3", title: "⌘ File tools", text: "Compress, crop, trim, redact, merge… Related tools are grouped: rest on a petal and its choices open further out."),
-                               Bullet(symbol: "square.and.arrow.up", title: "⌃ File actions", text: "AirDrop, Float, Copy, Move, Terminal… Works on folders too.")],
+            HelpPage(title: L("Three wheels, three keys"),
+                     subtitle: L("The key you tap decides what the wheel offers. Tap another key while you drag to switch: the wheel stays where it is."),
+                     bullets: [Bullet(symbol: "arrow.triangle.2.circlepath", title: L("⇧ Convert formats"), text: L("Only the formats that make sense for this file.")),
+                               Bullet(symbol: "slider.horizontal.3", title: L("⌘ File tools"), text: L("Compress, crop, trim, redact, merge… Related tools are grouped: rest on a petal and its choices open further out.")),
+                               Bullet(symbol: "square.and.arrow.up", title: L("⌃ File actions"), text: L("AirDrop, Float, Copy, Move, Terminal… Works on folders too."))],
                      illustration: { AnyView(Desktop {
                          HStack(spacing: 0) {
                              column(.convert, "⇧", "shift", hover: 0)
@@ -319,16 +319,16 @@ struct HelpView: View {
                              column(.actions, "⌃", "control", hover: 2)
                          }
                      }) }),
-            HelpPage(title: "Set up the engines",
-                     subtitle: "Images, PDF, documents, archives and subtitles work right away. Video, audio and WebP need ffmpeg: Mandarine can download it itself, no Homebrew and no Terminal.",
-                     bullets: [Bullet(symbol: "checkmark.seal", title: "Works without anything", text: "Images, PDF, documents, slides, spreadsheets, subtitles, archives."),
-                               Bullet(symbol: "film", title: "Needs ffmpeg", text: "Video and audio conversion and tools, Export Video, and WebP."),
-                               Bullet(symbol: "arrow.down.circle", title: "One click", text: "Also in Settings → Engines, with yt-dlp and the face model.")],
+            HelpPage(title: L("Set up the engines"),
+                     subtitle: L("Images, PDF, documents, archives and subtitles work right away. Video, audio and WebP need ffmpeg: Mandarine can download it itself, no Homebrew and no Terminal."),
+                     bullets: [Bullet(symbol: "checkmark.seal", title: L("Works without anything"), text: L("Images, PDF, documents, slides, spreadsheets, subtitles, archives.")),
+                               Bullet(symbol: "film", title: L("Needs ffmpeg"), text: L("Video and audio conversion and tools, Export Video, and WebP.")),
+                               Bullet(symbol: "arrow.down.circle", title: L("One click"), text: L("Also in Settings → Engines, with yt-dlp and the face model."))],
                      illustration: { AnyView(Desktop { EnginesCard() }) }),
-            HelpPage(title: "You're ready",
-                     subtitle: "Drag a file and tap a key. You can reopen this guide anytime from the menu bar icon → Help.",
-                     bullets: [Bullet(symbol: "gearshape", title: "Settings", text: "Change the three keys, the look of the menu, and which petals appear."),
-                               Bullet(symbol: "lock.shield", title: "Private by design", text: "Files are processed on your Mac and never uploaded.")],
+            HelpPage(title: L("You're ready"),
+                     subtitle: L("Drag a file and tap a key. You can reopen this guide anytime from the menu bar icon → Help."),
+                     bullets: [Bullet(symbol: "gearshape", title: L("Settings"), text: L("Change the three keys, the look of the menu, and which petals appear.")),
+                               Bullet(symbol: "lock.shield", title: L("Private by design"), text: L("Files are processed on your Mac and never uploaded."))],
                      action: ("Browse all features", "square.grid.2x2", { FeaturesWindowController.show() }),
                      illustration: { AnyView(statusCard) })
         ]
@@ -338,7 +338,7 @@ struct HelpView: View {
         VStack(spacing: 0) {
             Keycap(symbol: symbol, name: name, pressed: true).scaleEffect(0.8)
             WheelPicture(mode: mode, urls: [HelpAssets.fakeImage], hover: hover, scale: 0.5).frame(height: 150)
-            Text(mode.title).font(.system(size: 10, weight: .semibold)).foregroundStyle(.white.opacity(0.85))
+            Text(L(mode.title)).font(.system(size: 10, weight: .semibold)).foregroundStyle(.white.opacity(0.85))
         }.frame(width: 172)
     }
 
@@ -348,18 +348,18 @@ struct HelpView: View {
                 HStack(spacing: 12) {
                     Image(nsImage: NSApp.applicationIconImage).resizable().frame(width: 56, height: 56)
                     VStack(alignment: .leading) {
-                        Text("Mandarine").font(.system(size: 20, weight: .bold))
-                        Text("Version \(Updater.shared.currentVersion)").font(.system(size: 11)).foregroundStyle(.white.opacity(0.6))
+                        Text(L("Mandarine")).font(.system(size: 20, weight: .bold))
+                        Text(L("Version \(Updater.shared.currentVersion)")).font(.system(size: 11)).foregroundStyle(.white.opacity(0.6))
                     }
                 }.foregroundStyle(.white)
                 VStack(spacing: 8) {
-                    StatusRow(name: "Video & audio engine", detail: FFmpeg.isAvailable ? "ffmpeg found" : "download it in Settings → Engines", ok: FFmpeg.isAvailable)
-                    StatusRow(name: "Apple AI upscale", detail: Upscaler.aiAvailable ? "available (×4)" : "needs macOS 26", ok: Upscaler.aiAvailable)
-                    StatusRow(name: "Pages · Keynote · Numbers", detail: (AppleApps.App.pages.isInstalled && AppleApps.App.keynote.isInstalled) ? "installed" : "optional, for .pages and slides", ok: AppleApps.App.pages.isInstalled && AppleApps.App.keynote.isInstalled)
-                    StatusRow(name: "Visual Studio Code", detail: VSCode.url != nil ? "found" : "optional, for the Code tool", ok: VSCode.url != nil)
+                    StatusRow(name: "Video & audio engine", detail: FFmpeg.isAvailable ? L("ffmpeg found") : L("download it in Settings → Engines"), ok: FFmpeg.isAvailable)
+                    StatusRow(name: "Apple AI upscale", detail: Upscaler.aiAvailable ? L("available (×4)") : L("needs macOS 26"), ok: Upscaler.aiAvailable)
+                    StatusRow(name: "Pages · Keynote · Numbers", detail: (AppleApps.App.pages.isInstalled && AppleApps.App.keynote.isInstalled) ? L("installed") : L("optional, for .pages and slides"), ok: AppleApps.App.pages.isInstalled && AppleApps.App.keynote.isInstalled)
+                    StatusRow(name: "Visual Studio Code", detail: VSCode.url != nil ? L("found") : L("optional, for the Code tool"), ok: VSCode.url != nil)
                 }
                 .padding(14).background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Color.white.opacity(0.94))).foregroundStyle(Theme.text)
-                Text("Apple apps may ask permission to be controlled the first time (System Settings → Privacy → Automation).")
+                Text(L("Apple apps may ask permission to be controlled the first time (System Settings → Privacy → Automation)."))
                     .font(.system(size: 10)).foregroundStyle(.white.opacity(0.6))
             }.padding(26)
         }
@@ -370,17 +370,17 @@ struct HelpView: View {
         VStack(spacing: 0) {
             HStack(spacing: 0) {
                 VStack(alignment: .leading, spacing: 14) {
-                    Text("\(page + 1) / \(count)").font(.system(size: 11, weight: .semibold)).foregroundStyle(Theme.orange)
-                    Text(p.title).font(.system(size: 30, weight: .bold)).foregroundStyle(Theme.text).fixedSize(horizontal: false, vertical: true)
-                    Text(p.subtitle).font(.system(size: 14)).foregroundStyle(Theme.muted).fixedSize(horizontal: false, vertical: true).lineSpacing(2)
+                    Text(L("\(page + 1) / \(count)")).font(.system(size: 11, weight: .semibold)).foregroundStyle(Theme.orange)
+                    Text(L(p.title)).font(.system(size: 30, weight: .bold)).foregroundStyle(Theme.text).fixedSize(horizontal: false, vertical: true)
+                    Text(L(p.subtitle)).font(.system(size: 14)).foregroundStyle(Theme.muted).fixedSize(horizontal: false, vertical: true).lineSpacing(2)
                     VStack(alignment: .leading, spacing: 14) {
                         ForEach(p.bullets) { b in
                             HStack(alignment: .top, spacing: 12) {
                                 Image(systemName: b.symbol).font(.system(size: 15, weight: .semibold)).foregroundStyle(Theme.orange)
                                     .frame(width: 34, height: 34).background(RoundedRectangle(cornerRadius: 9, style: .continuous).fill(Theme.orange.opacity(0.12)))
                                 VStack(alignment: .leading, spacing: 2) {
-                                    Text(b.title).font(.system(size: 13, weight: .semibold)).foregroundStyle(Theme.text)
-                                    Text(b.text).font(.system(size: 12)).foregroundStyle(Theme.muted).fixedSize(horizontal: false, vertical: true)
+                                    Text(L(b.title)).font(.system(size: 13, weight: .semibold)).foregroundStyle(Theme.text)
+                                    Text(L(b.text)).font(.system(size: 12)).foregroundStyle(Theme.muted).fixedSize(horizontal: false, vertical: true)
                                 }
                             }
                         }
@@ -391,7 +391,7 @@ struct HelpView: View {
                                 Image(systemName: act.symbol).font(.system(size: 13, weight: .semibold))
                                 Text(act.title).font(.system(size: 13, weight: .semibold))
                                 Spacer(minLength: 0)
-                                Image(systemName: "arrow.right").font(.system(size: 11, weight: .bold))
+                                Image(systemName: L("arrow.right")).font(.system(size: 11, weight: .bold))
                             }
                             .foregroundStyle(Theme.orange).padding(.horizontal, 14).padding(.vertical, 11)
                             .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Theme.orange.opacity(0.12)))
@@ -421,7 +421,7 @@ struct HelpView: View {
 
     private var footer: some View {
         HStack(spacing: 14) {
-            Toggle("Show at startup", isOn: $settings.showWelcome).toggleStyle(.checkbox).font(.system(size: 12)).foregroundStyle(Theme.muted)
+            Toggle(L("Show at startup"), isOn: $settings.showWelcome).toggleStyle(.checkbox).font(.system(size: 12)).foregroundStyle(Theme.muted)
             Spacer()
             HStack(spacing: 7) {
                 ForEach(0..<count, id: \.self) { i in
@@ -430,9 +430,9 @@ struct HelpView: View {
                 }
             }
             Spacer()
-            Button("Back") { go(-1) }.buttonStyle(PillButtonStyle()).opacity(page == 0 ? 0 : 1).disabled(page == 0)
-            if page == count - 1 { Button("Start using Mandarine") { close() }.buttonStyle(PillButtonStyle(prominent: true)) }
-            else { Button("Next") { go(1) }.buttonStyle(PillButtonStyle(prominent: true)) }
+            Button(L("Back")) { go(-1) }.buttonStyle(PillButtonStyle()).opacity(page == 0 ? 0 : 1).disabled(page == 0)
+            if page == count - 1 { Button(L("Start using Mandarine")) { close() }.buttonStyle(PillButtonStyle(prominent: true)) }
+            else { Button(L("Next")) { go(1) }.buttonStyle(PillButtonStyle(prominent: true)) }
         }
         .padding(.horizontal, 38).padding(.vertical, 16)
         .overlay(Divider().opacity(0.6), alignment: .top)

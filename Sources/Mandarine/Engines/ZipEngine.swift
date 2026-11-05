@@ -3,7 +3,7 @@ import Foundation
 /// Archive ZIP d'une sélection (fichiers et dossiers, même mélangés) avec l'outil `zip` du système.
 enum ZipEngine {
     static func make(_ urls: [URL]) async throws -> URL {
-        guard let first = urls.first else { throw MandarineError("Nothing to zip.") }
+        guard let first = urls.first else { throw MandarineError(L("Nothing to zip.")) }
         let base = urls.count == 1 ? first.deletingPathExtension().lastPathComponent : "Archive"
         let out = OutputNaming.unique(folder: first.deletingLastPathComponent(), base: base, ext: "zip")
         // Dossier de travail avec un lien vers chaque élément (noms rendus uniques) : zip y suit les liens et range tout à la racine de l'archive
@@ -32,11 +32,11 @@ enum ZipEngine {
                     let msg = err.fileHandleForReading.readDataToEndOfFile(); p.waitUntilExit()
                     if box.cancelled { try? FileManager.default.removeItem(at: out); cont.resume(throwing: CancellationError()); return }
                     if p.terminationStatus == 0 || p.terminationStatus == 12 { cont.resume() }      // 12 : « rien à ajouter » (ex. dossiers vides)
-                    else { try? FileManager.default.removeItem(at: out); cont.resume(throwing: MandarineError("zip failed: " + String(decoding: msg, as: UTF8.self))) }
+                    else { try? FileManager.default.removeItem(at: out); cont.resume(throwing: MandarineError(L("zip failed: ") + String(decoding: msg, as: UTF8.self))) }
                 }
             }
         } onCancel: { box.cancel() }
-        guard fm.fileExists(atPath: out.path) else { throw MandarineError("Nothing to put in the archive.") }
+        guard fm.fileExists(atPath: out.path) else { throw MandarineError(L("Nothing to put in the archive.")) }
         return out
     }
 }

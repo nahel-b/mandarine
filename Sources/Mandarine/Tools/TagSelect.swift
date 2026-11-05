@@ -59,7 +59,7 @@ enum TagSelect {
 
     static func select(_ files: [URL], of total: Int) {
         NSWorkspace.shared.activateFileViewerSelecting(files)
-        Toast.shared.done("Selected \(files.count) of \(total) files", subtitle: "in the Finder", files: files)
+        Toast.shared.done(L("Selected \(files.count) of \(total) files"), subtitle: L("in the Finder"), files: files)
     }
 }
 

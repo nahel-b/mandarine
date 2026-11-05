@@ -18,7 +18,7 @@ struct TextResultView<Extra: View>: View {
     var body: some View {
         ToolShell(title: title, close: close) {
             VStack(alignment: .leading, spacing: 10) {
-                Text("\(SnippetStore.wordCount(source)) words").sectionLabel()
+                Text(L("\(SnippetStore.wordCount(source)) words")).sectionLabel()
                 Text(source.prefix(600) + (source.count > 600 ? "…" : ""))
                     .font(.system(size: 11)).foregroundStyle(Theme.muted).lineLimit(3).frame(maxWidth: .infinity, alignment: .leading)
                     .padding(8).background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(Color.black.opacity(0.05)))
@@ -27,22 +27,22 @@ struct TextResultView<Extra: View>: View {
                     RoundedRectangle(cornerRadius: 10, style: .continuous).fill(Color.white.opacity(0.85))
                     RoundedRectangle(cornerRadius: 10, style: .continuous).stroke(Color.black.opacity(0.1))
                     if let e = error {
-                        Text(e).font(.system(size: 12)).foregroundStyle(.red).padding(14).frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                        Text(L(e)).font(.system(size: 12)).foregroundStyle(.red).padding(14).frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                     } else if busy && result.isEmpty {
                         ProgressView().controlSize(.small)
                     } else {
-                        ScrollView { Text(result).font(.system(size: 13)).textSelection(.enabled).padding(12).frame(maxWidth: .infinity, alignment: .leading) }
+                        ScrollView { Text(L(result)).font(.system(size: 13)).textSelection(.enabled).padding(12).frame(maxWidth: .infinity, alignment: .leading) }
                     }
                 }.frame(width: 480, height: 200)
             }.frame(width: 480)
         } footer: {
-            Button("Save as .txt") {
+            Button(L("Save as .txt")) {
                 let r = result; close()
-                Dispatcher.job("Saving text…", light: true) { _ in
+                Dispatcher.job(L("Saving text…"), light: true) { _ in
                     let out = SnippetStore.outputURL(for: r, ext: "txt"); try r.write(to: out, atomically: true, encoding: .utf8); return [out]
                 }
             }.buttonStyle(PillButtonStyle()).disabled(result.isEmpty)
-            Button(copied ? "Copied" : "Copy") {
+            Button(copied ? L("Copied") : L("Copy")) {
                 NSPasteboard.general.clearContents(); NSPasteboard.general.setString(result, forType: .string)
                 copied = true; DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { copied = false }
             }.buttonStyle(PillButtonStyle()).disabled(result.isEmpty)
@@ -61,7 +61,7 @@ struct SummarizeTool: View {
     private var text: String { urls.map { SnippetStore.text(of: $0) }.joined(separator: "\n\n") }
 
     var body: some View {
-        TextResultView(title: "Summarize", source: text, result: result, busy: busy, error: error, close: close) { EmptyView() }
+        TextResultView(title: L("Summarize"), source: text, result: result, busy: busy, error: error, close: close) { EmptyView() }
             .task {
                 do { result = try await SnippetEngine.summarize(text) } catch { self.error = error.localizedDescription }
                 busy = false
@@ -76,7 +76,7 @@ struct TranslateTool: View {
     let close: () -> Void
     var body: some View {
         if #available(macOS 15.0, *) { TranslateToolBody(text: urls.map { SnippetStore.text(of: $0) }.joined(separator: "\n\n"), close: close) }
-        else { Text("Translation needs macOS 15 or later.").padding(30) }
+        else { Text(L("Translation needs macOS 15 or later.")).padding(30) }
     }
 }
 
@@ -94,14 +94,14 @@ private struct TranslateToolBody: View {
     private func name(_ l: Locale.Language) -> String { Locale.current.localizedString(forIdentifier: l.minimalIdentifier)?.capitalized ?? l.minimalIdentifier }
 
     var body: some View {
-        TextResultView(title: "Translate", source: text, result: result, busy: busy, error: error, close: close) {
+        TextResultView(title: L("Translate"), source: text, result: result, busy: busy, error: error, close: close) {
             HStack {
-                Text("To").sectionLabel()
+                Text(L("To")).sectionLabel()
                 Picker("", selection: $target) {
                     ForEach(languages, id: \.minimalIdentifier) { Text(name($0)).tag($0) }
                 }.labelsHidden().frame(width: 200)
                 Spacer()
-                if let src = SnippetEngine.language(of: text) { Text("from " + (Locale.current.localizedString(forLanguageCode: src.rawValue)?.capitalized ?? src.rawValue)).sectionLabel() }
+                if let src = SnippetEngine.language(of: text) { Text(L("from ") + (Locale.current.localizedString(forLanguageCode: src.rawValue)?.capitalized ?? src.rawValue)).sectionLabel() }
             }
         }
         .translationTask(config) { session in

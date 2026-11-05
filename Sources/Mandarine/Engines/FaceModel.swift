@@ -22,8 +22,8 @@ enum FaceModel {
     static func download(progress: @escaping (Double) -> Void) async throws {
         let (tmp, resp) = try await Downloader.fetch(url, progress: progress)
         defer { try? FileManager.default.removeItem(at: tmp) }
-        guard (resp as? HTTPURLResponse)?.statusCode == 200 else { throw MandarineError("The server answered with an error (\((resp as? HTTPURLResponse)?.statusCode ?? 0)).") }
-        guard try Downloader.sha256(of: tmp) == sha256 else { throw MandarineError("The downloaded model doesn't match its expected checksum — nothing was installed.") }
+        guard (resp as? HTTPURLResponse)?.statusCode == 200 else { throw MandarineError(L("The server answered with an error (\((resp as? HTTPURLResponse)?.statusCode ?? 0)).")) }
+        guard try Downloader.sha256(of: tmp) == sha256 else { throw MandarineError(L("The downloaded model doesn't match its expected checksum — nothing was installed.")) }
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         try? FileManager.default.removeItem(at: file)
         try FileManager.default.moveItem(at: tmp, to: file)
@@ -82,7 +82,7 @@ enum ONNX {
                 }
             }
         }
-        guard !nodes.isEmpty else { throw MandarineError("The face model file is not a valid ONNX model.") }
+        guard !nodes.isEmpty else { throw MandarineError(L("The face model file is not a valid ONNX model.")) }
         return (nodes, tensors)
     }
 
@@ -152,8 +152,8 @@ final class FaceEmbedder {
     private let output: MPSGraphTensor
 
     private init() throws {
-        guard FaceModel.isInstalled else { throw MandarineError("The face model isn't installed. Download it in Settings → Engines.") }
-        guard let dev = MTLCreateSystemDefaultDevice(), let q = dev.makeCommandQueue() else { throw MandarineError("No GPU available for face recognition.") }
+        guard FaceModel.isInstalled else { throw MandarineError(L("The face model isn't installed. Download it in Settings → Engines.")) }
+        guard let dev = MTLCreateSystemDefaultDevice(), let q = dev.makeCommandQueue() else { throw MandarineError(L("No GPU available for face recognition.")) }
         device = MPSGraphDevice(mtlDevice: dev); queue = q
         let (nodes, tensors) = try ONNX.parse(try Data(contentsOf: FaceModel.file))
         let graph = MPSGraph()
@@ -161,7 +161,7 @@ final class FaceEmbedder {
         func f32(_ a: [Float], _ shape: [Int]) -> MPSGraphTensor {
             graph.constant(a.withUnsafeBufferPointer { Data(buffer: $0) }, shape: shape.map(NSNumber.init), dataType: .float32)
         }
-        func init_(_ n: String) throws -> ONNXTensor { guard let t = tensors[n] else { throw MandarineError("Unexpected face model (\(n) missing).") }; return t }
+        func init_(_ n: String) throws -> ONNXTensor { guard let t = tensors[n] else { throw MandarineError(L("Unexpected face model (\(n) missing).")) }; return t }
 
         let inp = graph.placeholder(shape: [1, 3, 112, 112], dataType: .float32, name: "data")
         input = inp
@@ -205,7 +205,7 @@ final class FaceEmbedder {
                 let wt = graph.transposeTensor(f32(w.floats, w.dims), dimension: 0, withDimension: 1, name: nil)
                 y = graph.addition(graph.matrixMultiplication(primary: x!, secondary: wt, name: nil), f32(b.floats, [1, b.floats.count]), name: nil)
             default:
-                throw MandarineError("Unsupported operation in the face model: \(n.op).")
+                throw MandarineError(L("Unsupported operation in the face model: \(n.op)."))
             }
             for o in n.outputs { values[o] = y; rank[o] = r }
             last = y
@@ -216,10 +216,10 @@ final class FaceEmbedder {
 
     /// `chw` : 3×112×112 valeurs RGB de 0 à 255.
     func embed(_ chw: [Float]) throws -> [Float] {
-        guard chw.count == 3 * 112 * 112 else { throw MandarineError("Bad face image size.") }
+        guard chw.count == 3 * 112 * 112 else { throw MandarineError(L("Bad face image size.")) }
         let data = MPSGraphTensorData(device: device, data: chw.withUnsafeBufferPointer { Data(buffer: $0) }, shape: [1, 3, 112, 112], dataType: .float32)
         let result = graph.run(with: queue, feeds: [input: data], targetTensors: [output], targetOperations: nil)
-        guard let out = result[output] else { throw MandarineError("The face model produced no result.") }
+        guard let out = result[output] else { throw MandarineError(L("The face model produced no result.")) }
         var v = [Float](repeating: 0, count: 128)
         out.mpsndarray().readBytes(&v, strideBytes: nil)
         let norm = max(v.reduce(0) { $0 + $1 * $1 }.squareRoot(), 1e-9)
@@ -254,7 +254,7 @@ enum Downloader {
             try await withCheckedThrowingContinuation { cont in
                 d.done = { tmp, resp, err in
                     if let e = err { cont.resume(throwing: e) } else if let t = tmp, let r = resp { cont.resume(returning: (t, r)) }
-                    else { cont.resume(throwing: MandarineError("Download failed.")) }
+                    else { cont.resume(throwing: MandarineError(L("Download failed."))) }
                 }
                 var req = URLRequest(url: url); req.setValue("Mandarine", forHTTPHeaderField: "User-Agent"); req.timeoutInterval = 60
                 session.downloadTask(with: req).resume()

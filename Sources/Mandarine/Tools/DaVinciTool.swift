@@ -57,38 +57,38 @@ struct DaVinciTreeTool: View {
     private var creatingWrapper: Bool { folders.isEmpty }
 
     var body: some View {
-        ToolShell(title: "DaVinci Project", close: close) {
+        ToolShell(title: L("DaVinci Project"), close: close) {
             VStack(alignment: .leading, spacing: 12) {
                 HStack(spacing: 10) {
                     Image(systemName: "folder.badge.gearshape").font(.system(size: 22)).foregroundStyle(Theme.orange)
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(creatingWrapper ? "A new project folder will be created next to your files" : "The folders are created inside").font(.system(size: 12, weight: .semibold))
-                        Text(root.path).font(.system(size: 10)).foregroundStyle(Theme.muted).lineLimit(1).truncationMode(.middle)
+                        Text(creatingWrapper ? L("A new project folder will be created next to your files") : L("The folders are created inside")).font(.system(size: 12, weight: .semibold))
+                        Text(L(root.path)).font(.system(size: 10)).foregroundStyle(Theme.muted).lineLimit(1).truncationMode(.middle)
                     }
                 }
                 if creatingWrapper {
-                    HStack { Text("Project name").sectionLabel(); TextField("DaVinci Project", text: $name).textFieldStyle(.roundedBorder) }
+                    HStack { Text(L("Project name")).sectionLabel(); TextField(L("DaVinci Project"), text: $name).textFieldStyle(.roundedBorder) }
                 }
                 Divider()
                 HStack(alignment: .top, spacing: 14) {
                     VStack(alignment: .leading, spacing: 7) {
                         ForEach($groups) { $g in
-                            Toggle(isOn: $g.on) { Text(g.name).font(.system(size: 12, weight: .medium).monospaced()) }
+                            Toggle(isOn: $g.on) { Text(L(g.name)).font(.system(size: 12, weight: .medium).monospaced()) }
                         }
                     }.frame(width: 150, alignment: .leading)
                     ScrollView {
-                        Text(treeText).font(.system(size: 11).monospaced()).foregroundStyle(Theme.text.opacity(0.85))
+                        Text(L(treeText)).font(.system(size: 11).monospaced()).foregroundStyle(Theme.text.opacity(0.85))
                             .frame(maxWidth: .infinity, alignment: .leading)
                     }
                     .padding(10).frame(height: 200)
                     .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(Color.black.opacity(0.05)))
                 }
                 if !files.isEmpty {
-                    Toggle("Move the dropped files into the right folder (video → Footage, audio → Audio, images → Stills)", isOn: $moveFiles).font(.system(size: 12))
+                    Toggle(L("Move the dropped files into the right folder (video → Footage, audio → Audio, images → Stills)"), isOn: $moveFiles).font(.system(size: 12))
                 }
             }.frame(width: 470, alignment: .leading)
         } footer: {
-            Button("Create Folders") { run() }.buttonStyle(PillButtonStyle(prominent: true)).disabled(!groups.contains { $0.on }).keyboardShortcut(.defaultAction)
+            Button(L("Create Folders")) { run() }.buttonStyle(PillButtonStyle(prominent: true)).disabled(!groups.contains { $0.on }).keyboardShortcut(.defaultAction)
         }
         .onAppear { name = urls.count == 1 ? urls[0].deletingPathExtension().lastPathComponent : "DaVinci Project" }
     }
@@ -109,7 +109,7 @@ struct DaVinciTreeTool: View {
     private func run() {
         let chosen = groups.filter(\.on), target = root, dropped = files, move = moveFiles, wrapper = creatingWrapper
         close()
-        Dispatcher.job("Creating DaVinci folders…", light: true) { _ in
+        Dispatcher.job(L("Creating DaVinci folders…"), light: true) { _ in
             try await Task.detached {
                 let fm = FileManager.default
                 if wrapper { try fm.createDirectory(at: target, withIntermediateDirectories: true) }

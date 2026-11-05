@@ -50,14 +50,14 @@ final class EngineInstaller: ObservableObject {
             let latest = URL(string: "https://ffmpeg.martin-riedl.de/redirect/latest/macos/\(arch)/release/\(tool).zip")!
             let (tmp, resp) = try await Downloader.fetch(latest) { p in progress((Double(i) + p) / Double(tools.count)) }
             defer { try? FileManager.default.removeItem(at: tmp) }
-            guard (resp as? HTTPURLResponse)?.statusCode == 200, let final = resp.url else { throw MandarineError("The ffmpeg server answered with an error.") }
+            guard (resp as? HTTPURLResponse)?.statusCode == 200, let final = resp.url else { throw MandarineError(L("The ffmpeg server answered with an error.")) }
             // Empreinte publiée à côté de la version précise téléchargée
             var req = URLRequest(url: final.appendingPathExtension("sha256")); req.setValue("Mandarine", forHTTPHeaderField: "User-Agent")
             let (sumData, sumResp) = try await URLSession.shared.data(for: req)
             guard (sumResp as? HTTPURLResponse)?.statusCode == 200,
                   let expected = String(data: sumData, encoding: .utf8)?.split(whereSeparator: { $0 == " " || $0 == "\n" || $0 == "\t" }).first.map(String.init)?.lowercased()
-            else { throw MandarineError("The published checksum for \(tool) wasn't found.") }
-            guard try Downloader.sha256(of: tmp) == expected else { throw MandarineError("\(tool) doesn't match its published checksum — nothing was installed.") }
+            else { throw MandarineError(L("The published checksum for \(tool) wasn't found.")) }
+            guard try Downloader.sha256(of: tmp) == expected else { throw MandarineError(L("\(tool) doesn't match its published checksum — nothing was installed.")) }
             try install(binary: tool, fromArchive: tmp, kind: .zip, pathInArchive: tool, versionArgument: "-version")
         }
         progress(1)
@@ -74,8 +74,8 @@ final class EngineInstaller: ObservableObject {
         let url = URL(string: "https://storage.googleapis.com/downloads.webmproject.org/releases/webp/libwebp-1.6.0-\(name).tar.gz")!
         let (tmp, resp) = try await Downloader.fetch(url, progress: progress)
         defer { try? FileManager.default.removeItem(at: tmp) }
-        guard (resp as? HTTPURLResponse)?.statusCode == 200 else { throw MandarineError("The WebP server answered with an error.") }
-        guard try Downloader.sha256(of: tmp) == pinned else { throw MandarineError("cwebp doesn't match its expected checksum — nothing was installed.") }
+        guard (resp as? HTTPURLResponse)?.statusCode == 200 else { throw MandarineError(L("The WebP server answered with an error.")) }
+        guard try Downloader.sha256(of: tmp) == pinned else { throw MandarineError(L("cwebp doesn't match its expected checksum — nothing was installed.")) }
         try install(binary: "cwebp", fromArchive: tmp, kind: .tar, pathInArchive: "libwebp-1.6.0-\(name)/bin/cwebp", versionArgument: "-version")
         progress(1)
     }
@@ -99,9 +99,9 @@ final class EngineInstaller: ObservableObject {
         try fm.createDirectory(at: work, withIntermediateDirectories: true)
         defer { try? fm.removeItem(at: work) }
         let (code, log) = kind == .zip ? try run("/usr/bin/unzip", ["-o", "-q", archive.path, "-d", work.path]) : try run("/usr/bin/tar", ["-xzf", archive.path, "-C", work.path])
-        guard code == 0 else { throw MandarineError("Couldn't unpack \(name): \(log)") }
+        guard code == 0 else { throw MandarineError(L("Couldn't unpack \(name): \(log)")) }
         let extracted = work.appendingPathComponent(pathInArchive)
-        guard fm.fileExists(atPath: extracted.path) else { throw MandarineError("\(name) wasn't found in the downloaded archive.") }
+        guard fm.fileExists(atPath: extracted.path) else { throw MandarineError(L("\(name) wasn't found in the downloaded archive.")) }
         try fm.setAttributes([.posixPermissions: 0o755], ofItemAtPath: extracted.path)
         _ = try? run("/usr/bin/xattr", ["-cr", extracted.path])
         var (status, _) = (try? run(extracted.path, [versionArgument])) ?? (-1, "")
@@ -109,7 +109,7 @@ final class EngineInstaller: ObservableObject {
             _ = try? run("/usr/bin/codesign", ["--force", "--sign", "-", extracted.path])
             (status, _) = (try? run(extracted.path, [versionArgument])) ?? (-1, "")
         }
-        guard status == 0 else { throw MandarineError("The downloaded \(name) doesn't start on this Mac.") }
+        guard status == 0 else { throw MandarineError(L("The downloaded \(name) doesn't start on this Mac.")) }
         try fm.createDirectory(at: destination, withIntermediateDirectories: true)
         let dest = destination.appendingPathComponent(name)
         try? fm.removeItem(at: dest)

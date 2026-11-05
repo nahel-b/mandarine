@@ -10,36 +10,36 @@ private enum FeatureTab: String, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .image: return "Images"; case .video: return "Videos"; case .audio: return "Audio"; case .pdf: return "PDF"
-        case .document: return "Documents"; case .slides: return "Slides"; case .spreadsheet: return "Spreadsheets"; case .epub: return "EPUB"
-        case .subtitle: return "Subtitles"; case .archive: return "Archives"; case .folder: return "Folders"; case .text: return "Dragged text"
-        case .link: return "Web links"; case .mixed: return "Mixed files"
+        case .image: return L("Images"); case .video: return L("Videos"); case .audio: return L("Audio"); case .pdf: return L("PDF")
+        case .document: return L("Documents"); case .slides: return L("Slides"); case .spreadsheet: return L("Spreadsheets"); case .epub: return L("EPUB")
+        case .subtitle: return L("Subtitles"); case .archive: return L("Archives"); case .folder: return L("Folders"); case .text: return L("Dragged text")
+        case .link: return L("Web links"); case .mixed: return L("Mixed files")
         }
     }
     var symbol: String {
         switch self {
-        case .image: return "photo"; case .video: return "film"; case .audio: return "waveform"; case .pdf: return "doc.richtext"
-        case .document: return "doc.text"; case .slides: return "rectangle.on.rectangle"; case .spreadsheet: return "tablecells"; case .epub: return "book"
-        case .subtitle: return "text.bubble"; case .archive: return "archivebox"; case .folder: return "folder"; case .text: return "text.alignleft"
-        case .link: return "link"; case .mixed: return "square.stack.3d.up"
+        case .image: return L("photo"); case .video: return L("film"); case .audio: return L("waveform"); case .pdf: return L("doc.richtext")
+        case .document: return L("doc.text"); case .slides: return L("rectangle.on.rectangle"); case .spreadsheet: return L("tablecells"); case .epub: return L("book")
+        case .subtitle: return L("text.bubble"); case .archive: return L("archivebox"); case .folder: return L("folder"); case .text: return L("text.alignleft")
+        case .link: return L("link"); case .mixed: return L("square.stack.3d.up")
         }
     }
     var tagline: String {
         switch self {
-        case .image: return "JPG, PNG, WebP, HEIC, TIFF, AVIF, BMP, GIF and SVG."
-        case .video: return "MP4, MOV, MKV, WebM, AVI, WMV and more."
-        case .audio: return "MP3, M4A, WAV, FLAC, OGG, Opus, AIFF, WMA and more."
-        case .pdf: return "Any PDF, scanned or not."
-        case .document: return "DOCX, Pages, Markdown, TXT, RTF, HTML."
-        case .slides: return "PowerPoint and Keynote."
-        case .spreadsheet: return "XLSX, XLS, ODS, CSV, TSV and Numbers."
-        case .epub: return "E-books."
-        case .subtitle: return "SRT and VTT."
-        case .archive: return "ZIP, TAR, GZIP and RAR."
-        case .folder: return "Drag a whole folder."
-        case .text: return "Select some text and drag it: it becomes a small file."
-        case .link: return "Drag a link from your browser. Videos and pages."
-        case .mixed: return "Several different kinds of file in one selection."
+        case .image: return L("JPG, PNG, WebP, HEIC, TIFF, AVIF, BMP, GIF and SVG.")
+        case .video: return L("MP4, MOV, MKV, WebM, AVI, WMV and more.")
+        case .audio: return L("MP3, M4A, WAV, FLAC, OGG, Opus, AIFF, WMA and more.")
+        case .pdf: return L("Any PDF, scanned or not.")
+        case .document: return L("DOCX, Pages, Markdown, TXT, RTF, HTML.")
+        case .slides: return L("PowerPoint and Keynote.")
+        case .spreadsheet: return L("XLSX, XLS, ODS, CSV, TSV and Numbers.")
+        case .epub: return L("E-books.")
+        case .subtitle: return L("SRT and VTT.")
+        case .archive: return L("ZIP, TAR, GZIP and RAR.")
+        case .folder: return L("Drag a whole folder.")
+        case .text: return L("Select some text and drag it: it becomes a small file.")
+        case .link: return L("Drag a link from your browser. Videos and pages.")
+        case .mixed: return L("Several different kinds of file in one selection.")
         }
     }
     /// Un fichier, et deux fichiers du même type : l'écart entre les deux révèle ce qui ne s'offre qu'à partir de 2 fichiers.
@@ -55,11 +55,11 @@ private enum FeatureTab: String, CaseIterable, Identifiable {
         case .slides: return two("pptx")
         case .spreadsheet: return two("xlsx")
         case .epub: return two("epub")
-        case .subtitle: return two("srt")
+        case .subtitle: return two(L("srt"))
         case .archive: return two("zip")
         case .folder: return ([HelpAssets.fakeFolder], [HelpAssets.fakeFolder, HelpAssets.fakeFolder])
         case .text:
-            let t = SnippetStore.folder.appendingPathComponent("sample/Selected text.txt")
+            let t = SnippetStore.folder.appendingPathComponent(L("sample/Selected text.txt"))
             return ([t], [t])
         case .link:
             let l = URL(string: "https://www.youtube.com/watch?v=abc")!
@@ -104,8 +104,8 @@ private enum FeatureLibrary {
                     out.append(Format(id: item.id, label: item.label, available: item.enabled, severalOnly: !seen.contains(item.label)))
                 }
                 if b.contains(where: { $0.id == "multi-pdf" }) {
-                    s.features.append(Feature(id: "multi-pdf", symbol: "doc.on.doc", title: "Several images → one PDF",
-                                              detail: "Select many images and drop them on PDF: one page per image.", severalOnly: true))
+                    s.features.append(Feature(id: "multi-pdf", symbol: "doc.on.doc", title: L("Several images → one PDF"),
+                                              detail: L("Select many images and drop them on PDF: one page per image."), severalOnly: true))
                 }
             } else {
                 let known = Set(flatten(a))
@@ -119,7 +119,7 @@ private enum FeatureLibrary {
 
     private static func feature(_ item: WheelItem, known: Set<String>) -> Feature {
         let kids = item.children.map { feature($0, known: known) }
-        let detail = item.id == "copyPath" && item.label == "COPY LINK" ? "Copy the link as text." : WiiText.description(item)
+        let detail = item.id == "copyPath" && item.label == L("COPY LINK") ? "Copy the link as text." : WiiText.description(item)
         return Feature(id: item.id, symbol: item.symbol ?? "circle", title: item.caption, detail: detail == item.caption ? "" : detail,
                        severalOnly: kids.isEmpty ? !known.contains(item.id) : kids.allSatisfy(\.severalOnly), available: item.enabled, children: kids)
     }
@@ -195,14 +195,14 @@ struct FeaturesView: View {
     private var sidebar: some View {
         VStack(alignment: .leading, spacing: 0) {
             VStack(alignment: .leading, spacing: 3) {
-                Text("All features").font(.system(size: 19, weight: .bold)).foregroundStyle(Theme.text)
-                Text("\(total) things Mandarine can do").font(.system(size: 11.5)).foregroundStyle(Theme.muted)
+                Text(L("All features")).font(.system(size: 19, weight: .bold)).foregroundStyle(Theme.text)
+                Text(L("\(total) things Mandarine can do")).font(.system(size: 11.5)).foregroundStyle(Theme.muted)
             }.padding(.top, 44).padding(.horizontal, 18)
             HStack(spacing: 7) {
                 Image(systemName: "magnifyingglass").font(.system(size: 12, weight: .medium)).foregroundStyle(Theme.muted)
-                TextField("Search", text: $query).textFieldStyle(.plain).font(.system(size: 13)).focused($searching)
+                TextField(L("Search"), text: $query).textFieldStyle(.plain).font(.system(size: 13)).focused($searching)
                 if !query.isEmpty {
-                    Button { query = "" } label: { Image(systemName: "xmark.circle.fill").foregroundStyle(Theme.muted.opacity(0.7)) }.buttonStyle(.plain)
+                    Button { query = "" } label: { Image(systemName: L("xmark.circle.fill")).foregroundStyle(Theme.muted.opacity(0.7)) }.buttonStyle(.plain)
                 }
             }
             .padding(.horizontal, 10).padding(.vertical, 7)
@@ -218,7 +218,7 @@ struct FeaturesView: View {
                                     .foregroundStyle(on ? Theme.orange : Theme.muted)
                                 Text(t.title).font(.system(size: 13, weight: on ? .semibold : .regular))
                                 Spacer()
-                                Text("\(count(t))").font(.system(size: 11, weight: .medium).monospacedDigit()).foregroundStyle(on ? Theme.orange : Theme.muted.opacity(0.8))
+                                Text(L("\(count(t))")).font(.system(size: 11, weight: .medium).monospacedDigit()).foregroundStyle(on ? Theme.orange : Theme.muted.opacity(0.8))
                             }
                             .foregroundStyle(Theme.text)
                             .padding(.horizontal, 10).padding(.vertical, 7)
@@ -230,7 +230,7 @@ struct FeaturesView: View {
             }
             Divider().opacity(0.6)
             Button { close() } label: {
-                Label("Open the guide", systemImage: "chevron.left").font(.system(size: 12)).foregroundStyle(Theme.muted)
+                Label(L("Open the guide"), systemImage: L("chevron.left")).font(.system(size: 12)).foregroundStyle(Theme.muted)
             }.buttonStyle(.plain).padding(.horizontal, 18).padding(.vertical, 12)
         }
         .frame(width: 228)
@@ -245,7 +245,7 @@ struct FeaturesView: View {
             VStack(alignment: .leading, spacing: 26) {
                 header(tab, sections)
                 ForEach(sections) { s in sectionView(s) }
-                Text("Some tools only appear when they are turned on in Settings → Petals, or when the app they need is installed (VS Code, ffmpeg…).")
+                Text(L("Some tools only appear when they are turned on in Settings → Petals, or when the app they need is installed (VS Code, ffmpeg…)."))
                     .font(.system(size: 11)).foregroundStyle(Theme.muted).fixedSize(horizontal: false, vertical: true).padding(.top, 4)
             }
             .padding(.horizontal, 32).padding(.top, 44).padding(.bottom, 30)
@@ -260,14 +260,14 @@ struct FeaturesView: View {
                 .background(RoundedRectangle(cornerRadius: 17, style: .continuous).fill(LinearGradient(colors: [Theme.orange, Theme.orange.opacity(0.72)], startPoint: .topLeading, endPoint: .bottomTrailing)))
                 .shadow(color: Theme.orange.opacity(0.35), radius: 10, y: 5)
             VStack(alignment: .leading, spacing: 5) {
-                Text(tab.title).font(.system(size: 28, weight: .bold)).foregroundStyle(Theme.text)
-                Text(tab.tagline).font(.system(size: 13)).foregroundStyle(Theme.muted)
+                Text(L(tab.title)).font(.system(size: 28, weight: .bold)).foregroundStyle(Theme.text)
+                Text(L(tab.tagline)).font(.system(size: 13)).foregroundStyle(Theme.muted)
             }
             Spacer(minLength: 12)
             HStack(spacing: 8) {
                 ForEach(sections) { s in
                     VStack(spacing: 1) {
-                        Text("\(s.count)").font(.system(size: 18, weight: .bold).monospacedDigit()).foregroundStyle(Theme.text)
+                        Text(L("\(s.count)")).font(.system(size: 18, weight: .bold).monospacedDigit()).foregroundStyle(Theme.text)
                         Text(key(s.mode)).font(.system(size: 11, weight: .semibold)).foregroundStyle(Theme.orange)
                     }
                     .frame(width: 52, height: 48)
@@ -285,13 +285,13 @@ struct FeaturesView: View {
                     .frame(width: 28, height: 28)
                     .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(Theme.orange))
                 VStack(alignment: .leading, spacing: 1) {
-                    Text(s.mode.title).font(.system(size: 16, weight: .semibold)).foregroundStyle(Theme.text)
-                    Text("Tap \(key(s.mode)) while you drag").font(.system(size: 11.5)).foregroundStyle(Theme.muted)
+                    Text(L(s.mode.title)).font(.system(size: 16, weight: .semibold)).foregroundStyle(Theme.text)
+                    Text(L("Tap \(key(s.mode)) while you drag")).font(.system(size: 11.5)).foregroundStyle(Theme.muted)
                 }
             }
             if !s.formats.isEmpty {
                 VStack(alignment: .leading, spacing: 9) {
-                    Text("Saved as a copy next to the original, in:").font(.system(size: 11.5)).foregroundStyle(Theme.muted)
+                    Text(L("Saved as a copy next to the original, in:")).font(.system(size: 11.5)).foregroundStyle(Theme.muted)
                     FlowLayout(spacing: 7) { ForEach(s.formats) { FormatChip(format: $0) } }
                 }
                 .padding(14).frame(maxWidth: .infinity, alignment: .leading)
@@ -316,10 +316,10 @@ struct FeaturesView: View {
         }
         return ScrollView {
             VStack(alignment: .leading, spacing: 10) {
-                Text(found.isEmpty ? "Nothing found" : "\(found.count) result\(found.count == 1 ? "" : "s")")
+                Text(found.isEmpty ? L("Nothing found") : L("\(found.count) result\(found.count == 1 ? "" : "s")"))
                     .font(.system(size: 22, weight: .bold)).foregroundStyle(Theme.text).padding(.bottom, 4)
                 if found.isEmpty {
-                    Text("Try a file type (“pdf”), an action (“trim”), a format (“webp”) or a word like “background”.")
+                    Text(L("Try a file type (“pdf”), an action (“trim”), a format (“webp”) or a word like “background”."))
                         .font(.system(size: 13)).foregroundStyle(Theme.muted)
                 }
                 ForEach(found) { h in
@@ -327,17 +327,17 @@ struct FeaturesView: View {
                         IconTile(symbol: h.symbol)
                         VStack(alignment: .leading, spacing: 3) {
                             HStack(spacing: 7) {
-                                Text(h.title).font(.system(size: 13.5, weight: .semibold)).foregroundStyle(Theme.text)
+                                Text(L(h.title)).font(.system(size: 13.5, weight: .semibold)).foregroundStyle(Theme.text)
                                 Text(key(h.mode)).font(.system(size: 10, weight: .bold)).foregroundStyle(Theme.orange)
                                     .padding(.horizontal, 5).padding(.vertical, 1).background(Capsule().fill(Theme.orange.opacity(0.13)))
                             }
-                            if !h.detail.isEmpty { Text(h.detail).font(.system(size: 12)).foregroundStyle(Theme.muted).fixedSize(horizontal: false, vertical: true) }
+                            if !h.detail.isEmpty { Text(L(h.detail)).font(.system(size: 12)).foregroundStyle(Theme.muted).fixedSize(horizontal: false, vertical: true) }
                         }
                         Spacer(minLength: 8)
                         FlowLayout(spacing: 5, alignment: .trailing) {
                             ForEach(h.tabs) { t in
                                 Button { query = ""; selected = t } label: {
-                                    HStack(spacing: 4) { Image(systemName: t.symbol).font(.system(size: 9)); Text(t.title).font(.system(size: 10.5, weight: .medium)) }
+                                    HStack(spacing: 4) { Image(systemName: t.symbol).font(.system(size: 9)); Text(L(t.title)).font(.system(size: 10.5, weight: .medium)) }
                                         .foregroundStyle(Theme.text.opacity(0.75)).padding(.horizontal, 7).padding(.vertical, 3)
                                         .background(Capsule().fill(Color.black.opacity(0.06)))
                                 }.buttonStyle(.plain)
@@ -371,13 +371,13 @@ private struct FormatChip: View {
     let format: Format
     var body: some View {
         HStack(spacing: 5) {
-            Text(format.label).font(.system(size: 11.5, weight: .semibold))
+            Text(L(format.label)).font(.system(size: 11.5, weight: .semibold))
             if format.severalOnly { Image(systemName: "square.on.square").font(.system(size: 9)).foregroundStyle(Theme.orange) }
         }
         .foregroundStyle(Theme.text.opacity(format.available ? 1 : 0.4))
         .padding(.horizontal, 10).padding(.vertical, 5)
         .background(Capsule().fill(Color.black.opacity(0.06)))
-        .help(format.available ? (format.severalOnly ? "Only when you drag several files" : "") : "Needs an engine that isn't installed yet (Settings → Engines)")
+        .help(format.available ? (format.severalOnly ? L("Only when you drag several files") : "") : L("Needs an engine that isn't installed yet (Settings → Engines)"))
     }
 }
 
@@ -390,11 +390,11 @@ private struct FeatureCard: View {
                 IconTile(symbol: feature.symbol)
                 VStack(alignment: .leading, spacing: 3) {
                     HStack(spacing: 6) {
-                        Text(feature.title).font(.system(size: 13.5, weight: .semibold)).foregroundStyle(Theme.text)
+                        Text(L(feature.title)).font(.system(size: 13.5, weight: .semibold)).foregroundStyle(Theme.text)
                         if feature.severalOnly { SeveralBadge() }
                     }
                     if !feature.detail.isEmpty {
-                        Text(feature.detail).font(.system(size: 12)).foregroundStyle(Theme.muted).fixedSize(horizontal: false, vertical: true).lineSpacing(1)
+                        Text(L(feature.detail)).font(.system(size: 12)).foregroundStyle(Theme.muted).fixedSize(horizontal: false, vertical: true).lineSpacing(1)
                     }
                 }
                 Spacer(minLength: 0)
@@ -407,10 +407,10 @@ private struct FeatureCard: View {
                             Image(systemName: c.symbol).font(.system(size: 11, weight: .semibold)).foregroundStyle(Theme.orange).frame(width: 18).padding(.top, 2)
                             VStack(alignment: .leading, spacing: 1) {
                                 HStack(spacing: 6) {
-                                    Text(c.title).font(.system(size: 12.5, weight: .medium)).foregroundStyle(Theme.text)
+                                    Text(L(c.title)).font(.system(size: 12.5, weight: .medium)).foregroundStyle(Theme.text)
                                     if c.severalOnly && !feature.severalOnly { SeveralBadge() }
                                 }
-                                if !c.detail.isEmpty { Text(c.detail).font(.system(size: 11.5)).foregroundStyle(Theme.muted).fixedSize(horizontal: false, vertical: true) }
+                                if !c.detail.isEmpty { Text(L(c.detail)).font(.system(size: 11.5)).foregroundStyle(Theme.muted).fixedSize(horizontal: false, vertical: true) }
                             }
                             Spacer(minLength: 0)
                         }.padding(.vertical, 6)
@@ -434,10 +434,10 @@ private struct FeatureCard: View {
 
 private struct SeveralBadge: View {
     var body: some View {
-        HStack(spacing: 3) { Image(systemName: "square.on.square").font(.system(size: 8, weight: .bold)); Text("2+ files").font(.system(size: 9.5, weight: .semibold)) }
+        HStack(spacing: 3) { Image(systemName: "square.on.square").font(.system(size: 8, weight: .bold)); Text(L("2+ files")).font(.system(size: 9.5, weight: .semibold)) }
             .foregroundStyle(Theme.orange).padding(.horizontal, 6).padding(.vertical, 2)
             .background(Capsule().fill(Theme.orange.opacity(0.13)))
-            .help("Only offered when you drag several files")
+            .help(L("Only offered when you drag several files"))
     }
 }
 

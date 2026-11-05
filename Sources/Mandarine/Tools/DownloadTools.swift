@@ -4,7 +4,7 @@ enum DownloadKind {
     case mp4, mp3, wav
     var audio: Bool { self != .mp4 }
     var format: String { self == .wav ? "wav" : "mp3" }
-    var label: String { self == .mp4 ? "MP4" : (self == .mp3 ? "MP3" : "WAV") }
+    var label: String { self == .mp4 ? L("MP4") : (self == .mp3 ? L("MP3") : L("WAV")) }
 }
 
 /// Pages web enregistrées depuis un lien glissé : une ligne dans la pile par lien, résultat dans Téléchargements.
@@ -26,7 +26,7 @@ enum DownloadFlow {
         let link = links[0]
         let id = UUID()
         var task: Task<Void, Never>?
-        Toast.shared.add(ToastItem(id: id, phase: .running, title: "Checking link…", subtitle: link.host ?? "", progress: -1,
+        Toast.shared.add(ToastItem(id: id, phase: .running, title: L("Checking link…"), subtitle: link.host ?? "", progress: -1,
                                    cancel: { task?.cancel(); Toast.shared.remove(id) }))
         task = Task {
             let list = await YtDlp.playlist(link)
@@ -43,7 +43,7 @@ enum DownloadFlow {
     }
 
     static func single(_ link: URL, kind: DownloadKind) {
-        JobQueue.shared.add("Downloading \(kind.label)…", subtitle: link.host ?? "") { progress in
+        JobQueue.shared.add(L("Downloading \(kind.label)…"), subtitle: link.host ?? "") { progress in
             [try await YtDlp.download(link, audio: kind.audio, audioFormat: kind.format, to: downloads, progress: progress)]
         }
     }
@@ -53,7 +53,7 @@ enum DownloadFlow {
         let name = list.title.replacingOccurrences(of: "/", with: "-").replacingOccurrences(of: ":", with: "-").trimmingCharacters(in: .whitespacesAndNewlines)
         let folder = OutputNaming.unique(folder: downloads, base: String((name.isEmpty ? "Playlist" : name).prefix(80)), ext: "")
         let n = entries.count, width = String(n).count
-        JobQueue.shared.add("Downloading playlist (\(kind.label))…", subtitle: "\(n) items", statusWork: { progress, status in
+        JobQueue.shared.add(L("Downloading playlist (\(kind.label))…"), subtitle: L("\(n) items"), statusWork: { progress, status in
             try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
             var failures: [(String, String)] = []
             for (i, e) in entries.enumerated() {
@@ -71,7 +71,7 @@ enum DownloadFlow {
             if failures.count == n { throw MandarineError(failures[0].1) }
             if !failures.isEmpty {
                 let lines = failures.prefix(5).map { "• \($0.0): \($0.1.split(separator: "\n").last.map(String.init) ?? "")" }.joined(separator: "\n")
-                DispatchQueue.main.async { Toast.shared.fail("\(failures.count) of \(n) downloads failed", subtitle: lines) }
+                DispatchQueue.main.async { Toast.shared.fail(L("\(failures.count) of \(n) downloads failed"), subtitle: lines) }
             }
             return [folder]
         })
@@ -96,14 +96,14 @@ struct PlaylistTool: View {
     private var totalDuration: Double { chosen.compactMap(\.duration).reduce(0, +) }
 
     var body: some View {
-        ToolShell(title: "Download Playlist · \(kind.label)", close: close) {
+        ToolShell(title: L("Download Playlist · \(kind.label)"), close: close) {
             VStack(alignment: .leading, spacing: 10) {
-                Text(list.title).font(.system(size: 14, weight: .semibold)).foregroundStyle(Theme.text).lineLimit(2)
+                Text(L(list.title)).font(.system(size: 14, weight: .semibold)).foregroundStyle(Theme.text).lineLimit(2)
                 HStack {
-                    Text("\(selected.count) of \(list.entries.count) selected" + (totalDuration > 0 ? " · \(WheelInfo.duration(totalDuration))" : "")).sectionLabel()
+                    Text(L("\(selected.count) of \(list.entries.count) selected") + (totalDuration > 0 ? L(" · \(WheelInfo.duration(totalDuration))") : "")).sectionLabel()
                     Spacer()
-                    Button("All") { selected = Set(list.entries.map(\.id)) }.buttonStyle(WiiPlainButtonStyle()).font(.system(size: 12, weight: .medium)).foregroundStyle(Theme.orange)
-                    Button("None") { selected = [] }.buttonStyle(WiiPlainButtonStyle()).font(.system(size: 12, weight: .medium)).foregroundStyle(Theme.orange)
+                    Button(L("All")) { selected = Set(list.entries.map(\.id)) }.buttonStyle(WiiPlainButtonStyle()).font(.system(size: 12, weight: .medium)).foregroundStyle(Theme.orange)
+                    Button(L("None")) { selected = [] }.buttonStyle(WiiPlainButtonStyle()).font(.system(size: 12, weight: .medium)).foregroundStyle(Theme.orange)
                 }
                 ScrollView {
                     LazyVStack(spacing: 0) {
@@ -112,7 +112,7 @@ struct PlaylistTool: View {
                                 if selected.contains(e.id) { selected.remove(e.id) } else { selected.insert(e.id) }
                             } label: {
                                 HStack(spacing: 10) {
-                                    Image(systemName: selected.contains(e.id) ? "checkmark.square.fill" : "square")
+                                    Image(systemName: selected.contains(e.id) ? L("checkmark.square.fill") : L("square"))
                                         .foregroundStyle(selected.contains(e.id) ? Theme.orange : Theme.muted).font(.system(size: 14))
                                     Text(String(format: "%02d", e.id + 1)).font(.system(size: 11).monospacedDigit()).foregroundStyle(Theme.muted).frame(width: 24, alignment: .trailing)
                                     Text(e.title).font(.system(size: 12)).foregroundStyle(Theme.text).lineLimit(1)
@@ -129,21 +129,21 @@ struct PlaylistTool: View {
                 .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).stroke(Color.black.opacity(0.1)))
                 if !kind.audio {
                     HStack {
-                        Text("Quality").sectionLabel()
+                        Text(L("Quality")).sectionLabel()
                         Spacer()
                         Picker("", selection: $quality) {
-                            Text("Best").tag(0); Text("1080p").tag(1080); Text("720p").tag(720); Text("480p").tag(480)
+                            Text(L("Best")).tag(0); Text("1080p").tag(1080); Text("720p").tag(720); Text("480p").tag(480)
                         }.pickerStyle(.segmented).frame(width: 260).labelsHidden()
                     }
                 }
-                Text("Saved in a new folder in Downloads, numbered in order. A video that can't be downloaded is skipped; the others continue.")
+                Text(L("Saved in a new folder in Downloads, numbered in order. A video that can't be downloaded is skipped; the others continue."))
                     .sectionLabel().fixedSize(horizontal: false, vertical: true)
             }.frame(width: 476)
         } footer: {
             if YtDlp.hasSingleVideo(link) {
-                Button("This video only") { close(); DownloadFlow.single(link, kind: kind) }.buttonStyle(PillButtonStyle())
+                Button(L("This video only")) { close(); DownloadFlow.single(link, kind: kind) }.buttonStyle(PillButtonStyle())
             }
-            Button(selected.count == 1 ? "Download 1 item" : "Download \(selected.count) items") {
+            Button(selected.count == 1 ? L("Download 1 item") : L("Download \(selected.count) items")) {
                 let (l, entries, k, q) = (list, chosen, kind, quality)
                 close()
                 DownloadFlow.playlist(l, entries: entries, kind: k, maxHeight: q == 0 ? nil : q)

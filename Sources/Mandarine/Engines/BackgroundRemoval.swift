@@ -44,7 +44,7 @@ final class BGSession {
         let handler = VNImageRequestHandler(cgImage: cg, options: [:])
         let request = VNGenerateForegroundInstanceMaskRequest()
         try handler.perform([request])
-        guard let obs = request.results?.first, !obs.allInstances.isEmpty else { throw MandarineError("Aucun sujet détecté.") }
+        guard let obs = request.results?.first, !obs.allInstances.isEmpty else { throw MandarineError(L("Aucun sujet détecté.")) }
         self.handler = handler
         self.observation = obs
         self.instanceIDs = obs.allInstances.sorted()
@@ -103,7 +103,7 @@ final class BGSession {
             let margin = (o.outline ? o.outlineWidth * Double(k) : 0) + o.soften * Double(k) + 4 * Double(k)
             area = box.insetBy(dx: -margin, dy: -margin).intersection(extent)
         }
-        guard let out = ctx.createCGImage(result, from: area) else { throw MandarineError("Rendu impossible.") }
+        guard let out = ctx.createCGImage(result, from: area) else { throw MandarineError(L("Rendu impossible.")) }
         return out
     }
 

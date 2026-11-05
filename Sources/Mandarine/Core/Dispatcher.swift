@@ -13,7 +13,7 @@ enum Dispatcher {
     static func convert(_ urls: [URL], to ext: String) {
         let title = "Converting to \(ext.uppercased())…"
         if urls.count > 1, FileKind.common(of: urls) == .image, Catalog.normalized(ext) == "pdf" {      // plusieurs images → un seul PDF
-            JobQueue.shared.add(title, subtitle: "\(urls.count) images") { progress in
+            JobQueue.shared.add(title, subtitle: L("\(urls.count) images")) { progress in
                 try await Converter.run(urls: urls, to: ext, progress: progress)
             }
             return
@@ -30,7 +30,7 @@ enum Dispatcher {
         // Plusieurs fichiers : UNE seule ligne de notification pour tout le lot (« 3 of 10 done »), avec une progression globale.
         // Deux conversions tournent en même temps (comme avant) ; une conversion qui échoue n'arrête pas les autres.
         let total = urls.count
-        JobQueue.shared.add(title, subtitle: "0 of \(total) done", replaces: replaceable ? urls : [], statusWork: { progress, status in
+        JobQueue.shared.add(title, subtitle: L("0 of \(total) done"), replaces: replaceable ? urls : [], statusWork: { progress, status in
             let tally = BatchTally(total: total)
             var outs: [URL] = []
             var byIndex: [Int: [URL]] = [:]          // résultats rangés dans l'ordre des fichiers (pour associer chacun à son original)
@@ -62,7 +62,7 @@ enum Dispatcher {
             }
             outs = byIndex.keys.sorted().flatMap { byIndex[$0] ?? [] }
             if !failures.isEmpty {
-                if outs.isEmpty { throw MandarineError(failures.first ?? "Conversion failed.") }
+                if outs.isEmpty { throw MandarineError(failures.first ?? L("Conversion failed.")) }
                 throw JobQueue.Partial(outs: outs, failed: failures.count, total: total, message: failures.joined(separator: "\n"))
             }
             return outs

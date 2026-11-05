@@ -60,8 +60,8 @@ struct ComingSoonTool: View {
     let close: () -> Void
     var body: some View {
         ToolShell(title: id.title, close: close) {
-            Text("This tool is not available yet.").foregroundStyle(Theme.muted).frame(width: 360, height: 80)
-        } footer: { Button("Close", action: close).buttonStyle(PillButtonStyle()) }
+            Text(L("This tool is not available yet.")).foregroundStyle(Theme.muted).frame(width: 360, height: 80)
+        } footer: { Button(L("Close"), action: close).buttonStyle(PillButtonStyle()) }
     }
 }
 
@@ -76,33 +76,33 @@ struct DirectToolView: View {
             let files = urls
             switch id {
             case .splitPDF:
-                Dispatcher.job("Splitting PDF…", light: true) { _ in try files.map { try PDFEngine.split($0) } }
+                Dispatcher.job(L("Splitting PDF…"), light: true) { _ in try files.map { try PDFEngine.split($0) } }
             case .extractArchive:
-                Dispatcher.job("Extracting…", light: true) { _ in try files.map { try ArchiveEngine.extractNextTo($0) } }
+                Dispatcher.job(L("Extracting…"), light: true) { _ in try files.map { try ArchiveEngine.extractNextTo($0) } }
             case .downloadMP3, .downloadMP4, .downloadWAV:
                 DownloadFlow.start(links: files, kind: id == .downloadMP3 ? .mp3 : (id == .downloadWAV ? .wav : .mp4))
             case .savePagePDF, .savePageMarkdown, .savePageScreenshot:
                 let kind: WebCaptureKind = id == .savePagePDF ? .pdf : (id == .savePageMarkdown ? .markdown : .screenshot)
                 files.forEach { WebPages.save($0, kind: kind) }
             case .zipFiles:
-                Dispatcher.job("Zipping…") { _ in [try await ZipEngine.make(files)] }
+                Dispatcher.job(L("Zipping…")) { _ in [try await ZipEngine.make(files)] }
             case .speakText:
                 SnippetSpeaker.shared.speak(files.map { SnippetStore.text(of: $0) }.joined(separator: "\n\n"))
             case .openInCode:
                 VSCode.open(files)
             case .extractImages:
-                Dispatcher.job("Extracting images…", light: true) { _ in
+                Dispatcher.job(L("Extracting images…"), light: true) { _ in
                     var outs: [URL] = []
                     for f in files {
                         let dir = OutputNaming.folder(of: f, suffix: "images")
                         let n = try await Task.detached { try PDFImageExtractor.extract(f, into: dir) }.value
-                        if n == 0 { try? FileManager.default.removeItem(at: dir); throw MandarineError("Aucune image intégrée dans \(f.lastPathComponent).") }
+                        if n == 0 { try? FileManager.default.removeItem(at: dir); throw MandarineError(L("Aucune image intégrée dans \(f.lastPathComponent).")) }
                         outs.append(dir)
                     }
                     return outs
                 }
             case .removeBackground:
-                Dispatcher.job("Removing background…", count: files.count, replaces: files) { progress in
+                Dispatcher.job(L("Removing background…"), count: files.count, replaces: files) { progress in
                     var outs: [URL] = []
                     for (i, f) in files.enumerated() {
                         outs.append(try await Task.detached { try BackgroundRemover.run(f) }.value)
@@ -111,7 +111,7 @@ struct DirectToolView: View {
                     return outs
                 }
             case .muteVideo:
-                Dispatcher.job("Removing audio…", count: files.count, replaces: files) { progress in
+                Dispatcher.job(L("Removing audio…"), count: files.count, replaces: files) { progress in
                     var outs: [URL] = []
                     for (i, f) in files.enumerated() {
                         let out = OutputNaming.sibling(of: f, suffix: " muted")

@@ -20,12 +20,12 @@ struct ScanTool: View {
     @State private var loading = true
 
     var body: some View {
-        ToolShell(title: "Scan Document", close: close) {
+        ToolShell(title: L("Scan Document"), close: close) {
             VStack(spacing: 12) {
                 ZStack {
                     Color.black.opacity(0.06)
                     if loading {
-                        ProgressView("Looking for the sheet…")
+                        ProgressView(L("Looking for the sheet…"))
                     } else if showResult, let r = result {
                         Image(nsImage: r).resizable().scaledToFit().padding(8)
                     } else if pages.indices.contains(index) {
@@ -34,26 +34,26 @@ struct ScanTool: View {
                 }
                 .frame(width: 520, height: 400).clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
                 HStack {
-                    Picker("", selection: $showResult) { Text("Corners").tag(false); Text("Result").tag(true) }
+                    Picker("", selection: $showResult) { Text(L("Corners")).tag(false); Text(L("Result")).tag(true) }
                         .pickerStyle(.segmented).frame(width: 170).labelsHidden()
                     Spacer()
                     if pages.count > 1 {
-                        Button { index = max(0, index - 1) } label: { Image(systemName: "chevron.left") }.buttonStyle(WiiPlainButtonStyle()).disabled(index == 0)
-                        Text("Page \(index + 1) of \(pages.count)").font(.system(size: 12).monospacedDigit()).foregroundStyle(Theme.muted)
-                        Button { index = min(pages.count - 1, index + 1) } label: { Image(systemName: "chevron.right") }.buttonStyle(WiiPlainButtonStyle()).disabled(index == pages.count - 1)
+                        Button { index = max(0, index - 1) } label: { Image(systemName: L("chevron.left")) }.buttonStyle(WiiPlainButtonStyle()).disabled(index == 0)
+                        Text(L("Page \(index + 1) of \(pages.count)")).font(.system(size: 12).monospacedDigit()).foregroundStyle(Theme.muted)
+                        Button { index = min(pages.count - 1, index + 1) } label: { Image(systemName: L("chevron.right")) }.buttonStyle(WiiPlainButtonStyle()).disabled(index == pages.count - 1)
                     }
                 }
                 HStack {
-                    Text("Filter").sectionLabel()
+                    Text(L("Filter")).sectionLabel()
                     Spacer()
-                    Picker("", selection: $filter) { ForEach(ScanFilter.allCases) { Text($0.rawValue).tag($0) } }
+                    Picker("", selection: $filter) { ForEach(ScanFilter.allCases) { Text(L($0.rawValue)).tag($0) } }
                         .pickerStyle(.segmented).frame(width: 300).labelsHidden()
                 }
-                Text("Drag the corners onto the sheet if the detection missed. Each photo becomes a page.").sectionLabel()
+                Text(L("Drag the corners onto the sheet if the detection missed. Each photo becomes a page.")).sectionLabel()
             }.frame(width: 520)
         } footer: {
-            Button("Save as Images") { save(pdf: false) }.buttonStyle(PillButtonStyle()).disabled(loading || pages.isEmpty)
-            Button(pages.count > 1 ? "Save PDF (\(pages.count) pages)" : "Save PDF") { save(pdf: true) }.buttonStyle(PillButtonStyle()).disabled(loading || pages.isEmpty).keyboardShortcut(.defaultAction)
+            Button(L("Save as Images")) { save(pdf: false) }.buttonStyle(PillButtonStyle()).disabled(loading || pages.isEmpty)
+            Button(pages.count > 1 ? L("Save PDF (\(pages.count) pages)") : L("Save PDF")) { save(pdf: true) }.buttonStyle(PillButtonStyle()).disabled(loading || pages.isEmpty).keyboardShortcut(.defaultAction)
         }
         .task { await load() }
         .task(id: renderKey) { await renderPreview() }
@@ -88,10 +88,10 @@ struct ScanTool: View {
         let items = pages.map { ($0.url, $0.image, $0.corners) }, f = filter
         guard let first = items.first?.0 else { return }
         close()
-        Dispatcher.job("Scanning…") { progress in
+        Dispatcher.job(L("Scanning…")) { progress in
             let outs: [(URL, CGImage)] = try await Task.detached {
                 try items.enumerated().map { i, it in
-                    guard let img = DocumentScanner.render(it.1, corners: it.2, filter: f, maxSide: 3000) else { throw MandarineError("Couldn't scan \(it.0.lastPathComponent).") }
+                    guard let img = DocumentScanner.render(it.1, corners: it.2, filter: f, maxSide: 3000) else { throw MandarineError(L("Couldn't scan \(it.0.lastPathComponent).")) }
                     progress(Double(i + 1) / Double(items.count) * 0.8)
                     return (it.0, img)
                 }

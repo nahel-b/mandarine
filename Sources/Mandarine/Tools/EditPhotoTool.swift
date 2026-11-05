@@ -16,30 +16,30 @@ enum AdjustGroup: String, CaseIterable {
     var params: [AdjustParam] {
         switch self {
         case .light: return [
-            .init(id: "exposure", title: "Exposure", range: -3...3, neutral: 0, unit: " EV", decimals: 2),
-            .init(id: "brightness", title: "Brightness", range: -100...100, neutral: 0, unit: "", decimals: 0),
-            .init(id: "contrast", title: "Contrast", range: -100...100, neutral: 0, unit: "", decimals: 0),
-            .init(id: "highlights", title: "Highlights", range: -100...100, neutral: 0, unit: "", decimals: 0),
-            .init(id: "shadows", title: "Shadows", range: -100...100, neutral: 0, unit: "", decimals: 0),
-            .init(id: "whites", title: "Whites", range: -100...100, neutral: 0, unit: "", decimals: 0),
-            .init(id: "blacks", title: "Blacks", range: -100...100, neutral: 0, unit: "", decimals: 0),
-            .init(id: "gamma", title: "Gamma", range: -100...100, neutral: 0, unit: "", decimals: 0)]
+            .init(id: "exposure", title: L("Exposure"), range: -3...3, neutral: 0, unit: " EV", decimals: 2),
+            .init(id: "brightness", title: L("Brightness"), range: -100...100, neutral: 0, unit: "", decimals: 0),
+            .init(id: "contrast", title: L("Contrast"), range: -100...100, neutral: 0, unit: "", decimals: 0),
+            .init(id: "highlights", title: L("Highlights"), range: -100...100, neutral: 0, unit: "", decimals: 0),
+            .init(id: "shadows", title: L("Shadows"), range: -100...100, neutral: 0, unit: "", decimals: 0),
+            .init(id: "whites", title: L("Whites"), range: -100...100, neutral: 0, unit: "", decimals: 0),
+            .init(id: "blacks", title: L("Blacks"), range: -100...100, neutral: 0, unit: "", decimals: 0),
+            .init(id: "gamma", title: L("Gamma"), range: -100...100, neutral: 0, unit: "", decimals: 0)]
         case .color: return [
-            .init(id: "temperature", title: "Temperature", range: -100...100, neutral: 0, unit: "", decimals: 0),
-            .init(id: "tint", title: "Tint", range: -100...100, neutral: 0, unit: "", decimals: 0),
-            .init(id: "saturation", title: "Saturation", range: -100...100, neutral: 0, unit: "", decimals: 0),
-            .init(id: "vibrance", title: "Vibrance", range: -100...100, neutral: 0, unit: "", decimals: 0),
-            .init(id: "hue", title: "Hue", range: -180...180, neutral: 0, unit: "°", decimals: 0)]
+            .init(id: "temperature", title: L("Temperature"), range: -100...100, neutral: 0, unit: "", decimals: 0),
+            .init(id: "tint", title: L("Tint"), range: -100...100, neutral: 0, unit: "", decimals: 0),
+            .init(id: "saturation", title: L("Saturation"), range: -100...100, neutral: 0, unit: "", decimals: 0),
+            .init(id: "vibrance", title: L("Vibrance"), range: -100...100, neutral: 0, unit: "", decimals: 0),
+            .init(id: "hue", title: L("Hue"), range: -180...180, neutral: 0, unit: "°", decimals: 0)]
         case .detail: return [
-            .init(id: "clarity", title: "Clarity", range: -100...100, neutral: 0, unit: "", decimals: 0),
-            .init(id: "dehaze", title: "Dehaze", range: -100...100, neutral: 0, unit: "", decimals: 0),
-            .init(id: "sharpen", title: "Sharpen", range: 0...100, neutral: 0, unit: "", decimals: 0),
-            .init(id: "noise", title: "Noise reduction", range: 0...100, neutral: 0, unit: "", decimals: 0)]
+            .init(id: "clarity", title: L("Clarity"), range: -100...100, neutral: 0, unit: "", decimals: 0),
+            .init(id: "dehaze", title: L("Dehaze"), range: -100...100, neutral: 0, unit: "", decimals: 0),
+            .init(id: "sharpen", title: L("Sharpen"), range: 0...100, neutral: 0, unit: "", decimals: 0),
+            .init(id: "noise", title: L("Noise reduction"), range: 0...100, neutral: 0, unit: "", decimals: 0)]
         case .effects: return [
-            .init(id: "grain", title: "Grain", range: 0...100, neutral: 0, unit: "", decimals: 0),
-            .init(id: "vignette", title: "Vignette", range: -100...100, neutral: 0, unit: "", decimals: 0),
-            .init(id: "fade", title: "Fade", range: 0...100, neutral: 0, unit: "", decimals: 0),
-            .init(id: "mono", title: "Black & white", range: 0...100, neutral: 0, unit: "", decimals: 0)]
+            .init(id: "grain", title: L("Grain"), range: 0...100, neutral: 0, unit: "", decimals: 0),
+            .init(id: "vignette", title: L("Vignette"), range: -100...100, neutral: 0, unit: "", decimals: 0),
+            .init(id: "fade", title: L("Fade"), range: 0...100, neutral: 0, unit: "", decimals: 0),
+            .init(id: "mono", title: L("Black & white"), range: 0...100, neutral: 0, unit: "", decimals: 0)]
         }
     }
 }
@@ -133,7 +133,7 @@ struct EditPhotoTool: View {
     @State private var original: NSImage?
 
     var body: some View {
-        ToolShell(title: "Edit Photo", close: close) {
+        ToolShell(title: L("Edit Photo"), close: close) {
             VStack(spacing: 12) {
                 ZStack {
                     Theme.previewBG
@@ -143,7 +143,7 @@ struct EditPhotoTool: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 14) {
                         ForEach(AdjustGroup.allCases, id: \.self) { g in
-                            Text(g.rawValue).sectionLabel()
+                            Text(L(g.rawValue)).sectionLabel()
                             ForEach(g.params) { p in slider(p) }
                         }
                     }.padding(.trailing, 6)
@@ -151,10 +151,10 @@ struct EditPhotoTool: View {
             }
             .frame(width: 420)
         } footer: {
-            Button("Reset") { values = [:]; refresh() }.buttonStyle(PillButtonStyle())
-            Button { let f = urls; close(); ToolWindowController.present(.resizeImage, urls: f) } label: { Label("Resize…", systemImage: "arrow.up.left.and.arrow.down.right") }
-                .buttonStyle(PillButtonStyle()).help("Open Resize for the same image")
-            ReplaceButton("Save Edited Copy") { save() }
+            Button(L("Reset")) { values = [:]; refresh() }.buttonStyle(PillButtonStyle())
+            Button { let f = urls; close(); ToolWindowController.present(.resizeImage, urls: f) } label: { Label(L("Resize…"), systemImage: L("arrow.up.left.and.arrow.down.right")) }
+                .buttonStyle(PillButtonStyle()).help(L("Open Resize for the same image"))
+            ReplaceButton(L("Save Edited Copy")) { save() }
         }
         .onAppear(perform: load)
     }
@@ -162,11 +162,11 @@ struct EditPhotoTool: View {
     private func slider(_ p: AdjustParam) -> some View {
         let b = Binding<Double>(get: { values[p.id] ?? p.neutral }, set: { values[p.id] = $0; refresh() })
         return HStack(spacing: 8) {
-            Text(p.title).font(.system(size: 11)).frame(width: 95, alignment: .leading)
+            Text(L(p.title)).font(.system(size: 11)).frame(width: 95, alignment: .leading)
             Slider(value: b, in: p.range).controlSize(.mini)
-            Text(String(format: "%@%.\(p.decimals)f%@", (values[p.id] ?? 0) > 0 && p.range.lowerBound < 0 ? "+" : "", values[p.id] ?? p.neutral, p.unit))
+            Text(String(format: L("%@%.\(p.decimals)f%@"), (values[p.id] ?? 0) > 0 && p.range.lowerBound < 0 ? "+" : "", values[p.id] ?? p.neutral, p.unit))
                 .font(.system(size: 11).monospacedDigit()).foregroundStyle(Theme.muted).frame(width: 56, alignment: .trailing)
-            Button { values[p.id] = p.neutral; refresh() } label: { Image(systemName: "arrow.counterclockwise") }
+            Button { values[p.id] = p.neutral; refresh() } label: { Image(systemName: L("arrow.counterclockwise")) }
                 .buttonStyle(WiiPlainButtonStyle()).foregroundStyle(Theme.muted).opacity((values[p.id] ?? p.neutral) == p.neutral ? 0.3 : 1)
         }
     }
@@ -192,12 +192,12 @@ struct EditPhotoTool: View {
     private func save() {
         let vals = values, files = urls
         close()
-        Dispatcher.job("Saving edited copy…", light: true, replaces: files) { _ in
+        Dispatcher.job(L("Saving edited copy…"), light: true, replaces: files) { _ in
             try await Task.detached {
                 try files.map { url in
                     let (cg, props) = try ImageEngine.load(url)
                     let out = PhotoAdjuster.apply(vals, to: CIImage(cgImage: cg))
-                    guard let res = PhotoAdjuster.context.createCGImage(out, from: CIImage(cgImage: cg).extent) else { throw MandarineError("Rendu impossible.") }
+                    guard let res = PhotoAdjuster.context.createCGImage(out, from: CIImage(cgImage: cg).extent) else { throw MandarineError(L("Rendu impossible.")) }
                     let dest = OutputNaming.sibling(of: url, suffix: " edited")
                     try ImageEngine.write(res, properties: props, to: dest, ext: url.pathExtension, quality: 0.95)
                     return dest

@@ -54,7 +54,7 @@ enum SnippetEngine {
 
     static func convert(_ file: URL, to e: String) async throws -> URL {
         let text = SnippetStore.text(of: file)
-        guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { throw MandarineError("The text is empty.") }
+        guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { throw MandarineError(L("The text is empty.")) }
         let out = SnippetStore.outputURL(for: text, ext: e == "qr" ? "png" : e)
         switch e {
         case "txt", "md":
@@ -68,7 +68,7 @@ enum SnippetEngine {
         case "qr":
             try qrCode(text, to: out)
         default:
-            throw MandarineError("Unsupported format.")
+            throw MandarineError(L("Unsupported format."))
         }
         return out
     }
@@ -76,15 +76,15 @@ enum SnippetEngine {
     // MARK: QR code
 
     static func qrCode(_ text: String, to out: URL) throws {
-        guard let data = text.data(using: .utf8), data.count <= 2300 else { throw MandarineError("The text is too long for a QR code (about 2,000 characters at most).") }
+        guard let data = text.data(using: .utf8), data.count <= 2300 else { throw MandarineError(L("The text is too long for a QR code (about 2,000 characters at most).")) }
         let f = CIFilter.qrCodeGenerator()
         f.message = data; f.correctionLevel = "M"
-        guard let img = f.outputImage?.transformed(by: CGAffineTransform(scaleX: 12, y: 12)) else { throw MandarineError("Couldn't make the QR code.") }
+        guard let img = f.outputImage?.transformed(by: CGAffineTransform(scaleX: 12, y: 12)) else { throw MandarineError(L("Couldn't make the QR code.")) }
         // Marge blanche de 4 modules, fond blanc
         let pad: CGFloat = 48
         let canvas = CGRect(x: img.extent.minX - pad, y: img.extent.minY - pad, width: img.extent.width + 2 * pad, height: img.extent.height + 2 * pad)
         let composed = img.composited(over: CIImage(color: .white).cropped(to: canvas))
-        guard let cg = CIContext().createCGImage(composed, from: canvas) else { throw MandarineError("Couldn't make the QR code.") }
+        guard let cg = CIContext().createCGImage(composed, from: canvas) else { throw MandarineError(L("Couldn't make the QR code.")) }
         try ImageEngine.write(cg, to: out, ext: "png")
     }
 
@@ -112,7 +112,7 @@ enum SnippetEngine {
             let p = Process(); p.executableURL = URL(fileURLWithPath: "/usr/bin/say"); p.arguments = args
             p.standardError = Pipe(); try p.run(); p.waitUntilExit(); return p.terminationStatus
         }.value
-        guard status == 0, FileManager.default.fileExists(atPath: out.path) else { throw MandarineError("The system voice couldn't read the text.") }
+        guard status == 0, FileManager.default.fileExists(atPath: out.path) else { throw MandarineError(L("The system voice couldn't read the text.")) }
     }
 
     // MARK: Résumé (modèle de langage du Mac, macOS 26 avec Apple Intelligence)
@@ -171,7 +171,7 @@ final class SnippetSpeaker: NSObject, AVSpeechSynthesizerDelegate {
         let u = AVSpeechUtterance(string: text)
         if let v = SnippetEngine.voice(for: text) { u.voice = v }
         synth.speak(u)
-        toastID = Toast.shared.add(ToastItem(id: UUID(), phase: .running, title: "Reading aloud…", subtitle: "\(SnippetStore.wordCount(text)) words", progress: -1,
+        toastID = Toast.shared.add(ToastItem(id: UUID(), phase: .running, title: L("Reading aloud…"), subtitle: L("\(SnippetStore.wordCount(text)) words"), progress: -1,
                                               cancel: { [weak self] in self?.stop() }))
     }
 

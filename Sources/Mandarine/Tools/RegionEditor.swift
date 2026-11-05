@@ -167,10 +167,10 @@ extension CGRect {
 struct AspectRatioChoice: Hashable {
     let label: String
     let ratio: CGFloat?
-    static let all: [AspectRatioChoice] = [
-        .init(label: "Free", ratio: nil), .init(label: "1:1", ratio: 1), .init(label: "16:9", ratio: 16.0 / 9),
+    static var all: [AspectRatioChoice] { [
+        .init(label: L("Free"), ratio: nil), .init(label: "1:1", ratio: 1), .init(label: "16:9", ratio: 16.0 / 9),
         .init(label: "9:16", ratio: 9.0 / 16), .init(label: "4:3", ratio: 4.0 / 3), .init(label: "3:4", ratio: 3.0 / 4)
-    ]
+    ] }
 }
 
 /// Ligne « Aspect ratio » + champs W × H, partagée par Crop Image / Crop Video.
@@ -182,7 +182,7 @@ struct CropControls: View {
     var body: some View {
         VStack(spacing: 10) {
             HStack {
-                Text("Aspect ratio").font(.system(size: 13)).foregroundStyle(Theme.muted)
+                Text(L("Aspect ratio")).font(.system(size: 13)).foregroundStyle(Theme.muted)
                 Spacer()
                 PillPicker(options: AspectRatioChoice.all.map { ($0, $0.label) }, selection: Binding(
                     get: { ratio },
@@ -193,7 +193,7 @@ struct CropControls: View {
                 field(width: true)
                 Text("H").sectionLabel()
                 field(width: false)
-                Text("px").sectionLabel()
+                Text(L("px")).sectionLabel()
                 Spacer()
             }
         }

@@ -7,10 +7,10 @@ enum TriggerKey: String, CaseIterable, Identifiable {
     var id: String { rawValue }
     var title: String {
         switch self {
-        case .shift: return "⇧ Shift"
-        case .command: return "⌘ Command"
-        case .control: return "⌃ Control"
-        case .option: return "⌥ Option"
+        case .shift: return L("⇧ Shift")
+        case .command: return L("⌘ Command")
+        case .control: return L("⌃ Control")
+        case .option: return L("⌥ Option")
         }
     }
     var flag: NSEvent.ModifierFlags {
@@ -27,13 +27,13 @@ enum TriggerKey: String, CaseIterable, Identifiable {
 enum NotificationStyle: String, CaseIterable, Identifiable {
     case capsule, card
     var id: String { rawValue }
-    var title: String { self == .capsule ? "Capsule" : "Card" }
+    var title: String { self == .capsule ? L("Capsule") : L("Card") }
 }
 
 enum MenuAppearance: String, CaseIterable, Identifiable {
     case wheel, wii, bubbles
     var id: String { rawValue }
-    var title: String { switch self { case .wheel: return "Wheel"; case .wii: return "Wii menu"; case .bubbles: return "Bubbles" } }
+    var title: String { switch self { case .wheel: return L("Wheel"); case .wii: return L("Wii menu"); case .bubbles: return L("Bubbles") } }
     var isBubbles: Bool { self == .bubbles }
 }
 
@@ -41,7 +41,7 @@ enum MenuAppearance: String, CaseIterable, Identifiable {
 enum WheelEntrance: String, CaseIterable, Identifiable {
     case rotate, radial
     var id: String { rawValue }
-    var title: String { self == .rotate ? "Light twist" : "One by one" }
+    var title: String { self == .rotate ? L("Light twist") : L("One by one") }
 }
 
 /// Aspect des bulles du menu « bulles ».
@@ -54,7 +54,7 @@ enum BubbleLook: String, CaseIterable, Identifiable {
 enum TerminalApp: String, CaseIterable, Identifiable {
     case terminal, iterm
     var id: String { rawValue }
-    var title: String { self == .terminal ? "Terminal" : "iTerm2" }
+    var title: String { self == .terminal ? L("Terminal") : L("iTerm2") }
 }
 
 final class AppSettings: ObservableObject {
@@ -68,6 +68,7 @@ final class AppSettings: ObservableObject {
     @Published var revealAfterSave: Bool { didSet { d.set(revealAfterSave, forKey: "revealAfterSave") } }
     @Published var appearance: MenuAppearance { didSet { d.set(appearance.rawValue, forKey: "appearance") } }
     @Published var showWelcome: Bool { didSet { d.set(showWelcome, forKey: "showWelcome") } }
+    @Published var language: AppLanguage { didSet { L10n.setting = language } }
     @Published var notificationStyle: NotificationStyle { didSet { d.set(notificationStyle.rawValue, forKey: "notificationStyle") } }
     @Published var replaceOriginal: Bool { didSet { d.set(replaceOriginal, forKey: "replaceOriginal") } }     // true : le résultat remplace le fichier d'origine (qui va à la Corbeille)
     @Published var autoCheckUpdates: Bool { didSet { d.set(autoCheckUpdates, forKey: "autoCheckUpdates") } }
@@ -113,6 +114,7 @@ final class AppSettings: ObservableObject {
         appearance = MenuAppearance(rawValue: ["glass": "bubbles", "paper": "bubbles"][rawAppearance] ?? rawAppearance) ?? .wheel
         showWelcome = d.object(forKey: "showWelcome") as? Bool ?? true
         replaceOriginal = d.object(forKey: "replaceOriginal") as? Bool ?? false
+        language = L10n.setting
         notificationStyle = NotificationStyle(rawValue: ProcessInfo.processInfo.environment["MANDARINE_NOTIFSTYLE"] ?? d.string(forKey: "notificationStyle") ?? "") ?? .capsule
         autoCheckUpdates = d.object(forKey: "autoCheckUpdates") as? Bool ?? true
         autoInstallUpdates = d.object(forKey: "autoInstallUpdates") as? Bool ?? true

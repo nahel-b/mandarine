@@ -47,7 +47,7 @@ enum SubtitleEngine {
             try s.write(to: out, atomically: true, encoding: .utf8)
         case "txt":
             try cues.map(\.text).joined(separator: "\n").write(to: out, atomically: true, encoding: .utf8)
-        default: throw MandarineError("Format de sous-titres non pris en charge : \(ext)")
+        default: throw MandarineError(L("Format de sous-titres non pris en charge : \(ext)"))
         }
         return out
     }
@@ -67,7 +67,7 @@ enum ArchiveEngine {
                 FileManager.default.createFile(atPath: out.path, contents: nil)
                 p.standardOutput = try FileHandle(forWritingTo: out)
                 try p.run(); p.waitUntilExit()
-                if p.terminationStatus != 0 { throw MandarineError("Archive illisible.") }
+                if p.terminationStatus != 0 { throw MandarineError(L("Archive illisible.")) }
             } else { throw error }
         }
     }
@@ -115,7 +115,7 @@ enum ArchiveEngine {
             let dest = OutputNaming.unique(folder: url.deletingLastPathComponent(), base: name + ".tar", ext: "gz")
             try Shell.run("/usr/bin/bsdtar", ["-czf", dest.path] + items, cwd: tmp)
             return dest
-        default: throw MandarineError("Archive vers .\(ext) non prise en charge.")
+        default: throw MandarineError(L("Archive vers .\(ext) non prise en charge."))
         }
     }
 
@@ -142,7 +142,7 @@ enum SheetEngine {
         case "tsv": return parseDelimited(try text(url), delimiter: "\t")
         case "xlsx": return try readXLSX(url)
         case "ods": return try readODS(url)
-        default: throw MandarineError("Tableur non pris en charge : .\(url.pathExtension)")
+        default: throw MandarineError(L("Tableur non pris en charge : .\(url.pathExtension)"))
         }
     }
 
@@ -228,7 +228,7 @@ enum SheetEngine {
         }
         let sheet = XMLCollector(shared: false)
         sheet.strings = col.strings
-        guard let d = try? Data(contentsOf: tmp.appendingPathComponent("xl/worksheets/sheet1.xml")) else { throw MandarineError("XLSX illisible.") }
+        guard let d = try? Data(contentsOf: tmp.appendingPathComponent("xl/worksheets/sheet1.xml")) else { throw MandarineError(L("XLSX illisible.")) }
         let p = XMLParser(data: d); p.delegate = sheet; p.parse()
         return sheet.rows
     }
@@ -332,7 +332,7 @@ enum SheetEngine {
         case "xlsx": try writeXLSX(table, to: out)
         case "ods": try writeODS(table, to: out)
         case "pdf": try writePDF(table, to: out)
-        default: throw MandarineError("Tableur vers .\(ext) non pris en charge.")
+        default: throw MandarineError(L("Tableur vers .\(ext) non pris en charge."))
         }
         return out
     }
@@ -340,7 +340,7 @@ enum SheetEngine {
     /// Tableau paginé avec filets, colonnes dimensionnées d'après le contenu.
     static func writePDF(_ t: Table, to url: URL) throws {
         let cols = t.map(\.count).max() ?? 0
-        guard cols > 0 else { throw MandarineError("Tableau vide.") }
+        guard cols > 0 else { throw MandarineError(L("Tableau vide.")) }
         let font = NSFont.systemFont(ofSize: 9)
         let attrs: [NSAttributedString.Key: Any] = [.font: font]
         var widths = [CGFloat](repeating: 40, count: cols)
@@ -352,7 +352,7 @@ enum SheetEngine {
         let scale = min(1, (page.width - 2 * margin) / total)
         let rowH: CGFloat = 16
         var box = page
-        guard let ctx = CGContext(url as CFURL, mediaBox: &box, nil) else { throw MandarineError("PDF impossible.") }
+        guard let ctx = CGContext(url as CFURL, mediaBox: &box, nil) else { throw MandarineError(L("PDF impossible.")) }
         let perPage = Int((page.height - 2 * margin) / rowH)
         var r = 0
         repeat {
@@ -384,7 +384,7 @@ extension Shell {
         try p.run()
         let d = out.fileHandleForReading.readDataToEndOfFile()
         p.waitUntilExit()
-        guard p.terminationStatus == 0 else { throw MandarineError("\(exe) a échoué.") }
+        guard p.terminationStatus == 0 else { throw MandarineError(L("\(exe) a échoué.")) }
         return d
     }
 }

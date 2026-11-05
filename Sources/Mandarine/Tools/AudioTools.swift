@@ -10,7 +10,7 @@ enum AudioExport {
 
     /// Exécute ffmpeg avec un niveau de log « info » et renvoie stderr (mesures loudnorm).
     static func capture(_ args: [String]) async throws -> String {
-        guard let ff = FFmpeg.ffmpeg else { throw MandarineError("ffmpeg est introuvable.") }
+        guard let ff = FFmpeg.ffmpeg else { throw MandarineError(L("ffmpeg est introuvable.")) }
         return try await Task.detached {
             let p = Process(); p.executableURL = ff
             p.arguments = ["-nostdin", "-hide_banner", "-nostats"] + args
@@ -52,7 +52,7 @@ struct NormalizeTool: View {
     @State private var measured: [String: String] = [:]
 
     var body: some View {
-        ToolShell(title: "Normalize Volume", close: close) {
+        ToolShell(title: L("Normalize Volume"), close: close) {
             VStack(alignment: .leading, spacing: 10) {
                 HStack { Text(urls[0].lastPathComponent).sectionLabel(); Spacer(); Text(timecode(player.duration, centis: false)).sectionLabel() }
                 ZStack {
@@ -60,21 +60,21 @@ struct NormalizeTool: View {
                     GeometryReader { g in Rectangle().fill(Color.white.opacity(0.9)).frame(width: 2).offset(x: g.size.width * CGFloat(player.time / max(player.duration, 0.01))) }
                 }
                 HStack {
-                    Button { player.toggle() } label: { Image(systemName: player.isPlaying ? "pause.fill" : "play.fill") }.buttonStyle(WiiPlainButtonStyle())
+                    Button { player.toggle() } label: { Image(systemName: player.isPlaying ? L("pause.fill") : L("play.fill")) }.buttonStyle(WiiPlainButtonStyle())
                     Spacer()
-                    Text("\(timecode(player.time)) / \(timecode(player.duration))").font(.system(size: 11).monospacedDigit()).foregroundStyle(Theme.muted)
+                    Text(L("\(timecode(player.time)) / \(timecode(player.duration))")).font(.system(size: 11).monospacedDigit()).foregroundStyle(Theme.muted)
                 }
-                param("Target loudness", $target, -30 ... -5, "%.0f LUFS")
-                param("Loudness range", $range, 1 ... 20, "%.0f LU")
-                param("True peak limit", $peak, -9 ... 0, "%.1f dBTP")
+                param(L("Target loudness"), $target, -30 ... -5, "%.0f LUFS")
+                param(L("Loudness range"), $range, 1 ... 20, "%.0f LU")
+                param(L("True peak limit"), $peak, -9 ... 0, "%.1f dBTP")
                 if let i = measured["input_i"], let tp = measured["input_tp"] {
-                    Text("Input: \(i) LUFS · peak \(tp) dBTP  →  Output: \(String(format: "%.0f", target)) LUFS · peak ≤ \(String(format: "%.1f", peak)) dBTP")
+                    Text(L("Input: \(i) LUFS · peak \(tp) dBTP  →  Output: \(String(format: "%.0f", target)) LUFS · peak ≤ \(String(format: "%.1f", peak)) dBTP"))
                         .font(.system(size: 11).monospacedDigit()).foregroundStyle(Theme.text.opacity(0.8))
                 }
-                Text("−16 LUFS is a balanced default for spoken audio and music. The true peak limit helps prevent clipping after encoding.")
+                Text(L("−16 LUFS is a balanced default for spoken audio and music. The true peak limit helps prevent clipping after encoding."))
                     .sectionLabel().fixedSize(horizontal: false, vertical: true)
             }.frame(width: 440)
-        } footer: { ReplaceButton("Normalize Audio") { apply() } }
+        } footer: { ReplaceButton(L("Normalize Audio")) { apply() } }
         .task {
             await player.load(urls[0])
             peaks = await WaveformLoader.peaks(urls[0], count: 140).peaks
@@ -83,19 +83,19 @@ struct NormalizeTool: View {
     }
 
     private func param(_ t: String, _ v: Binding<Double>, _ r: ClosedRange<Double>, _ f: String) -> some View {
-        HStack { Text(t).font(.system(size: 12)).frame(width: 110, alignment: .leading); Slider(value: v, in: r).controlSize(.small)
+        HStack { Text(L(t)).font(.system(size: 12)).frame(width: 110, alignment: .leading); Slider(value: v, in: r).controlSize(.small)
             Text(String(format: f, v.wrappedValue)).font(.system(size: 11).monospacedDigit()).foregroundStyle(Theme.muted).frame(width: 84, alignment: .trailing) }
     }
 
     private func apply() {
-        let (I, L, T, files) = (target, range, peak, urls)
+        let (I, LRA, T, files) = (target, range, peak, urls)
         close()
-        Dispatcher.job("Normalizing…", count: files.count, replaces: files) { progress in
+        Dispatcher.job(L("Normalizing…"), count: files.count, replaces: files) { progress in
             var outs: [URL] = []
             for (i, f) in files.enumerated() {
-                let m = await AudioExport.loudness(f, I: I, LRA: L, TP: T)
+                let m = await AudioExport.loudness(f, I: I, LRA: LRA, TP: T)
                 let info = await FFmpeg.probe(f)
-                var filter = "loudnorm=I=\(I):LRA=\(L):TP=\(T)"
+                var filter = "loudnorm=I=\(I):LRA=\(LRA):TP=\(T)"
                 if let a = m["input_i"], let b = m["input_lra"], let c = m["input_tp"], let d = m["input_thresh"], let e = m["target_offset"] {
                     filter += ":measured_I=\(a):measured_LRA=\(b):measured_TP=\(c):measured_thresh=\(d):offset=\(e):linear=true"
                 }
@@ -120,7 +120,7 @@ struct VisualizerTool: View {
     private let shapes: [(String, CGSize)] = [("Landscape · 16:9", CGSize(width: 1280, height: 720)), ("Portrait · 9:16", CGSize(width: 720, height: 1280)), ("Square · 1:1", CGSize(width: 1080, height: 1080))]
 
     var body: some View {
-        ToolShell(title: "Audio Visualizer", close: close) {
+        ToolShell(title: L("Audio Visualizer"), close: close) {
             VStack(spacing: 12) {
                 let s = shapes[shape].1, k = min(380 / s.width, 260 / s.height)
                 ZStack {
@@ -129,13 +129,13 @@ struct VisualizerTool: View {
                     else { WaveformView(peaks: peaks, barWidth: 3).padding(24) }
                 }.frame(width: s.width * k, height: s.height * k).clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                     .frame(width: 400, height: 270)
-                HStack { Text("Style").sectionLabel(); Spacer()
-                    Picker("", selection: $stillStyle) { Text("Waveform").tag(false); Text("Still image").tag(true) }.labelsHidden().frame(width: 150)
+                HStack { Text(L("Style")).sectionLabel(); Spacer()
+                    Picker("", selection: $stillStyle) { Text(L("Waveform")).tag(false); Text(L("Still image")).tag(true) }.labelsHidden().frame(width: 150)
                         .onChange(of: stillStyle) { v in if v && still == nil { pickImage() } } }
-                HStack { Text("Shape").sectionLabel(); Spacer()
-                    Picker("", selection: $shape) { ForEach(Array(shapes.enumerated()), id: \.offset) { Text($1.0).tag($0) } }.labelsHidden().frame(width: 170) }
+                HStack { Text(L("Shape")).sectionLabel(); Spacer()
+                    Picker("", selection: $shape) { ForEach(Array(shapes.enumerated()), id: \.offset) { Text(L($1.0)).tag($0) } }.labelsHidden().frame(width: 170) }
             }.frame(width: 400)
-        } footer: { Button("Create Visualization") { apply() }.buttonStyle(PillButtonStyle()).keyboardShortcut(.defaultAction) }
+        } footer: { Button(L("Create Visualization")) { apply() }.buttonStyle(PillButtonStyle()).keyboardShortcut(.defaultAction) }
         .task { peaks = await WaveformLoader.peaks(urls[0], count: 60).peaks }
     }
 
@@ -146,7 +146,7 @@ struct VisualizerTool: View {
     private func apply() {
         let f = urls[0], size = shapes[shape].1, img = stillStyle ? still : nil
         close()
-        Dispatcher.job("Creating visualization…") { progress in
+        Dispatcher.job(L("Creating visualization…")) { progress in
             let info = await FFmpeg.probe(f)
             let (w, h) = (Int(size.width), Int(size.height))
             let out = OutputNaming.sibling(of: f, suffix: " visualizer", ext: "mp4")
@@ -178,29 +178,29 @@ struct TrimAudioTool: View {
     @State private var made = 0             // extraits déjà enregistrés pendant cette session
 
     var body: some View {
-        ToolShell(title: "Trim Audio", close: close) {
+        ToolShell(title: L("Trim Audio"), close: close) {
             VStack(alignment: .leading, spacing: 10) {
-                HStack { Text("Drag the ends to trim · click to place the cursor").sectionLabel(); Spacer(); Text("\(timecode(end - start)) selected").sectionLabel() }
+                HStack { Text(L("Drag the ends to trim · click to place the cursor")).sectionLabel(); Spacer(); Text(L("\(timecode(end - start)) selected")).sectionLabel() }
                 if dur > 0 {
                     TimeRangeSelector(duration: dur, start: $start, end: $end, playhead: (player.isPlaying || cursorSet) ? player.time : nil, onScrub: { cursorSet = true; player.seek($0) }) {
                         ZStack { Theme.orange.opacity(0.08); WaveformView(peaks: peaks) }
                     }.frame(height: 100)
                 } else { Color.clear.frame(height: 100) }
                 HStack {
-                    Text("Start \(timecode(start))").font(.system(size: 11).monospacedDigit()).foregroundStyle(Theme.muted)
+                    Text(L("Start \(timecode(start))")).font(.system(size: 11).monospacedDigit()).foregroundStyle(Theme.muted)
                     Spacer()
-                    Text("End \(timecode(end))").font(.system(size: 11).monospacedDigit()).foregroundStyle(Theme.muted)
+                    Text(L("End \(timecode(end))")).font(.system(size: 11).monospacedDigit()).foregroundStyle(Theme.muted)
                 }
-                Toggle("Trim silent ends automatically", isOn: $trimSilence).onChange(of: trimSilence) { _ in autoTrim() }
-                Toggle("Keep trimming: stay here to cut another part", isOn: $keepGoing)
+                Toggle(L("Trim silent ends automatically"), isOn: $trimSilence).onChange(of: trimSilence) { _ in autoTrim() }
+                Toggle(L("Keep trimming: stay here to cut another part"), isOn: $keepGoing)
                 if made > 0 {
-                    Label(made == 1 ? "1 clip saved" : "\(made) clips saved", systemImage: "checkmark.circle.fill").font(.system(size: 11)).foregroundStyle(Theme.muted)
+                    Label(made == 1 ? L("1 clip saved") : L("\(made) clips saved"), systemImage: "checkmark.circle.fill").font(.system(size: 11)).foregroundStyle(Theme.muted)
                 }
                 Button { player.loopRange = start...end; player.toggle() } label: {
-                    Label(player.isPlaying ? "Pause" : "Play Selected Range", systemImage: player.isPlaying ? "pause.fill" : "play.fill")
+                    Label(player.isPlaying ? L("Pause") : L("Play Selected Range"), systemImage: player.isPlaying ? L("pause.fill") : L("play.fill"))
                 }.buttonStyle(PillButtonStyle()).frame(maxWidth: .infinity, alignment: .trailing)
             }.frame(width: 420)
-        } footer: { ReplaceButton(keepGoing ? "Apply & Keep Going" : "Apply") { apply() } }
+        } footer: { ReplaceButton(keepGoing ? L("Apply & Keep Going") : L("Apply")) { apply() } }
         .task {
             let w = await WaveformLoader.peaks(urls[0], count: 90)
             peaks = w.peaks
@@ -226,7 +226,7 @@ struct TrimAudioTool: View {
             player.pause(); cursorSet = false
             if e < dur - 0.05 { start = e; end = dur; player.seek(e) } else { start = 0; end = dur; player.seek(0) }
         } else { close() }
-        Dispatcher.job("Trimming audio…", replaces: files, replace: keepGoing ? false : nil) { progress in
+        Dispatcher.job(L("Trimming audio…"), replaces: files, replace: keepGoing ? false : nil) { progress in
             var outs: [URL] = []
             for f in files {
                 let ext = AudioExport.ext(for: f)
@@ -252,19 +252,19 @@ struct ChannelsTool: View {
     @State private var rendering = false
 
     var body: some View {
-        ToolShell(title: "Convert Audio Channels", close: close) {
+        ToolShell(title: L("Convert Audio Channels"), close: close) {
             VStack(alignment: .leading, spacing: 10) {
-                Text("Output channel preview").sectionLabel()
+                Text(L("Output channel preview")).sectionLabel()
                 channel("L", left, lv)
                 channel("R", right, rv)
                 Divider()
-                HStack { Text("Output").sectionLabel(); Spacer(); PillPicker(options: [(false, "Mono"), (true, "Stereo")], selection: $stereo) }
-                volume("Left volume", $lv)
-                volume("Right volume", $rv)
-                HStack { Text("Preview").sectionLabel(); Spacer()
-                    Button { Task { await preview() } } label: { Label(rendering ? "Rendering…" : "Play Output", systemImage: "play.fill") }.buttonStyle(PillButtonStyle()).disabled(rendering) }
+                HStack { Text(L("Output")).sectionLabel(); Spacer(); PillPicker(options: [(false, "Mono"), (true, "Stereo")], selection: $stereo) }
+                volume(L("Left volume"), $lv)
+                volume(L("Right volume"), $rv)
+                HStack { Text(L("Preview")).sectionLabel(); Spacer()
+                    Button { Task { await preview() } } label: { Label(rendering ? L("Rendering…") : L("Play Output"), systemImage: L("play.fill")) }.buttonStyle(PillButtonStyle()).disabled(rendering) }
             }.frame(width: 440)
-        } footer: { ReplaceButton("Apply") { apply() } }
+        } footer: { ReplaceButton(L("Apply")) { apply() } }
         .task {
             let p = await WaveformLoader.peaks(urls[0], count: 70)
             left = p.left; right = p.right
@@ -273,16 +273,16 @@ struct ChannelsTool: View {
 
     private func channel(_ name: String, _ peaks: [Float], _ vol: Double) -> some View {
         HStack(spacing: 10) {
-            Text(name).font(.system(size: 11, weight: .semibold)).frame(width: 26, height: 26).background(Circle().fill(Theme.orange.opacity(0.18)))
+            Text(L(name)).font(.system(size: 11, weight: .semibold)).frame(width: 26, height: 26).background(Circle().fill(Theme.orange.opacity(0.18)))
             WaveformView(peaks: peaks.map { min(1, $0 * Float(vol)) }, color: Theme.text.opacity(0.55), barWidth: 2).frame(height: 44)
                 .padding(.horizontal, 8).background(RoundedRectangle(cornerRadius: 8).fill(Color.black.opacity(0.05)))
         }
     }
 
     private func volume(_ t: String, _ v: Binding<Double>) -> some View {
-        HStack { Text(t).font(.system(size: 12)).foregroundStyle(Theme.muted).frame(width: 90, alignment: .leading)
+        HStack { Text(L(t)).font(.system(size: 12)).foregroundStyle(Theme.muted).frame(width: 90, alignment: .leading)
             Slider(value: v, in: 0...3).controlSize(.small)
-            Text("\(Int(v.wrappedValue * 100))%").font(.system(size: 11).monospacedDigit()).frame(width: 48, alignment: .trailing) }
+            Text(L("\(Int(v.wrappedValue * 100))%")).font(.system(size: 11).monospacedDigit()).frame(width: 48, alignment: .trailing) }
     }
 
     private func filter() -> String {
@@ -303,7 +303,7 @@ struct ChannelsTool: View {
     private func apply() {
         let (f, flt) = (urls[0], filter())
         close()
-        Dispatcher.job("Converting channels…", replaces: [f]) { progress in
+        Dispatcher.job(L("Converting channels…"), replaces: [f]) { progress in
             let info = await FFmpeg.probe(f)
             let ext = AudioExport.ext(for: f)
             let out = OutputNaming.sibling(of: f, suffix: stereo ? " stereo" : " mono", ext: ext)
@@ -324,22 +324,22 @@ struct BleepTool: View {
     @State private var rendering = false
 
     var body: some View {
-        ToolShell(title: "Bleep Audio", close: close) {
+        ToolShell(title: L("Bleep Audio"), close: close) {
             VStack(alignment: .leading, spacing: 10) {
-                HStack { Text("Bleeps").font(.system(size: 12, weight: .semibold)); Text("\(bleeps.count)").sectionLabel(); Spacer() }
+                HStack { Text(L("Bleeps")).font(.system(size: 12, weight: .semibold)); Text(L("\(bleeps.count)")).sectionLabel(); Spacer() }
                 GeometryReader { geo in
                     let W = geo.size.width - 56, D = max(player.duration, 0.01)
                     VStack(spacing: 6) {
                         HStack(spacing: 8) {
-                            Text("Bleep").sectionLabel().frame(width: 48, alignment: .leading)
+                            Text(L("Bleep")).sectionLabel().frame(width: 48, alignment: .leading)
                             ZStack(alignment: .leading) {
                                 RoundedRectangle(cornerRadius: 8).fill(Color.black.opacity(0.05))
                                 ForEach(bleeps) { b in
                                     let x0 = W * CGFloat(b.start / D), x1 = W * CGFloat(b.end / D)
-                                    RoundedRectangle(cornerRadius: 7).fill(Theme.orange.opacity(0.8)).overlay(Text("Bleep").font(.system(size: 11, weight: .semibold)).foregroundStyle(.white))
+                                    RoundedRectangle(cornerRadius: 7).fill(Theme.orange.opacity(0.8)).overlay(Text(L("Bleep")).font(.system(size: 11, weight: .semibold)).foregroundStyle(.white))
                                         .frame(width: max(24, x1 - x0), height: 34).offset(x: x0)
                                         .gesture(DragGesture(minimumDistance: 2, coordinateSpace: .named("bleepLanes")).onChanged { v in adjust(b, v, W, D, 2) }.onEnded { _ in drag = nil })
-                                        .contextMenu { Button("Delete") { bleeps.removeAll { $0.id == b.id } } }
+                                        .contextMenu { Button(L("Delete")) { bleeps.removeAll { $0.id == b.id } } }
                                     grip().offset(x: x0 + 3).gesture(DragGesture(minimumDistance: 1, coordinateSpace: .named("bleepLanes")).onChanged { v in adjust(b, v, W, D, 0) }.onEnded { _ in drag = nil })
                                     grip().offset(x: x1 - 7).gesture(DragGesture(minimumDistance: 1, coordinateSpace: .named("bleepLanes")).onChanged { v in adjust(b, v, W, D, 1) }.onEnded { _ in drag = nil })
                                 }
@@ -347,20 +347,20 @@ struct BleepTool: View {
                             .gesture(DragGesture(minimumDistance: 4).onChanged { v in create(v, W, D) }.onEnded { _ in drag = nil })
                         }
                         HStack(spacing: 8) {
-                            Text("Audio").sectionLabel().frame(width: 48, alignment: .leading)
+                            Text(L("Audio")).sectionLabel().frame(width: 48, alignment: .leading)
                             WaveformView(peaks: peaks).frame(width: W, height: 70).background(RoundedRectangle(cornerRadius: 8).fill(Color.black.opacity(0.04)))
                         }
                         HStack { Spacer().frame(width: 56); Text(timecode(0, centis: false)).sectionLabel(); Spacer(); Text(timecode(player.duration)).sectionLabel() }
                     }
                 }.frame(height: 160).coordinateSpace(name: "bleepLanes")
-                Text("Drag across the Bleep layer to add a section, then drag a clip or either edge to adjust it. Right-click a clip to delete it.")
+                Text(L("Drag across the Bleep layer to add a section, then drag a clip or either edge to adjust it. Right-click a clip to delete it."))
                     .sectionLabel().fixedSize(horizontal: false, vertical: true)
                 Divider()
-                HStack { Text("Preview").sectionLabel(); Spacer()
-                    Button("Original") { Task { await player.load(urls[0]); await MainActor.run { player.loopRange = nil; player.seek(0); player.play() } } }.buttonStyle(PillButtonStyle())
-                    Button { Task { await previewBleeps() } } label: { Label(rendering ? "Rendering…" : "With Bleeps", systemImage: "play.fill") }.buttonStyle(PillButtonStyle()).disabled(rendering || bleeps.isEmpty) }
+                HStack { Text(L("Preview")).sectionLabel(); Spacer()
+                    Button(L("Original")) { Task { await player.load(urls[0]); await MainActor.run { player.loopRange = nil; player.seek(0); player.play() } } }.buttonStyle(PillButtonStyle())
+                    Button { Task { await previewBleeps() } } label: { Label(rendering ? L("Rendering…") : L("With Bleeps"), systemImage: L("play.fill")) }.buttonStyle(PillButtonStyle()).disabled(rendering || bleeps.isEmpty) }
             }.frame(width: 460)
-        } footer: { ReplaceButton("Save Bleeped Copy") { apply() }.disabled(bleeps.isEmpty) }
+        } footer: { ReplaceButton(L("Save Bleeped Copy")) { apply() }.disabled(bleeps.isEmpty) }
         .task {
             await player.load(urls[0])
             peaks = await WaveformLoader.peaks(urls[0], count: 120).peaks
@@ -418,7 +418,7 @@ struct BleepTool: View {
     private func apply() {
         let (f, rs) = (urls[0], bleeps)
         close()
-        Dispatcher.job("Saving bleeped copy…", replaces: [f]) { progress in
+        Dispatcher.job(L("Saving bleeped copy…"), replaces: [f]) { progress in
             let info = await FFmpeg.probe(f)
             let ext = AudioExport.ext(for: f)
             let out = OutputNaming.sibling(of: f, suffix: " bleeped", ext: ext)

@@ -35,7 +35,7 @@ struct CropImageTool: View {
     }
 
     var body: some View {
-        ToolShell(title: "Crop Image", close: close) {
+        ToolShell(title: L("Crop Image"), close: close) {
             VStack(spacing: 12) {
                 RegionEditor(contentSize: src.pixelSize, regions: $regions, selected: $selected, lockAspect: ratio.ratio, dimOutside: true) {
                     if let i = src.preview { Image(nsImage: i).resizable() }
@@ -45,8 +45,8 @@ struct CropImageTool: View {
             }
             .frame(width: 400)
         } footer: {
-            Button("Reset") { regions[0].rect = CGRect(x: 0, y: 0, width: 1, height: 1); ratio = AspectRatioChoice.all[0] }.buttonStyle(PillButtonStyle())
-            ReplaceButton("Apply") { apply() }
+            Button(L("Reset")) { regions[0].rect = CGRect(x: 0, y: 0, width: 1, height: 1); ratio = AspectRatioChoice.all[0] }.buttonStyle(PillButtonStyle())
+            ReplaceButton(L("Apply")) { apply() }
         }
     }
 
@@ -54,13 +54,13 @@ struct CropImageTool: View {
         let r = regions[0].rect
         let files = urls
         close()
-        Dispatcher.job("Cropping…", light: true, replaces: files) { _ in
+        Dispatcher.job(L("Cropping…"), light: true, replaces: files) { _ in
             try await Task.detached {
                 try files.map { url in
                     let (img, props) = try ImageEngine.load(url)
                     let rect = CGRect(x: r.minX * CGFloat(img.width), y: r.minY * CGFloat(img.height),
                                       width: r.width * CGFloat(img.width), height: r.height * CGFloat(img.height)).integral
-                    guard let c = img.cropping(to: rect) else { throw MandarineError("Recadrage impossible.") }
+                    guard let c = img.cropping(to: rect) else { throw MandarineError(L("Recadrage impossible.")) }
                     let out = OutputNaming.sibling(of: url, suffix: " cropped")
                     try ImageEngine.write(c, properties: props, to: out, ext: url.pathExtension, quality: 0.95)
                     return out
@@ -89,7 +89,7 @@ struct RedactImageTool: View {
     }
 
     var body: some View {
-        ToolShell(title: "Redact Photo", close: close) {
+        ToolShell(title: L("Redact Photo"), close: close) {
             VStack(spacing: 12) {
                 RegionEditor(contentSize: src.pixelSize, regions: $regions, selected: $selected, allowsDraw: true,
                              fillStyle: { _ in
@@ -100,25 +100,25 @@ struct RedactImageTool: View {
                 }
                 .frame(width: 400, height: 420)
                 .onDeleteCommand { regions.removeAll { $0.id == selected } }
-                row("Style") { PillPicker(options: [(RedactStyle.solid, "Solid"), (.blur, "Blur")], selection: $style) }
-                if style == .solid { row("Color") { ColorPicker("", selection: $color).labelsHidden() } }
-                row("Detect") {
+                row(L("Style")) { PillPicker(options: [(RedactStyle.solid, "Solid"), (.blur, "Blur")], selection: $style) }
+                if style == .solid { row(L("Color")) { ColorPicker("", selection: $color).labelsHidden() } }
+                row(L("Detect")) {
                     HStack {
-                        Button("Faces") { detect(faces: true) }.buttonStyle(PillButtonStyle())
-                        Button("Text") { detect(faces: false) }.buttonStyle(PillButtonStyle())
+                        Button(L("Faces")) { detect(faces: true) }.buttonStyle(PillButtonStyle())
+                        Button(L("Text")) { detect(faces: false) }.buttonStyle(PillButtonStyle())
                     }.disabled(detecting)
                 }
-                Text("Drag on the photo to add an area. Select one and press Delete to remove it.").sectionLabel()
+                Text(L("Drag on the photo to add an area. Select one and press Delete to remove it.")).sectionLabel()
             }
             .frame(width: 400)
         } footer: {
-            Button("Reset") { regions = []; selected = nil }.buttonStyle(PillButtonStyle())
-            ReplaceButton("Save Redacted Copy") { save() }.disabled(regions.isEmpty)
+            Button(L("Reset")) { regions = []; selected = nil }.buttonStyle(PillButtonStyle())
+            ReplaceButton(L("Save Redacted Copy")) { save() }.disabled(regions.isEmpty)
         }
     }
 
     private func row<V: View>(_ title: String, @ViewBuilder _ v: () -> V) -> some View {
-        HStack { Text(title).sectionLabel(); Spacer(); v() }
+        HStack { Text(L(title)).sectionLabel(); Spacer(); v() }
     }
 
     private func detect(faces: Bool) {
@@ -145,7 +145,7 @@ struct RedactImageTool: View {
                     regions.append(Region(rect: r.intersection(CGRect(x: 0, y: 0, width: 1, height: 1))))
                 }
                 detecting = false
-                if found.isEmpty { Toast.shared.done(faces ? "No faces found" : "No text found") }
+                if found.isEmpty { Toast.shared.done(faces ? L("No faces found") : L("No text found")) }
             }
         }
     }
@@ -154,7 +154,7 @@ struct RedactImageTool: View {
         let rects = regions.map(\.rect), style = style, color = NSColor(color)
         let file = urls[0]
         close()
-        Dispatcher.job("Redacting…", light: true, replaces: [file]) { _ in
+        Dispatcher.job(L("Redacting…"), light: true, replaces: [file]) { _ in
             [try await Task.detached { try Self.render(file, rects: rects, style: style, color: color) }.value]
         }
     }
@@ -182,7 +182,7 @@ struct RedactImageTool: View {
             }
             base = patch.composited(over: base)
         }
-        guard let out = ctx.createCGImage(base, from: CGRect(x: 0, y: 0, width: W, height: H)) else { throw MandarineError("Rendu impossible.") }
+        guard let out = ctx.createCGImage(base, from: CGRect(x: 0, y: 0, width: W, height: H)) else { throw MandarineError(L("Rendu impossible.")) }
         let dest = OutputNaming.sibling(of: url, suffix: " redacted")
         try ImageEngine.write(out, properties: [:], to: dest, ext: url.pathExtension, quality: 0.95)
         _ = props

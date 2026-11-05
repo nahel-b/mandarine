@@ -184,11 +184,11 @@ struct OrderEditor: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 10) {
-                Text("\(urls.count) \(noun)\(urls.count == 1 ? "" : "s")" + (selection.count > 1 ? " · \(selection.count) selected" : "")).sectionLabel()
+                Text(L("\(urls.count) \(noun)\(urls.count == 1 ? "" : "s")") + (selection.count > 1 ? L(" · \(selection.count) selected") : "")).sectionLabel()
                 Spacer()
-                Button("Add…") { Pickers.files(types) { picked in urls.append(contentsOf: picked) } }
+                Button(L("Add…")) { Pickers.files(types) { picked in urls.append(contentsOf: picked) } }
                     .buttonStyle(WiiPlainButtonStyle()).font(.system(size: 12, weight: .medium)).foregroundStyle(Theme.orange)
-                Button("Remove") { remove() }
+                Button(L("Remove")) { remove() }
                     .buttonStyle(WiiPlainButtonStyle()).font(.system(size: 12, weight: .medium))
                     .foregroundStyle(selection.isEmpty ? Theme.muted.opacity(0.5) : Theme.orange).disabled(selection.isEmpty)
             }
@@ -197,7 +197,7 @@ struct OrderEditor: View {
                 .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(Color.white.opacity(0.85)))
                 .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).stroke(Color.black.opacity(0.1)))
                 .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-            Text("Drag a row to reorder it. ⌘-click or ⇧-click to select several, then drag them together. Drop files from Finder to add them. Delete removes the selection.")
+            Text(L("Drag a row to reorder it. ⌘-click or ⇧-click to select several, then drag them together. Drop files from Finder to add them. Delete removes the selection."))
                 .sectionLabel().fixedSize(horizontal: false, vertical: true)
         }.frame(width: width, alignment: .leading)
     }

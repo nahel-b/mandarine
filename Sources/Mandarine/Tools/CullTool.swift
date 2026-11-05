@@ -32,7 +32,7 @@ struct CullTool: View {
     }
 
     var body: some View {
-        ToolShell(title: "Quick Sort", close: close) {
+        ToolShell(title: L("Quick Sort"), close: close) {
             VStack(spacing: 10) {
                 ZStack {
                     Color.black.opacity(0.88)
@@ -42,7 +42,7 @@ struct CullTool: View {
                             Text(urls[index].lastPathComponent).font(.system(size: 12, weight: .medium)).foregroundStyle(.white.opacity(0.85))
                                 .padding(.horizontal, 10).padding(.vertical, 4).background(Capsule().fill(Color.black.opacity(0.45)))
                             Spacer()
-                            Text("\(index + 1) / \(urls.count)").font(.system(size: 12).monospacedDigit()).foregroundStyle(.white.opacity(0.85))
+                            Text(L("\(index + 1) / \(urls.count)")).font(.system(size: 12).monospacedDigit()).foregroundStyle(.white.opacity(0.85))
                                 .padding(.horizontal, 10).padding(.vertical, 4).background(Capsule().fill(Color.black.opacity(0.45)))
                         }
                         Spacer()
@@ -56,21 +56,21 @@ struct CullTool: View {
                 strip
                 HStack(spacing: 18) {
                     ForEach([Mark.keep, .maybe, .reject], id: \.rawValue) { m in
-                        HStack(spacing: 6) { Circle().fill(color(m)).frame(width: 12, height: 12); Text("\(count(m))").font(.system(size: 12).monospacedDigit()) }
+                        HStack(spacing: 6) { Circle().fill(color(m)).frame(width: 12, height: 12); Text(L("\(count(m))")).font(.system(size: 12).monospacedDigit()) }
                     }
-                    Text("\(count(.none)) not sorted").font(.system(size: 12)).foregroundStyle(Theme.muted)
+                    Text(L("\(count(.none)) not sorted")).font(.system(size: 12)).foregroundStyle(Theme.muted)
                     Spacer()
-                    Text(legend).font(.system(size: 11)).foregroundStyle(Theme.muted)
+                    Text(L(legend)).font(.system(size: 11)).foregroundStyle(Theme.muted)
                 }
             }
             .frame(width: 860)
             .background(SortKeyCatcher { handle($0) })
         } footer: {
-            Button("Select kept in Finder") {
+            Button(L("Select kept in Finder")) {
                 let kept = urls.indices.filter { marks[$0] == .keep }.map { urls[$0] }; let n = urls.count
                 close(); TagSelect.select(kept, of: n)
             }.buttonStyle(PillButtonStyle()).disabled(count(.keep) == 0)
-            Button(count(.reject) == 0 ? "Move rejects to the Trash" : "Move \(count(.reject)) reject\(count(.reject) == 1 ? "" : "s") to the Trash…") { trashRejects() }
+            Button(count(.reject) == 0 ? L("Move rejects to the Trash") : L("Move \(count(.reject)) reject\(count(.reject) == 1 ? "" : "s") to the Trash…")) { trashRejects() }
                 .buttonStyle(PillButtonStyle()).disabled(count(.reject) == 0)
         }
         .task { await readMarks() }
@@ -154,15 +154,15 @@ struct CullTool: View {
     private func trashRejects() {
         let rejected = urls.indices.filter { marks[$0] == .reject }
         let alert = NSAlert()
-        alert.messageText = rejected.count == 1 ? "Move 1 rejected file to the Trash?" : "Move \(rejected.count) rejected files to the Trash?"
-        alert.informativeText = "You can put them back from the Trash."
-        alert.addButton(withTitle: "Move to Trash"); alert.addButton(withTitle: "Cancel")
+        alert.messageText = rejected.count == 1 ? L("Move 1 rejected file to the Trash?") : L("Move \(rejected.count) rejected files to the Trash?")
+        alert.informativeText = L("You can put them back from the Trash.")
+        alert.addButton(withTitle: L("Move to Trash")); alert.addButton(withTitle: L("Cancel"))
         guard alert.runModal() == .alertFirstButtonReturn else { return }
         var failed = 0
         for i in rejected { do { try FileManager.default.trashItem(at: urls[i], resultingItemURL: nil) } catch { failed += 1 } }
         close()
-        if failed == 0 { Toast.shared.done("Moved \(rejected.count) to the Trash", subtitle: "Open the Trash to put them back.") }
-        else { Toast.shared.fail("Couldn't move \(failed) files", subtitle: "They may be in use or protected.") }
+        if failed == 0 { Toast.shared.done(L("Moved \(rejected.count) to the Trash"), subtitle: L("Open the Trash to put them back.")) }
+        else { Toast.shared.fail(L("Couldn't move \(failed) files"), subtitle: L("They may be in use or protected.")) }
     }
 }
 

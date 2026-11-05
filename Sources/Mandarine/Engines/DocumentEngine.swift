@@ -20,7 +20,7 @@ enum DocumentEngine {
             let s = try (try? String(contentsOf: url, encoding: .utf8)) ?? String(contentsOf: url, encoding: .isoLatin1)
             return NSAttributedString(string: s, attributes: [.font: NSFont.systemFont(ofSize: 12)])
         case "epub": return try EpubEngine.read(url)
-        default: throw MandarineError("Format de document non pris en charge : .\(url.pathExtension)")
+        default: throw MandarineError(L("Format de document non pris en charge : .\(url.pathExtension)"))
         }
     }
 
@@ -89,7 +89,7 @@ enum DocumentEngine {
         let page = CGRect(x: 0, y: 0, width: 595.28, height: 841.89)
         let inset = page.insetBy(dx: 54, dy: 54)
         var mediaBox = page
-        guard let ctx = CGContext(url as CFURL, mediaBox: &mediaBox, nil) else { throw MandarineError("Création du PDF impossible.") }
+        guard let ctx = CGContext(url as CFURL, mediaBox: &mediaBox, nil) else { throw MandarineError(L("Création du PDF impossible.")) }
         let setter = CTFramesetterCreateWithAttributedString(text as CFAttributedString)
         var start = 0
         let total = text.length
@@ -142,7 +142,7 @@ enum DocumentEngine {
                 return moved
             }
             return dest
-        default: throw MandarineError("Conversion vers .\(e) non prise en charge.")
+        default: throw MandarineError(L("Conversion vers .\(e) non prise en charge."))
         }
         return out
     }
@@ -156,7 +156,7 @@ enum EpubEngine {
         defer { try? FileManager.default.removeItem(at: tmp) }
         try Shell.run("/usr/bin/unzip", ["-q", "-o", url.path, "-d", tmp.path])
         let container = try String(contentsOf: tmp.appendingPathComponent("META-INF/container.xml"), encoding: .utf8)
-        guard let opfPath = firstMatch(in: container, pattern: "full-path=\"([^\"]+)\"") else { throw MandarineError("EPUB invalide.") }
+        guard let opfPath = firstMatch(in: container, pattern: "full-path=\"([^\"]+)\"") else { throw MandarineError(L("EPUB invalide.")) }
         let opfURL = tmp.appendingPathComponent(opfPath)
         let opf = try String(contentsOf: opfURL, encoding: .utf8)
         let base = opfURL.deletingLastPathComponent()
@@ -235,7 +235,7 @@ enum Shell {
         let edata = err.fileHandleForReading.readDataToEndOfFile()
         p.waitUntilExit()
         guard p.terminationStatus == 0 else {
-            throw MandarineError(String(data: edata, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? "\(exe) a échoué.")
+            throw MandarineError(String(data: edata, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? L("\(exe) a échoué."))
         }
         return String(data: data, encoding: .utf8) ?? ""
     }

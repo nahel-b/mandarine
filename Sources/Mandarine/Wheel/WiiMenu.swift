@@ -48,69 +48,69 @@ enum WiiText {
             return item.id == "multi-pdf" ? "Combine the selected images into one PDF, one page per image." : item.id == "m4r" ? "Save the start of the sound as an iPhone ringtone (.m4r), with a short fade out." : "Convert to \(ext.uppercased()). A new copy is saved next to the original."
         }
         let d: [String: String] = [
-            "compress": "Reduce file size locally. The original stays untouched.",
-            "metadata": "Inspect, change or remove the information hidden in a file.",
-            "editImage": "Adjust light, color and detail with a live preview.",
-            "annotateImage": "Mark up a photo with arrows, text, shapes and callouts.",
-            "frameImage": "Place the photo on a gradient, a color or another image.",
-            "removeBackground": "Cut the subject out. Soften edges, add a sticker outline.",
-            "cropImage": "Choose the exact area and size to keep.",
-            "resizeImage": "Set exact dimensions, a percentage, several sizes — or upscale with AI.",
-            "rotateImage": "Rotate, flip and straighten with the EXIF orientation.",
-            "redactImage": "Cover faces, text or any area with a color or blur.",
-            "createCollage": "Arrange several images in one finished composition.",
-            "trimVideo": "Keep one precise section of a video.",
-            "cropVideo": "Reframe a video and keep its audio.",
-            "changeVideoSpeed": "Create a slower or faster copy, keeping the pitch.",
-            "joinVideos": "Arrange several clips and combine them into one MP4.",
-            "videoSnapshots": "Pick exact frames and export them as full-size PNG.",
-            "splitVideo": "Divide a video into clips at exact points.",
-            "redactVideo": "Hide areas for all or part of a video.",
-            "muteVideo": "Remove the audio track and keep the picture.",
-            "extractAudio": "Save the audio track, without re-encoding when possible.",
-            "encodeVideo": "Choose size, frame rate, quality or bitrate — like HandBrake. Colors preserved.",
-            "normalizeAudio": "Bring a recording to a consistent loudness.",
-            "audioToVideo": "Turn audio into a video with a waveform or an image.",
-            "trimAudio": "Keep one section of a recording, with waveform control.",
-            "audioChannels": "Convert to mono or stereo and set each channel's volume.",
-            "redactAudio": "Replace sensitive parts of a recording with a bleep.",
-            "mergePDF": "Combine several PDFs into one document.",
-            "organizePDF": "Reorder, rotate, duplicate or remove pages visually.",
-            "splitPDF": "Save every page as its own PDF.",
-            "savePagePDF": "Save this web page as a PDF in Downloads, in one long page.",
-            "savePageMarkdown": "Save the text of this web page as a Markdown file in Downloads.",
-            "savePageScreenshot": "Save a picture of the whole web page in Downloads.",
-            "downloadMP4": "Download the video from this link. Playlists let you choose.",
-            "downloadWAV": "Download the sound from this link as WAV, uncompressed. Playlists let you choose.",
-            "downloadMP3": "Download the sound from this link as MP3. Playlists let you choose.",
-            "ocr": "Read the text in a picture or a scanned PDF, then copy or save it.",
-            "extractImages": "Save the pictures embedded in a PDF.",
-            "extractArchive": "Unpack the archive next to itself.",
-            "davinciTree": "Create a DaVinci Resolve project folder tree.",
-            "openInCode": "Open in Visual Studio Code.",
-            "bg": "Add a background to a photo, or remove the current one.",
-            "transform": "Crop, resize, rotate and flip.",
-            "edit": "Adjust the photo, annotate it or redact parts of it.",
-            "quickSort": "Go through your photos and videos full screen, and mark each one Keep, Maybe or Reject.",
-            "typeSelect": "Select files by extension, kind, Finder tag, size or date inside your selection.",
-            "zipFiles": "Put the selected files and folders into one ZIP archive.",
-            "translateText": "Translate the text into another language, on this Mac.",
-            "summarizeText": "Summarize the text with the on-device Apple Intelligence model.",
-            "speakText": "Read the text aloud with a voice in its language.",
-            "searchWeb": "Search the web for this text.",
-            "scanDocument": "Straighten a photo of a sheet of paper, clean it and save it as a PDF.",
-            "document": "Scan a sheet of paper, or read the text of a picture.",
-            "faceSelect": "Pick the people you want: files showing them are selected.",
-            "select": "Select files by type or tag, by the people in them, or sort them one by one.",
-            "vtransform": "Trim, crop, change the speed and redact.",
-            "vaudio": "Mute the video or extract its audio.",
-            "airDrop": "Share through the macOS recipient picker.",
-            "float": "Park on a floating shelf and drag into another app.",
-            "copy": "Copy to the clipboard, ready to paste in Finder.",
-            "move": "Choose a destination folder and move the originals there.",
-            "copyPath": "Copy the full path as text.",
-            "terminal": "Open the folder in Terminal or iTerm2.",
-            "switchView": "Switch the menu between the Wii screen and the wheel."
+            "compress": L("Reduce file size locally. The original stays untouched."),
+            "metadata": L("Inspect, change or remove the information hidden in a file."),
+            "editImage": L("Adjust light, color and detail with a live preview."),
+            "annotateImage": L("Mark up a photo with arrows, text, shapes and callouts."),
+            "frameImage": L("Place the photo on a gradient, a color or another image."),
+            "removeBackground": L("Cut the subject out. Soften edges, add a sticker outline."),
+            "cropImage": L("Choose the exact area and size to keep."),
+            "resizeImage": L("Set exact dimensions, a percentage, several sizes — or upscale with AI."),
+            "rotateImage": L("Rotate, flip and straighten with the EXIF orientation."),
+            "redactImage": L("Cover faces, text or any area with a color or blur."),
+            "createCollage": L("Arrange several images in one finished composition."),
+            "trimVideo": L("Keep one precise section of a video."),
+            "cropVideo": L("Reframe a video and keep its audio."),
+            "changeVideoSpeed": L("Create a slower or faster copy, keeping the pitch."),
+            "joinVideos": L("Arrange several clips and combine them into one MP4."),
+            "videoSnapshots": L("Pick exact frames and export them as full-size PNG."),
+            "splitVideo": L("Divide a video into clips at exact points."),
+            "redactVideo": L("Hide areas for all or part of a video."),
+            "muteVideo": L("Remove the audio track and keep the picture."),
+            "extractAudio": L("Save the audio track, without re-encoding when possible."),
+            "encodeVideo": L("Choose size, frame rate, quality or bitrate — like HandBrake. Colors preserved."),
+            "normalizeAudio": L("Bring a recording to a consistent loudness."),
+            "audioToVideo": L("Turn audio into a video with a waveform or an image."),
+            "trimAudio": L("Keep one section of a recording, with waveform control."),
+            "audioChannels": L("Convert to mono or stereo and set each channel's volume."),
+            "redactAudio": L("Replace sensitive parts of a recording with a bleep."),
+            "mergePDF": L("Combine several PDFs into one document."),
+            "organizePDF": L("Reorder, rotate, duplicate or remove pages visually."),
+            "splitPDF": L("Save every page as its own PDF."),
+            "savePagePDF": L("Save this web page as a PDF in Downloads, in one long page."),
+            "savePageMarkdown": L("Save the text of this web page as a Markdown file in Downloads."),
+            "savePageScreenshot": L("Save a picture of the whole web page in Downloads."),
+            "downloadMP4": L("Download the video from this link. Playlists let you choose."),
+            "downloadWAV": L("Download the sound from this link as WAV, uncompressed. Playlists let you choose."),
+            "downloadMP3": L("Download the sound from this link as MP3. Playlists let you choose."),
+            "ocr": L("Read the text in a picture or a scanned PDF, then copy or save it."),
+            "extractImages": L("Save the pictures embedded in a PDF."),
+            "extractArchive": L("Unpack the archive next to itself."),
+            "davinciTree": L("Create a DaVinci Resolve project folder tree."),
+            "openInCode": L("Open in Visual Studio Code."),
+            "bg": L("Add a background to a photo, or remove the current one."),
+            "transform": L("Crop, resize, rotate and flip."),
+            "edit": L("Adjust the photo, annotate it or redact parts of it."),
+            "quickSort": L("Go through your photos and videos full screen, and mark each one Keep, Maybe or Reject."),
+            "typeSelect": L("Select files by extension, kind, Finder tag, size or date inside your selection."),
+            "zipFiles": L("Put the selected files and folders into one ZIP archive."),
+            "translateText": L("Translate the text into another language, on this Mac."),
+            "summarizeText": L("Summarize the text with the on-device Apple Intelligence model."),
+            "speakText": L("Read the text aloud with a voice in its language."),
+            "searchWeb": L("Search the web for this text."),
+            "scanDocument": L("Straighten a photo of a sheet of paper, clean it and save it as a PDF."),
+            "document": L("Scan a sheet of paper, or read the text of a picture."),
+            "faceSelect": L("Pick the people you want: files showing them are selected."),
+            "select": L("Select files by type or tag, by the people in them, or sort them one by one."),
+            "vtransform": L("Trim, crop, change the speed and redact."),
+            "vaudio": L("Mute the video or extract its audio."),
+            "airDrop": L("Share through the macOS recipient picker."),
+            "float": L("Park on a floating shelf and drag into another app."),
+            "copy": L("Copy to the clipboard, ready to paste in Finder."),
+            "move": L("Choose a destination folder and move the originals there."),
+            "copyPath": L("Copy the full path as text."),
+            "terminal": L("Open the folder in Terminal or iTerm2."),
+            "switchView": L("Switch the menu between the Wii screen and the wheel.")
         ]
         return d[item.id] ?? item.caption
     }
@@ -475,7 +475,7 @@ struct WiiMenuView: View {
             RoundedRectangle(cornerRadius: 17, style: .continuous).strokeBorder(model.wiiNav ? blue : Color(white: 0.7), lineWidth: model.wiiNav ? 4 : 3)
             VStack(spacing: 4) {
                 Image(systemName: "arrowtriangle.right.fill").font(.system(size: 30)).foregroundStyle(blue)
-                Text("\(model.wiiPage + 1) / \(WiiLayout.pageCount(model.items.count))").font(.system(size: 11, weight: .bold, design: .rounded)).foregroundStyle(ink)
+                Text(L("\(model.wiiPage + 1) / \(WiiLayout.pageCount(model.items.count))")).font(.system(size: 11, weight: .bold, design: .rounded)).foregroundStyle(ink)
             }
         }
         .frame(width: WiiLayout.tile.width, height: WiiLayout.tile.height)
@@ -515,12 +515,12 @@ struct WiiMenuView: View {
             }
             descriptionArea.position(x: WiiLayout.size.width / 2, y: 62)
             // gauche : bouton de mode + carte SD (infos du fichier)
-            roundButton { Text(modeSymbol).font(.system(size: 22, weight: .semibold, design: .rounded)).foregroundStyle(ink) }.position(x: 62, y: 46)
+            roundButton { Text(L(modeSymbol)).font(.system(size: 22, weight: .semibold, design: .rounded)).foregroundStyle(ink) }.position(x: 62, y: 46)
             HStack(alignment: .top, spacing: 6) {
                 Image(systemName: "sdcard.fill").font(.system(size: 20)).foregroundStyle(blue)
                 VStack(alignment: .leading, spacing: 0) {
                     ForEach(Array(model.infoLines.prefix(3).enumerated()), id: \.offset) { i, l in
-                        Text(l).font(.system(size: i == 0 ? 10.5 : 8.5, weight: i == 0 ? .bold : .medium, design: .rounded)).foregroundStyle(ink).lineLimit(1)
+                        Text(L(l)).font(.system(size: i == 0 ? 10.5 : 8.5, weight: i == 0 ? .bold : .medium, design: .rounded)).foregroundStyle(ink).lineLimit(1)
                     }
                 }
             }.frame(width: 140, alignment: .leading).position(x: 186, y: 50)
@@ -528,7 +528,7 @@ struct WiiMenuView: View {
             roundButton {
                 VStack(spacing: 0) {
                     Image(systemName: "envelope.fill").font(.system(size: 22)).foregroundStyle(Color(white: 0.62))
-                    Text("\(model.fileCount)").font(.system(size: 12, weight: .bold, design: .rounded)).foregroundStyle(ink)
+                    Text(L("\(model.fileCount)")).font(.system(size: 12, weight: .bold, design: .rounded)).foregroundStyle(ink)
                 }
             }.position(x: WiiLayout.size.width - 62, y: 46)
         }
@@ -547,7 +547,7 @@ struct WiiMenuView: View {
     @ViewBuilder private var descriptionArea: some View {
         if let item = hoveredItem {
             VStack(spacing: 2) {
-                Text(item.caption).font(.system(size: 12, weight: .bold, design: .rounded)).foregroundStyle(blue)
+                Text(L(item.caption)).font(.system(size: 12, weight: .bold, design: .rounded)).foregroundStyle(blue)
                 Text(WiiText.description(item)).font(.system(size: 9.5, weight: .medium, design: .rounded)).foregroundStyle(ink)
                     .multilineTextAlignment(.center).lineLimit(2).frame(width: 330)
                 if model.replacing { replaceChip }
@@ -557,19 +557,19 @@ struct WiiMenuView: View {
         } else if model.replacing {
             replaceChip
         } else {
-            Text(Self.dateText).font(.system(size: 17, weight: .semibold, design: .rounded)).foregroundStyle(ink)
+            Text(L(Self.dateText)).font(.system(size: 17, weight: .semibold, design: .rounded)).foregroundStyle(ink)
         }
     }
 
     /// Voyant : ce dépôt remplacera le fichier d'origine.
     private var replaceChip: some View {
-        Label("Replaces the original", systemImage: "arrow.triangle.2.circlepath").font(.system(size: 11, weight: .heavy, design: .rounded)).foregroundStyle(.white)
+        Label(L("Replaces the original"), systemImage: "arrow.triangle.2.circlepath").font(.system(size: 11, weight: .heavy, design: .rounded)).foregroundStyle(.white)
             .padding(.horizontal, 12).padding(.vertical, 4).background(Capsule().fill(LinearGradient(colors: [Color(red: 1.0, green: 0.6, blue: 0.2), Color(red: 0.95, green: 0.4, blue: 0.1)], startPoint: .top, endPoint: .bottom)))
             .shadow(color: Color.orange.opacity(0.5), radius: 4, y: 1).transition(.scale.combined(with: .opacity))
     }
 
     static var dateText: String {
-        let f = DateFormatter(); f.setLocalizedDateFormatFromTemplate("EEEMd"); return f.string(from: Date())
+        let f = DateFormatter(); f.locale = L10n.locale; f.setLocalizedDateFormatFromTemplate("EEEMd"); return f.string(from: Date())
     }
 }
 

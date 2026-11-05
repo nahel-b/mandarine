@@ -29,11 +29,11 @@ enum ImageEngine {
     static func load(_ url: URL, maxSide: Int? = nil) throws -> (image: CGImage, properties: [String: Any]) {
         if url.pathExtension.lowercased() == "svg" {
             guard let img = NSImage(contentsOf: url), let cg = img.cgImage(forProposedRect: nil, context: nil, hints: nil) else {
-                throw MandarineError("Impossible de lire le SVG.")
+                throw MandarineError(L("Impossible de lire le SVG."))
             }
             return (cg, [:])
         }
-        guard let src = CGImageSourceCreateWithURL(url as CFURL, nil) else { throw MandarineError("Image illisible : \(url.lastPathComponent)") }
+        guard let src = CGImageSourceCreateWithURL(url as CFURL, nil) else { throw MandarineError(L("Image illisible : \(url.lastPathComponent)")) }
         let props = (CGImageSourceCopyPropertiesAtIndex(src, 0, nil) as? [String: Any]) ?? [:]
         let w = props[kCGImagePropertyPixelWidth as String] as? Int ?? 0
         let h = props[kCGImagePropertyPixelHeight as String] as? Int ?? 0
@@ -45,7 +45,7 @@ enum ImageEngine {
             kCGImageSourceShouldCacheImmediately: true
         ]
         guard let cg = CGImageSourceCreateThumbnailAtIndex(src, 0, opts as CFDictionary) else {
-            throw MandarineError("Impossible de décoder \(url.lastPathComponent).")
+            throw MandarineError(L("Impossible de décoder \(url.lastPathComponent)."))
         }
         return (cg, props)
     }
@@ -70,11 +70,11 @@ enum ImageEngine {
         let e = Catalog.normalized(ext)
         if e == "pdf" { try writePDF(images: [(image, properties)], to: url); return }
         if e == "webp" { try writeWebP(image, to: url, quality: quality); return }
-        guard let type = utType(for: e) else { throw MandarineError("Format d'image non pris en charge : \(e)") }
+        guard let type = utType(for: e) else { throw MandarineError(L("Format d'image non pris en charge : \(e)")) }
         var img = image
         if (e == "jpg" || e == "bmp") && hasAlpha(img) { img = flatten(img) }
         guard let dest = CGImageDestinationCreateWithURL(url as CFURL, type as CFString, 1, nil) else {
-            throw MandarineError("Ce Mac ne peut pas écrire le format \(e.uppercased()).")
+            throw MandarineError(L("Ce Mac ne peut pas écrire le format \(e.uppercased())."))
         }
         var out: [CFString: Any] = [kCGImageDestinationLossyCompressionQuality: quality]
         // Conserver les métadonnées (sans l'orientation, déjà appliquée aux pixels).
@@ -86,7 +86,7 @@ enum ImageEngine {
         }
         out[kCGImagePropertyOrientation] = 1
         CGImageDestinationAddImage(dest, img, out as CFDictionary)
-        guard CGImageDestinationFinalize(dest) else { throw MandarineError("Échec de l'écriture de \(url.lastPathComponent).") }
+        guard CGImageDestinationFinalize(dest) else { throw MandarineError(L("Échec de l'écriture de \(url.lastPathComponent).")) }
     }
 
     private static func writeWebP(_ image: CGImage, to url: URL, quality: Double) throws {
@@ -97,7 +97,7 @@ enum ImageEngine {
             try Shell.run(cwebp.path, ["-quiet", "-q", String(Int(quality * 100)), tmp.path, "-o", url.path])
             return
         }
-        guard FFmpeg.hasEncoder("libwebp") else { throw MandarineError("Le format WebP nécessite cwebp ou un ffmpeg avec libwebp.") }
+        guard FFmpeg.hasEncoder("libwebp") else { throw MandarineError(L("Le format WebP nécessite cwebp ou un ffmpeg avec libwebp.")) }
         let sem = DispatchSemaphore(value: 0)
         var failure: Error?
         Task.detached {
@@ -116,17 +116,17 @@ enum ImageEngine {
             if let d = props[kCGImagePropertyDPIWidth as String] as? Double, d > 1 { dpi = d }
             let size = NSSize(width: Double(cg.width) * 72 / dpi, height: Double(cg.height) * 72 / dpi)
             let ns = NSImage(cgImage: cg, size: size)
-            guard let page = PDFPage(image: ns) else { throw MandarineError("Impossible de créer la page PDF.") }
+            guard let page = PDFPage(image: ns) else { throw MandarineError(L("Impossible de créer la page PDF.")) }
             pdf.insert(page, at: i)
         }
-        guard pdf.write(to: url) else { throw MandarineError("Impossible d'écrire le PDF.") }
+        guard pdf.write(to: url) else { throw MandarineError(L("Impossible d'écrire le PDF.")) }
     }
 
     /// SVG → PDF vectoriel.
     static func svgToPDF(_ url: URL, to out: URL) throws {
-        guard let img = NSImage(contentsOf: url) else { throw MandarineError("SVG illisible.") }
+        guard let img = NSImage(contentsOf: url) else { throw MandarineError(L("SVG illisible.")) }
         var box = CGRect(origin: .zero, size: img.size)
-        guard let ctx = CGContext(out as CFURL, mediaBox: &box, nil) else { throw MandarineError("PDF impossible.") }
+        guard let ctx = CGContext(out as CFURL, mediaBox: &box, nil) else { throw MandarineError(L("PDF impossible.")) }
         ctx.beginPDFPage(nil)
         let g = NSGraphicsContext(cgContext: ctx, flipped: false)
         NSGraphicsContext.saveGraphicsState()

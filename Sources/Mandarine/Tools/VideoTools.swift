@@ -33,30 +33,30 @@ struct TrimVideoTool: View {
     @State private var ready = false
 
     var body: some View {
-        ToolShell(title: "Trim Video", close: close) {
+        ToolShell(title: L("Trim Video"), close: close) {
             VStack(spacing: 8) {
                 VideoPreview(player: player, height: 300)
-                HStack { Text("Drag the ends to trim").sectionLabel(); Spacer(); Text("\(timecode(end - start)) selected").sectionLabel() }
+                HStack { Text(L("Drag the ends to trim")).sectionLabel(); Spacer(); Text(L("\(timecode(end - start)) selected")).sectionLabel() }
                 if ready {
                     TimeRangeSelector(duration: player.duration, start: $start, end: $end, playhead: player.time, onScrub: { player.seek($0) }) {
                         FilmStrip(url: urls[0], duration: player.duration)
                     }.frame(height: 56)
                 }
                 HStack {
-                    timeField("Start", $start, 0, { end })
+                    timeField(L("Start"), $start, 0, { end })
                     Spacer()
-                    timeField("End", $end, nil, { player.duration })
+                    timeField(L("End"), $end, nil, { player.duration })
                 }
                 HStack(spacing: 14) {
-                    Button { player.step(-1) } label: { Image(systemName: "backward.frame") }.buttonStyle(WiiPlainButtonStyle())
-                    Button { player.loopRange = start...end; player.toggle() } label: { Image(systemName: player.isPlaying ? "pause.fill" : "play.fill") }.buttonStyle(WiiPlainButtonStyle())
-                    Button { player.step(1) } label: { Image(systemName: "forward.frame") }.buttonStyle(WiiPlainButtonStyle())
+                    Button { player.step(-1) } label: { Image(systemName: L("backward.frame")) }.buttonStyle(WiiPlainButtonStyle())
+                    Button { player.loopRange = start...end; player.toggle() } label: { Image(systemName: player.isPlaying ? L("pause.fill") : L("play.fill")) }.buttonStyle(WiiPlainButtonStyle())
+                    Button { player.step(1) } label: { Image(systemName: L("forward.frame")) }.buttonStyle(WiiPlainButtonStyle())
                     Spacer()
-                    Text("\(timecode(player.time)) / \(timecode(player.duration))").font(.system(size: 11).monospacedDigit()).foregroundStyle(Theme.muted)
+                    Text(L("\(timecode(player.time)) / \(timecode(player.duration))")).font(.system(size: 11).monospacedDigit()).foregroundStyle(Theme.muted)
                 }
             }.frame(width: 400)
         } footer: {
-            ReplaceButton("Apply") { apply() }
+            ReplaceButton(L("Apply")) { apply() }
         }
         .task {
             await player.load(urls[0]); end = player.duration; ready = true
@@ -65,7 +65,7 @@ struct TrimVideoTool: View {
 
     private func timeField(_ label: String, _ v: Binding<Double>, _ lo: Double?, _ hi: () -> Double) -> some View {
         HStack(spacing: 4) {
-            Text(label).sectionLabel()
+            Text(L(label)).sectionLabel()
             TextField("", text: Binding(get: { timecode(v.wrappedValue) }, set: { if let t = parseTimecode($0) { v.wrappedValue = min(max(t, 0), player.duration) } }))
                 .textFieldStyle(.roundedBorder).frame(width: 78).font(.system(size: 11).monospacedDigit())
         }
@@ -74,7 +74,7 @@ struct TrimVideoTool: View {
     private func apply() {
         let s = start, e = end, files = urls
         close()
-        Dispatcher.job("Trimming…", replaces: files) { progress in
+        Dispatcher.job(L("Trimming…"), replaces: files) { progress in
             var outs: [URL] = []
             for f in files {
                 let out = OutputNaming.sibling(of: f, suffix: " trimmed", ext: VideoExport.ext(for: f))
@@ -97,7 +97,7 @@ struct CropVideoTool: View {
     @State private var pos = 0.0
 
     var body: some View {
-        ToolShell(title: "Crop Video", close: close) {
+        ToolShell(title: L("Crop Video"), close: close) {
             VStack(spacing: 10) {
                 RegionEditor(contentSize: player.size == .zero ? CGSize(width: 16, height: 9) : player.size, regions: $regions, selected: $selected, lockAspect: ratio.ratio, dimOutside: true) {
                     VideoSurface(player: player.player)
@@ -107,8 +107,8 @@ struct CropVideoTool: View {
                 FrameStepRow(player: player, showPlay: false)
             }.frame(width: 400)
         } footer: {
-            Button("Reset") { regions[0].rect = CGRect(x: 0, y: 0, width: 1, height: 1); ratio = AspectRatioChoice.all[0] }.buttonStyle(PillButtonStyle())
-            ReplaceButton("Apply") { apply() }
+            Button(L("Reset")) { regions[0].rect = CGRect(x: 0, y: 0, width: 1, height: 1); ratio = AspectRatioChoice.all[0] }.buttonStyle(PillButtonStyle())
+            ReplaceButton(L("Apply")) { apply() }
         }
         .task { await player.load(urls[0]) }
         .onReceive(player.$time) { pos = $0 }
@@ -117,7 +117,7 @@ struct CropVideoTool: View {
     private func apply() {
         let r = regions[0].rect, files = urls
         close()
-        Dispatcher.job("Cropping video…", replaces: files) { progress in
+        Dispatcher.job(L("Cropping video…"), replaces: files) { progress in
             var outs: [URL] = []
             for f in files {
                 let info = await FFmpeg.probe(f)
@@ -144,19 +144,19 @@ struct SpeedVideoTool: View {
     private var speed: Double { speeds[Int(speedIdx.rounded())] }
 
     var body: some View {
-        ToolShell(title: "Change Video Speed", close: close) {
+        ToolShell(title: L("Change Video Speed"), close: close) {
             VStack(spacing: 10) {
                 VideoPreview(player: player, height: 330)
-                HStack { Text("Playback speed").sectionLabel(); Spacer(); Text(label(speed)).font(.system(size: 13)).foregroundStyle(Theme.muted) }
+                HStack { Text(L("Playback speed")).sectionLabel(); Spacer(); Text(label(speed)).font(.system(size: 13)).foregroundStyle(Theme.muted) }
                 Slider(value: $speedIdx, in: 0...5, step: 1).controlSize(.small)
                 HStack { ForEach(speeds, id: \.self) { Text(label($0)).font(.system(size: 10)).foregroundStyle(Theme.muted).frame(maxWidth: .infinity) } }
                 HStack {
-                    Button { player.rate = Float(speed); player.toggle() } label: { Image(systemName: player.isPlaying ? "pause.fill" : "play.fill") }.buttonStyle(WiiPlainButtonStyle())
+                    Button { player.rate = Float(speed); player.toggle() } label: { Image(systemName: player.isPlaying ? L("pause.fill") : L("play.fill")) }.buttonStyle(WiiPlainButtonStyle())
                     Spacer()
-                    Text("\(timecode(player.time)) / \(timecode(player.duration))").font(.system(size: 11).monospacedDigit()).foregroundStyle(Theme.muted)
+                    Text(L("\(timecode(player.time)) / \(timecode(player.duration))")).font(.system(size: 11).monospacedDigit()).foregroundStyle(Theme.muted)
                 }
             }.frame(width: 400)
-        } footer: { ReplaceButton("Apply") { apply() } }
+        } footer: { ReplaceButton(L("Apply")) { apply() } }
         .task { await player.load(urls[0]) }
         .onChange(of: speedIdx) { _ in player.rate = Float(speed); if player.isPlaying { player.player.rate = Float(speed) } }
     }
@@ -166,7 +166,7 @@ struct SpeedVideoTool: View {
     private func apply() {
         let s = speed, files = urls
         close()
-        Dispatcher.job("Changing speed…", replaces: files) { progress in
+        Dispatcher.job(L("Changing speed…"), replaces: files) { progress in
             var outs: [URL] = []
             for f in files {
                 let info = await FFmpeg.probe(f)
@@ -198,9 +198,9 @@ struct JoinVideosTool: View {
     @State private var thumbs: [URL: NSImage] = [:]
 
     var body: some View {
-        ToolShell(title: "Join Videos", close: close) {
+        ToolShell(title: L("Join Videos"), close: close) {
             OrderEditor(urls: $urls, thumbs: thumbs, accepts: FileKind.videoExts, noun: "video", types: [.movie])
-        } footer: { Button("Join Videos") { apply() }.buttonStyle(PillButtonStyle()).disabled(urls.count < 2).keyboardShortcut(.defaultAction) }
+        } footer: { Button(L("Join Videos")) { apply() }.buttonStyle(PillButtonStyle()).disabled(urls.count < 2).keyboardShortcut(.defaultAction) }
         .task(id: urls) {
             for u in urls where thumbs[u] == nil {
                 let g = AVAssetImageGenerator(asset: AVURLAsset(url: u)); g.appliesPreferredTrackTransform = true; g.maximumSize = CGSize(width: 120, height: 120)
@@ -212,14 +212,14 @@ struct JoinVideosTool: View {
     private func apply() {
         let files = urls
         close()
-        Dispatcher.job("Joining videos…") { progress in
+        Dispatcher.job(L("Joining videos…")) { progress in
             let infos = await withTaskGroup(of: (Int, MediaInfo).self) { g -> [MediaInfo] in
                 for (i, f) in files.enumerated() { g.addTask { (i, await FFmpeg.probe(f)) } }
                 var r = [MediaInfo?](repeating: nil, count: files.count)
                 for await (i, m) in g { r[i] = m }
                 return r.compactMap { $0 }
             }
-            guard let first = infos.first else { throw MandarineError("Aucun clip.") }
+            guard let first = infos.first else { throw MandarineError(L("Aucun clip.")) }
             let w = VideoExport.even(Double(first.width)), h = VideoExport.even(Double(first.height))
             let allAudio = infos.allSatisfy(\.hasAudio)
             var args: [String] = []
@@ -249,16 +249,16 @@ struct SnapshotsTool: View {
     @State private var pos = 0.0
 
     var body: some View {
-        ToolShell(title: "Video Snapshots", close: close) {
+        ToolShell(title: L("Video Snapshots"), close: close) {
             VStack(spacing: 10) {
                 VideoPreview(player: player, height: 300)
                 Scrubber(value: $pos, range: player.duration) { player.pause(); player.seek($0) }
                 FrameStepRow(player: player, showPlay: false)
                 Divider()
                 HStack {
-                    Text("\(frames.count) selected").sectionLabel()
+                    Text(L("\(frames.count) selected")).sectionLabel()
                     Spacer()
-                    Button("Add Frame") { add() }.buttonStyle(PillButtonStyle())
+                    Button(L("Add Frame")) { add() }.buttonStyle(PillButtonStyle())
                 }
                 ScrollView(.horizontal) {
                     HStack(spacing: 8) {
@@ -267,7 +267,7 @@ struct SnapshotsTool: View {
                                 Image(nsImage: f.img).resizable().scaledToFill().frame(width: 76, height: 54).clipped()
                                 Text(timecode(f.t)).font(.system(size: 9, weight: .bold).monospacedDigit()).foregroundStyle(.white)
                                     .padding(.horizontal, 3).background(Color.black.opacity(0.6)).padding(3)
-                                Button { frames.remove(at: i) } label: { Image(systemName: "xmark").font(.system(size: 8, weight: .bold)).foregroundStyle(.white).padding(4).background(Circle().fill(.black.opacity(0.6))) }
+                                Button { frames.remove(at: i) } label: { Image(systemName: L("xmark")).font(.system(size: 8, weight: .bold)).foregroundStyle(.white).padding(4).background(Circle().fill(.black.opacity(0.6))) }
                                     .buttonStyle(WiiPlainButtonStyle()).frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing).padding(3)
                             }.clipShape(RoundedRectangle(cornerRadius: 8))
                         }
@@ -275,7 +275,7 @@ struct SnapshotsTool: View {
                 }.frame(height: 60)
             }.frame(width: 400)
         } footer: {
-            Button(frames.count == 1 ? "Save 1 Frame" : "Save \(frames.count) Frames") { save() }.buttonStyle(PillButtonStyle()).disabled(frames.isEmpty).keyboardShortcut(.defaultAction)
+            Button(frames.count == 1 ? L("Save 1 Frame") : L("Save \(frames.count) Frames")) { save() }.buttonStyle(PillButtonStyle()).disabled(frames.isEmpty).keyboardShortcut(.defaultAction)
         }
         .task { await player.load(urls[0]) }          // aucune image n'est choisie d'avance : on les ajoute soi-même
         .onReceive(player.$time) { pos = $0 }
@@ -297,7 +297,7 @@ struct SnapshotsTool: View {
     private func save() {
         let times = frames.map(\.t), file = urls[0]
         close()
-        Dispatcher.job("Saving frames…", light: true) { _ in
+        Dispatcher.job(L("Saving frames…"), light: true) { _ in
             let dir = times.count > 1 ? OutputNaming.folder(of: file, suffix: "frames") : file.deletingLastPathComponent()
             var outs: [URL] = []
             for t in times {
@@ -309,7 +309,7 @@ struct SnapshotsTool: View {
                 } else {
                     try await FFmpeg.run(["-ss", String(t), "-i", file.path, "-frames:v", "1", out.path])
                 }
-                if out.fileSize == 0 { try? FileManager.default.removeItem(at: out); throw MandarineError("Aucune image à \(timecode(t)) : cet instant est après la fin de la vidéo.") }
+                if out.fileSize == 0 { try? FileManager.default.removeItem(at: out); throw MandarineError(L("Aucune image à \(timecode(t)) : cet instant est après la fin de la vidéo.")) }
                 outs.append(out)
             }
             return times.count > 1 ? [dir] : outs
@@ -327,14 +327,14 @@ struct SplitVideoTool: View {
     @State private var pos = 0.0
 
     var body: some View {
-        ToolShell(title: "Split Video", close: close) {
+        ToolShell(title: L("Split Video"), close: close) {
             VStack(spacing: 10) {
                 VideoPreview(player: player, height: 300)
                 HStack {
-                    Text("\(points.count) split point\(points.count == 1 ? "" : "s")").sectionLabel()
+                    Text(L("\(points.count) split point\(points.count == 1 ? "" : "s")")).sectionLabel()
                     Spacer()
                     Button { let t = player.time; if t > 0.05, t < player.duration - 0.05, !points.contains(where: { abs($0 - t) < 0.05 }) { points.append(t); points.sort() } } label: {
-                        Label("Add Split", systemImage: "scissors")
+                        Label(L("Add Split"), systemImage: L("scissors"))
                     }.buttonStyle(PillButtonStyle())
                 }
                 GeometryReader { geo in
@@ -352,13 +352,13 @@ struct SplitVideoTool: View {
                 FrameStepRow(player: player)
                 Divider()
                 HStack {
-                    Text("Equal clips").sectionLabel(); Spacer()
-                    Stepper("\(equal)", value: $equal, in: 2...50).frame(width: 90)
-                    Button("Set") { points = (1..<equal).map { player.duration * Double($0) / Double(equal) } }.buttonStyle(PillButtonStyle())
+                    Text(L("Equal clips")).sectionLabel(); Spacer()
+                    Stepper(L("\(equal)"), value: $equal, in: 2...50).frame(width: 90)
+                    Button(L("Set")) { points = (1..<equal).map { player.duration * Double($0) / Double(equal) } }.buttonStyle(PillButtonStyle())
                 }
             }.frame(width: 400)
         } footer: {
-            Button("Split Video") { apply() }.buttonStyle(PillButtonStyle()).disabled(points.isEmpty).keyboardShortcut(.defaultAction)
+            Button(L("Split Video")) { apply() }.buttonStyle(PillButtonStyle()).disabled(points.isEmpty).keyboardShortcut(.defaultAction)
         }
         .task { await player.load(urls[0]) }
     }
@@ -366,7 +366,7 @@ struct SplitVideoTool: View {
     private func apply() {
         let pts = points, file = urls[0]
         close()
-        Dispatcher.job("Splitting video…") { progress in
+        Dispatcher.job(L("Splitting video…")) { progress in
             let info = await FFmpeg.probe(file)
             let bounds = [0.0] + pts + [info.duration]
             let dir = OutputNaming.folder(of: file, suffix: "clips")

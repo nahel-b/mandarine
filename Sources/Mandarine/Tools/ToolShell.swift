@@ -62,7 +62,7 @@ struct ToolShell<Content: View, Footer: View>: View {
         HStack(spacing: 0) {
             VStack(alignment: .leading, spacing: 12) {
                 closeCircle(Theme.text.opacity(0.75), Color.black.opacity(0.08))
-                Text(title).font(.system(size: 17, weight: .bold)).foregroundStyle(Theme.text).fixedSize(horizontal: false, vertical: true)
+                Text(L(title)).font(.system(size: 17, weight: .bold)).foregroundStyle(Theme.text).fixedSize(horizontal: false, vertical: true)
                 Spacer(minLength: 12)
                 VStack(spacing: 8) { actions(.rail) }
             }
@@ -81,7 +81,7 @@ struct ToolShell<Content: View, Footer: View>: View {
         VStack(spacing: 10) {
             HStack(spacing: 8) {
                 closeCircle(Theme.text.opacity(0.75), Color.black.opacity(0.07))
-                Text(title).font(.system(size: 14, weight: .semibold)).foregroundStyle(Theme.text)
+                Text(L(title)).font(.system(size: 14, weight: .semibold)).foregroundStyle(Theme.text)
                 Spacer()
             }
             .padding(.horizontal, 10).frame(height: 46).background(DragZone()).background(card(18))
@@ -104,7 +104,7 @@ struct ToolShell<Content: View, Footer: View>: View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: 8) {
                 closeCircle(Color(red: 0.4, green: 0.3, blue: 0.15), Color.black.opacity(0.08))
-                Text(title).font(.system(size: 14, weight: .semibold)).foregroundStyle(Color(red: 0.3, green: 0.24, blue: 0.14)).lineLimit(1)
+                Text(L(title)).font(.system(size: 14, weight: .semibold)).foregroundStyle(Color(red: 0.3, green: 0.24, blue: 0.14)).lineLimit(1)
                 Spacer(minLength: 0)
             }
             .padding(.leading, 12).padding(.trailing, 28).frame(width: 222, height: 38, alignment: .leading).background(DragZone())
@@ -153,7 +153,7 @@ struct ToolShell<Content: View, Footer: View>: View {
                         .buttonStyle(.plain).background(DragZone(blocks: true))
                     Spacer()
                 }
-                Text(title).font(.system(size: 13, weight: .bold, design: .rounded)).foregroundStyle(.black).padding(.horizontal, 12).padding(.vertical, 1).background(Color(white: 0.87))
+                Text(L(title)).font(.system(size: 13, weight: .bold, design: .rounded)).foregroundStyle(.black).padding(.horizontal, 12).padding(.vertical, 1).background(Color(white: 0.87))
             }
             .frame(height: 28).background(Color(white: 0.87)).background(DragZone())
             Rectangle().fill(Color.black).frame(height: 1.5)
@@ -179,7 +179,7 @@ struct ToolShell<Content: View, Footer: View>: View {
                 .padding(.top, 20).padding(.bottom, 24)
             HStack(spacing: 8) {
                 closeCircle(Theme.text.opacity(0.75), Color.black.opacity(0.07), size: 24)
-                Text(title).font(.system(size: 13, weight: .semibold)).foregroundStyle(Theme.text)
+                Text(L(title)).font(.system(size: 13, weight: .semibold)).foregroundStyle(Theme.text)
             }
             .padding(.leading, 8).padding(.trailing, 16).padding(.vertical, 6).background(DragZone())
             .background(Capsule().fill(.regularMaterial).background(Capsule().fill(Color.white.opacity(0.85))).shadow(color: .black.opacity(0.22), radius: 7, y: 3))
@@ -200,7 +200,7 @@ struct ToolShell<Content: View, Footer: View>: View {
                 Rectangle().fill(Color.black.opacity(0.07)).frame(height: 30)
                 HStack(spacing: 8) {
                     Spacer()
-                    Text(title).font(.custom("Marker Felt Wide", size: 18)).foregroundStyle(Color(red: 0.32, green: 0.25, blue: 0.1))
+                    Text(L(title)).font(.custom(L("Marker Felt Wide"), size: 18)).foregroundStyle(Color(red: 0.32, green: 0.25, blue: 0.1))
                     Spacer()
                 }
                 HStack {
@@ -247,7 +247,7 @@ struct ToolShell<Content: View, Footer: View>: View {
                     Image(systemName: "xmark").font(.system(size: 10, weight: .bold)).foregroundStyle(Theme.text.opacity(0.7))
                         .frame(width: 24, height: 24).background(Circle().fill(Color.black.opacity(0.07))).frame(width: 36, height: 34).contentShape(Rectangle())
                 }.buttonStyle(.plain).background(DragZone(blocks: true))
-                Text(title).font(.custom("Marker Felt Thin", size: 20)).foregroundStyle(Color(red: 0.12, green: 0.2, blue: 0.5))
+                Text(L(title)).font(.custom(L("Marker Felt Thin"), size: 20)).foregroundStyle(Color(red: 0.12, green: 0.2, blue: 0.5))
                 Spacer()
             }.padding(.horizontal, 8).frame(height: 40).background(DragZone())
             Rectangle().fill(Color(red: 0.9, green: 0.35, blue: 0.35).opacity(0.55)).frame(height: 1.5)
@@ -289,7 +289,7 @@ struct ToolShell<Content: View, Footer: View>: View {
     private var bubbleLayout: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: 8) {
-                Text(title).font(.system(size: 15, weight: .bold)).foregroundStyle(Theme.text)
+                Text(L(title)).font(.system(size: 15, weight: .bold)).foregroundStyle(Theme.text)
                 Spacer()
                 Button(action: close) {
                     Image(systemName: "xmark").font(.system(size: 10, weight: .bold)).foregroundStyle(Theme.muted)
@@ -317,7 +317,7 @@ struct ToolShell<Content: View, Footer: View>: View {
                     Image(systemName: "xmark").font(.system(size: 10, weight: .bold)).foregroundStyle(Theme.text.opacity(0.7))
                         .frame(width: 24, height: 24).background(Circle().fill(Color.black.opacity(0.07))).frame(width: 34, height: 40).contentShape(Rectangle())
                 }.buttonStyle(.plain).background(DragZone(blocks: true))
-                Text(title).font(.custom("Bradley Hand", size: 22).weight(.bold)).foregroundStyle(Color(white: 0.2)).lineLimit(1)
+                Text(L(title)).font(.custom(L("Bradley Hand"), size: 22).weight(.bold)).foregroundStyle(Color(white: 0.2)).lineLimit(1)
                 Spacer(minLength: 8)
                 actions(.polaroid)
             }.padding(.horizontal, 14).padding(.top, 8).padding(.bottom, 14).background(DragZone())
@@ -337,7 +337,7 @@ struct ToolShell<Content: View, Footer: View>: View {
                         Image(systemName: "xmark").font(.system(size: 10, weight: .heavy)).foregroundStyle(Theme.text.opacity(0.75))
                             .frame(width: 24, height: 24).overlay(Circle().stroke(Theme.text.opacity(0.5), lineWidth: 1.3)).frame(width: 36, height: 38).contentShape(Rectangle())
                     }.buttonStyle(.plain).background(DragZone(blocks: true))
-                    Text("ADMIT ONE · " + title.uppercased()).font(.system(size: 12, weight: .bold, design: .monospaced)).foregroundStyle(Theme.text).lineLimit(1)
+                    Text(L("ADMIT ONE · ") + title.uppercased()).font(.system(size: 12, weight: .bold, design: .monospaced)).foregroundStyle(Theme.text).lineLimit(1)
                     Spacer()
                 }.padding(.horizontal, 10).frame(height: 44).background(DragZone())
                 inner.padding(.horizontal, 16).padding(.bottom, 16)
@@ -390,9 +390,9 @@ struct ToolShell<Content: View, Footer: View>: View {
         let bar = ZStack {
             switch st {
             case .minimal:
-                HStack { Text(title).font(.system(size: 14, weight: .semibold)).foregroundStyle(Theme.text).padding(.leading, 12); Spacer(); closeButton(st) }
+                HStack { Text(L(title)).font(.system(size: 14, weight: .semibold)).foregroundStyle(Theme.text).padding(.leading, 12); Spacer(); closeButton(st) }
             default:
-                Text(title).font(.system(size: st == .wii ? 16 : 15, weight: .semibold, design: st == .wii ? .rounded : .default)).foregroundStyle(titleColor(st))
+                Text(L(title)).font(.system(size: st == .wii ? 16 : 15, weight: .semibold, design: st == .wii ? .rounded : .default)).foregroundStyle(titleColor(st))
                 HStack { closeButton(st); Spacer() }
             }
         }

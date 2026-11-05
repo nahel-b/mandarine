@@ -4,8 +4,8 @@ import AppKit
 
 enum PDFEngine {
     static func open(_ url: URL) throws -> PDFDocument {
-        guard let d = PDFDocument(url: url) else { throw MandarineError("PDF illisible : \(url.lastPathComponent)") }
-        if d.isLocked { throw MandarineError("Ce PDF est protégé par un mot de passe.") }
+        guard let d = PDFDocument(url: url) else { throw MandarineError(L("PDF illisible : \(url.lastPathComponent)")) }
+        if d.isLocked { throw MandarineError(L("Ce PDF est protégé par un mot de passe.")) }
         return d
     }
 
@@ -34,7 +34,7 @@ enum PDFEngine {
         let doc = try open(url)
         let e = Catalog.normalized(ext)
         let n = doc.pageCount
-        guard n > 0 else { throw MandarineError("PDF vide.") }
+        guard n > 0 else { throw MandarineError(L("PDF vide.")) }
         let folder: URL? = n > 1 ? OutputNaming.folder(of: url, suffix: "pages") : nil
         var last = url
         for i in 0..<n {
@@ -65,7 +65,7 @@ enum PDFEngine {
                 if let p = d.page(at: i)?.copy() as? PDFPage { result.insert(p, at: idx); idx += 1 }
             }
         }
-        guard result.write(to: out) else { throw MandarineError("Impossible d'écrire le PDF fusionné.") }
+        guard result.write(to: out) else { throw MandarineError(L("Impossible d'écrire le PDF fusionné.")) }
     }
 
     static func split(_ url: URL, ranges: [ClosedRange<Int>]? = nil) throws -> URL {
@@ -94,13 +94,13 @@ enum PDFEngine {
                 ns.size = box.size
                 if let np = PDFPage(image: ns) { result.insert(np, at: result.pageCount) }
             }
-            guard result.write(to: out) else { throw MandarineError("Écriture impossible.") }
+            guard result.write(to: out) else { throw MandarineError(L("Écriture impossible.")) }
         } else {
             let opts: [PDFDocumentWriteOption: Any] = [
                 PDFDocumentWriteOption(rawValue: "PDFDocumentSaveImagesAsJPEGOption"): true,
                 PDFDocumentWriteOption(rawValue: "PDFDocumentOptimizeImagesForScreenOption"): true
             ]
-            guard doc.write(to: out, withOptions: opts) else { throw MandarineError("Écriture impossible.") }
+            guard doc.write(to: out, withOptions: opts) else { throw MandarineError(L("Écriture impossible.")) }
         }
         // Si le résultat est plus gros, on garde quand même le fichier mais on prévient l'appelant par la taille.
         return out

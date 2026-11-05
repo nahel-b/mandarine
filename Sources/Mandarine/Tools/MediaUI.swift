@@ -294,11 +294,11 @@ struct FrameStepRow: View {
     var showPlay = true
     var body: some View {
         HStack(spacing: 14) {
-            Button { player.step(-1) } label: { Image(systemName: "backward.frame") }.buttonStyle(WiiPlainButtonStyle())
-            if showPlay { Button { player.toggle() } label: { Image(systemName: player.isPlaying ? "pause.fill" : "play.fill") }.buttonStyle(WiiPlainButtonStyle()) }
-            Button { player.step(1) } label: { Image(systemName: "forward.frame") }.buttonStyle(WiiPlainButtonStyle())
+            Button { player.step(-1) } label: { Image(systemName: L("backward.frame")) }.buttonStyle(WiiPlainButtonStyle())
+            if showPlay { Button { player.toggle() } label: { Image(systemName: player.isPlaying ? L("pause.fill") : L("play.fill")) }.buttonStyle(WiiPlainButtonStyle()) }
+            Button { player.step(1) } label: { Image(systemName: L("forward.frame")) }.buttonStyle(WiiPlainButtonStyle())
             Spacer()
-            Text("\(timecode(player.time)) / \(timecode(player.duration))").font(.system(size: 11).monospacedDigit()).foregroundStyle(Theme.muted)
+            Text(L("\(timecode(player.time)) / \(timecode(player.duration))")).font(.system(size: 11).monospacedDigit()).foregroundStyle(Theme.muted)
         }.foregroundStyle(Theme.text.opacity(0.8))
     }
 }

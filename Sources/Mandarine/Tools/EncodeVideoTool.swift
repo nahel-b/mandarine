@@ -19,100 +19,100 @@ struct EncodeVideoTool: View {
     private let rates: [(String, Double)] = [("Same as source", 0), ("23.976", 23.976), ("24", 24), ("25", 25), ("29.97", 29.97), ("30", 30), ("50", 50), ("60", 60)]
 
     var body: some View {
-        ToolShell(title: "Export Video", close: close) {
+        ToolShell(title: L("Export Video"), close: close) {
             VStack(alignment: .leading, spacing: 11) {
                 sourceCard
                 if VideoEncoder.isHDR(info) && o.preserveColor {
-                    Label("HDR video: it is exported as 10-bit HEVC so the colors stay right (8-bit H.264 would look gray and washed out).", systemImage: "sun.max")
+                    Label(L("HDR video: it is exported as 10-bit HEVC so the colors stay right (8-bit H.264 would look gray and washed out)."), systemImage: "sun.max")
                         .font(.system(size: 11)).foregroundStyle(Theme.muted).fixedSize(horizontal: false, vertical: true)
                 }
-                row("Preset") {
+                row(L("Preset")) {
                     Picker("", selection: $presetID) {
-                        ForEach(VideoEncoder.presets) { Text($0.title).tag($0.id) }
+                        ForEach(VideoEncoder.presets) { Text(L($0.title)).tag($0.id) }
                     }.labelsHidden().frame(width: 270)
                     .onChange(of: presetID) { id in if let p = VideoEncoder.presets.first(where: { $0.id == id }) { var n = o; p.apply(&n); o = n; syncResolution() } }
                 }
                 Divider()
-                row("Format") {
+                row(L("Format")) {
                     PillPicker(options: [("mp4", "MP4"), ("mov", "MOV"), ("mkv", "MKV")], selection: $o.container)
                 }
-                row("Video codec") {
-                    Picker("", selection: $o.encoder) { ForEach(EncoderKind.allCases) { Text($0.title).tag($0) } }.labelsHidden().frame(width: 220)
+                row(L("Video codec")) {
+                    Picker("", selection: $o.encoder) { ForEach(EncoderKind.allCases) { Text(L($0.title)).tag($0) } }.labelsHidden().frame(width: 220)
                 }
-                row("Resolution") {
+                row(L("Resolution")) {
                     HStack(spacing: 8) {
                         if resChoice == -1 {
                             TextField("", value: $customSide, format: .number.grouping(.never)).textFieldStyle(.roundedBorder).frame(width: 70).multilineTextAlignment(.trailing)
-                            Text("px long side").sectionLabel()
+                            Text(L("px long side")).sectionLabel()
                         }
-                        Picker("", selection: $resChoice) { ForEach(resolutions, id: \.1) { Text($0.0).tag($0.1) } }.labelsHidden().frame(width: 170)
+                        Picker("", selection: $resChoice) { ForEach(resolutions, id: \.1) { Text(L($0.0)).tag($0.1) } }.labelsHidden().frame(width: 170)
                     }
                     .onChange(of: resChoice) { c in o.longSide = c == -1 ? customSide : c }
                     .onChange(of: customSide) { v in if resChoice == -1 { o.longSide = max(64, v) } }
                 }
-                row("Frame rate") {
-                    Picker("", selection: $o.fps) { ForEach(rates, id: \.1) { Text($0.0).tag($0.1) } }.labelsHidden().frame(width: 170)
+                row(L("Frame rate")) {
+                    Picker("", selection: $o.fps) { ForEach(rates, id: \.1) { Text(L($0.0)).tag($0.1) } }.labelsHidden().frame(width: 170)
                 }
-                row("Rate control") {
+                row(L("Rate control")) {
                     PillPicker(options: [(RateMode.quality, "Constant quality"), (.bitrate, "Average bitrate")], selection: $o.mode)
                 }
                 if o.mode == .quality {
                     HStack(spacing: 10) {
-                        Text("Higher quality").font(.system(size: 10)).foregroundStyle(Theme.muted).lineLimit(1).fixedSize()
+                        Text(L("Higher quality")).font(.system(size: 10)).foregroundStyle(Theme.muted).lineLimit(1).fixedSize()
                         Slider(value: Binding(get: { Double(o.crf) }, set: { o.crf = Int($0.rounded()) }), in: 10...35, step: 1).controlSize(.small)
-                        Text("Smaller file").font(.system(size: 10)).foregroundStyle(Theme.muted).lineLimit(1).fixedSize()
-                        Text("RF \(o.crf)").font(.system(size: 12, weight: .semibold).monospacedDigit()).frame(width: 52, alignment: .trailing)
+                        Text(L("Smaller file")).font(.system(size: 10)).foregroundStyle(Theme.muted).lineLimit(1).fixedSize()
+                        Text(L("RF \(o.crf)")).font(.system(size: 12, weight: .semibold).monospacedDigit()).frame(width: 52, alignment: .trailing)
                     }
-                    Text(qualityHint).sectionLabel()
+                    Text(L(qualityHint)).sectionLabel()
                 } else {
                     HStack(spacing: 8) {
                         TextField("", value: $o.bitrateKbps, format: .number.grouping(.never)).textFieldStyle(.roundedBorder).frame(width: 80).multilineTextAlignment(.trailing)
-                        Text("kb/s").sectionLabel()
-                        Toggle("2-pass", isOn: $o.twoPass).font(.system(size: 12)).disabled(o.encoder == .hardware264)
+                        Text(L("kb/s")).sectionLabel()
+                        Toggle(L("2-pass"), isOn: $o.twoPass).font(.system(size: 12)).disabled(o.encoder == .hardware264)
                         Spacer()
-                        if duration > 0 { Text("≈ \(Int64(Double(o.bitrateKbps) * 125 * duration + Double(o.audioKbps) * 125 * duration).humanSize)").font(.system(size: 12, weight: .semibold).monospacedDigit()) }
+                        if duration > 0 { Text(L("≈ \(Int64(Double(o.bitrateKbps) * 125 * duration + Double(o.audioKbps) * 125 * duration).humanSize)")).font(.system(size: 12, weight: .semibold).monospacedDigit()) }
                     }
                 }
-                row("Encoder speed") {
+                row(L("Encoder speed")) {
                     HStack {
-                        Text("Faster").font(.system(size: 10)).foregroundStyle(Theme.muted).lineLimit(1).fixedSize()
+                        Text(L("Faster")).font(.system(size: 10)).foregroundStyle(Theme.muted).lineLimit(1).fixedSize()
                         Slider(value: Binding(get: { Double(VideoEncoder.x264Presets.firstIndex(of: o.preset) ?? 5) }, set: { o.preset = VideoEncoder.x264Presets[Int($0.rounded())] }),
                                in: 0...Double(VideoEncoder.x264Presets.count - 1), step: 1).controlSize(.small).frame(width: 120)
-                        Text("Better").font(.system(size: 10)).foregroundStyle(Theme.muted).lineLimit(1).fixedSize()
-                        Text(o.preset).font(.system(size: 11, weight: .medium)).frame(width: 62, alignment: .trailing)
+                        Text(L("Better")).font(.system(size: 10)).foregroundStyle(Theme.muted).lineLimit(1).fixedSize()
+                        Text(L(o.preset)).font(.system(size: 11, weight: .medium)).frame(width: 62, alignment: .trailing)
                     }.disabled(o.encoder == .hardware264)
                 }
                 Divider()
                 HStack {
-                    Toggle(isOn: $o.preserveColor) { Label("Keep original colors", systemImage: "paintpalette").font(.system(size: 12, weight: .medium)) }
+                    Toggle(isOn: $o.preserveColor) { Label(L("Keep original colors"), systemImage: "paintpalette").font(.system(size: 12, weight: .medium)) }
                     Spacer()
-                    Text(colorSummary).font(.system(size: 11)).foregroundStyle(Theme.muted)
+                    Text(L(colorSummary)).font(.system(size: 11)).foregroundStyle(Theme.muted)
                 }
-                row("Audio") {
+                row(L("Audio")) {
                     HStack {
-                        Picker("", selection: $o.audio) { Text("AAC").tag("aac"); Text("Keep original").tag("copy"); Text("None").tag("none") }.labelsHidden().frame(width: 130)
+                        Picker("", selection: $o.audio) { Text(L("AAC")).tag("aac"); Text(L("Keep original")).tag("copy"); Text(L("None")).tag("none") }.labelsHidden().frame(width: 130)
                         if o.audio == "aac" {
-                            Picker("", selection: $o.audioKbps) { ForEach([96, 128, 160, 192, 256, 320], id: \.self) { Text("\($0) kb/s").tag($0) } }.labelsHidden().frame(width: 110)
+                            Picker("", selection: $o.audioKbps) { ForEach([96, 128, 160, 192, 256, 320], id: \.self) { Text(L("\($0) kb/s")).tag($0) } }.labelsHidden().frame(width: 110)
                         }
                     }
                 }
-                DisclosureGroup("Advanced", isExpanded: $showAdvanced) {
+                DisclosureGroup(L("Advanced"), isExpanded: $showAdvanced) {
                     VStack(spacing: 8) {
-                        row("Bit depth") { PillPicker(options: [(false, "8-bit (compatible)"), (true, "10-bit (HEVC)")], selection: $o.tenBit) }
-                        row("Profile") { Picker("", selection: $o.profile) { ForEach(["auto", "baseline", "main", "high"], id: \.self) { Text($0.capitalized).tag($0) } }.labelsHidden().frame(width: 120) }
-                        row("Tune") { Picker("", selection: $o.tune) { ForEach(["none", "film", "animation", "grain"], id: \.self) { Text($0.capitalized).tag($0) } }.labelsHidden().frame(width: 120) }
-                        Toggle("Allow upscaling", isOn: $o.allowUpscale).font(.system(size: 12))
+                        row(L("Bit depth")) { PillPicker(options: [(false, "8-bit (compatible)"), (true, "10-bit (HEVC)")], selection: $o.tenBit) }
+                        row(L("Profile")) { Picker("", selection: $o.profile) { ForEach(["auto", "baseline", "main", "high"], id: \.self) { Text(L($0.capitalized)).tag($0) } }.labelsHidden().frame(width: 120) }
+                        row(L("Tune")) { Picker("", selection: $o.tune) { ForEach(["none", "film", "animation", "grain"], id: \.self) { Text(L($0.capitalized)).tag($0) } }.labelsHidden().frame(width: 120) }
+                        Toggle(L("Allow upscaling"), isOn: $o.allowUpscale).font(.system(size: 12))
                     }.padding(.top, 8)
                 }.font(.system(size: 12))
                 HStack {
-                    Button { Task { await test() } } label: { Label(estimating ? "Testing…" : "Test 10 s", systemImage: "timer") }
+                    Button { Task { await test() } } label: { Label(estimating ? L("Testing…") : L("Test 10 s"), systemImage: L("timer")) }
                         .buttonStyle(PillButtonStyle()).disabled(estimating)
-                    Text(estimate).font(.system(size: 11).monospacedDigit()).foregroundStyle(Theme.muted)
+                    Text(L(estimate)).font(.system(size: 11).monospacedDigit()).foregroundStyle(Theme.muted)
                     Spacer()
                 }
             }.frame(width: 460, alignment: .leading).font(.system(size: 12))
         } footer: {
-            ReplaceButton("Encode", prominent: true) { run() }
+            ReplaceButton(L("Encode"), prominent: true) { run() }
         }
         .task {
             info = await FFmpeg.probe(urls[0])
@@ -127,7 +127,7 @@ struct EncodeVideoTool: View {
     }
 
     private func row<V: View>(_ t: String, @ViewBuilder _ v: () -> V) -> some View {
-        HStack { Text(t).foregroundStyle(Theme.muted); Spacer(); v() }
+        HStack { Text(L(t)).foregroundStyle(Theme.muted); Spacer(); v() }
     }
 
     private var sourceCard: some View {
@@ -136,7 +136,7 @@ struct EncodeVideoTool: View {
             Image(systemName: "film").font(.system(size: 20)).foregroundStyle(Theme.orange)
             VStack(alignment: .leading, spacing: 2) {
                 Text(urls[0].lastPathComponent).font(.system(size: 12, weight: .semibold)).lineLimit(1).truncationMode(.middle)
-                Text("\(info.width)×\(info.height) · \(fps) fps · \(info.codec.uppercased()) \(info.pixFmt) · \(timecode(info.duration, centis: false)) · \(urls[0].fileSize.humanSize)")
+                Text(L("\(info.width)×\(info.height) · \(fps) fps · \(info.codec.uppercased()) \(info.pixFmt) · \(timecode(info.duration, centis: false)) · \(urls[0].fileSize.humanSize)"))
                     .font(.system(size: 10).monospacedDigit()).foregroundStyle(Theme.muted).lineLimit(2)
             }
             Spacer()
@@ -173,7 +173,7 @@ struct EncodeVideoTool: View {
     private func run() {
         let (opts, files) = (o, urls)
         close()
-        Dispatcher.job("Encoding…", subtitle: files.count == 1 ? files[0].lastPathComponent : "\(files.count) videos", count: files.count, replaces: files) { progress in
+        Dispatcher.job(L("Encoding…"), subtitle: files.count == 1 ? files[0].lastPathComponent : L("\(files.count) videos"), count: files.count, replaces: files) { progress in
             var outs: [URL] = []
             for (i, f) in files.enumerated() {
                 let names = [3840: "4K", 2560: "1440p", 1920: "1080p", 1280: "720p", 854: "480p"]

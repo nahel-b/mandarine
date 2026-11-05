@@ -67,18 +67,18 @@ struct TypeSelectTool: View {
     }
 
     var body: some View {
-        ToolShell(title: "Type Select", close: close) {
+        ToolShell(title: L("Type Select"), close: close) {
             VStack(alignment: .leading, spacing: 12) {
                 if loading {
                     ProgressView().frame(maxWidth: .infinity).padding(30)
                 } else {
-                    Text("Extensions in your selection").sectionLabel()
+                    Text(L("Extensions in your selection")).sectionLabel()
                     LazyVGrid(columns: [GridItem(.adaptive(minimum: 96), spacing: 8)], alignment: .leading, spacing: 8) {
                         ForEach(chips) { c in chip(c) }
                     }
                     if categories.count > 1 {
                         HStack(spacing: 6) {
-                            Text("Kinds").sectionLabel()
+                            Text(L("Kinds")).sectionLabel()
                             ForEach(categories, id: \.1) { name, kind in
                                 Button(name) { toggle(kind) }.buttonStyle(WiiPlainButtonStyle()).font(.system(size: 11, weight: .medium))
                                     .padding(.horizontal, 10).padding(.vertical, 4)
@@ -88,33 +88,33 @@ struct TypeSelectTool: View {
                     }
                     let tc = tagChips
                     if !tc.isEmpty {
-                        Text("Finder tags").sectionLabel()
+                        Text(L("Finder tags")).sectionLabel()
                         LazyVGrid(columns: [GridItem(.adaptive(minimum: 74), spacing: 6)], alignment: .leading, spacing: 8) {
                             ForEach(tc) { c in tagDot(c) }
                         }
                     }
                     Divider()
                     HStack {
-                        Text("Size").sectionLabel().frame(width: 40, alignment: .leading)
-                        Picker("", selection: $sizeMode) { Text("Any").tag(0); Text("Larger than").tag(1); Text("Smaller than").tag(2) }.labelsHidden().frame(width: 140)
+                        Text(L("Size")).sectionLabel().frame(width: 40, alignment: .leading)
+                        Picker("", selection: $sizeMode) { Text(L("Any")).tag(0); Text(L("Larger than")).tag(1); Text(L("Smaller than")).tag(2) }.labelsHidden().frame(width: 140)
                         if sizeMode != 0 {
-                            Picker("", selection: $sizeMB) { ForEach(Self.sizes, id: \.self) { Text($0 >= 1000 ? "1 GB" : "\(Int($0)) MB").tag($0) } }.labelsHidden().frame(width: 90)
+                            Picker("", selection: $sizeMB) { ForEach(Self.sizes, id: \.self) { Text($0 >= 1000 ? L("1 GB") : L("\(Int($0)) MB")).tag($0) } }.labelsHidden().frame(width: 90)
                         }
                         Spacer()
                     }
                     HStack {
-                        Text("Date").sectionLabel().frame(width: 40, alignment: .leading)
+                        Text(L("Date")).sectionLabel().frame(width: 40, alignment: .leading)
                         Picker("", selection: $dateChoice) { ForEach(0..<Self.dates.count, id: \.self) { Text(Self.dates[$0]).tag($0) } }.labelsHidden().frame(width: 180)
-                        Text("last modified").sectionLabel()
+                        Text(L("last modified")).sectionLabel()
                         Spacer()
                     }
-                    Text(filtering ? "\(matches.count) of \(items.count) items match" : "Pick extensions or tags, or set a size or date filter.")
+                    Text(filtering ? L("\(matches.count) of \(items.count) items match") : L("Pick extensions or tags, or set a size or date filter."))
                         .font(.system(size: 12, weight: .medium)).foregroundStyle(Theme.text)
                 }
             }.frame(width: 470, alignment: .leading)
         } footer: {
-            Button("Clear") { chosen = []; chosenTags = []; sizeMode = 0; dateChoice = 0 }.buttonStyle(PillButtonStyle()).disabled(!filtering)
-            Button(matches.count == 1 ? "Select 1 item" : "Select \(matches.count) items") {
+            Button(L("Clear")) { chosen = []; chosenTags = []; sizeMode = 0; dateChoice = 0 }.buttonStyle(PillButtonStyle()).disabled(!filtering)
+            Button(matches.count == 1 ? L("Select 1 item") : L("Select \(matches.count) items")) {
                 let f = matches, n = urls.count; close(); TagSelect.select(f, of: n)
             }.buttonStyle(PillButtonStyle()).disabled(matches.isEmpty).keyboardShortcut(.defaultAction)
         }
@@ -126,7 +126,7 @@ struct TypeSelectTool: View {
         return Button { if on { chosen.remove(c.ext) } else { chosen.insert(c.ext) } } label: {
             HStack(spacing: 6) {
                 Text(c.ext.uppercased()).font(.system(size: 12, weight: .semibold))
-                Text("\(c.count)").font(.system(size: 11).monospacedDigit()).opacity(0.7)
+                Text(L("\(c.count)")).font(.system(size: 11).monospacedDigit()).opacity(0.7)
             }
             .foregroundStyle(on ? Color.white : Theme.text)
             .padding(.horizontal, 12).padding(.vertical, 6).frame(maxWidth: .infinity)
@@ -144,8 +144,8 @@ struct TypeSelectTool: View {
                     .overlay(Circle().stroke(Color.white, lineWidth: on ? 3.2 : 0))
                     .shadow(color: on ? Color.black.opacity(0.35) : .clear, radius: 2.2, y: 1)
                     .opacity(on ? 1 : 0.5)
-                Text(c.tag?.name ?? "No tag").font(.system(size: 10, weight: .medium)).foregroundStyle(Theme.text).lineLimit(1)
-                Text("\(c.count)").font(.system(size: 9).monospacedDigit()).foregroundStyle(Theme.muted)
+                Text(c.tag?.name ?? L("No tag")).font(.system(size: 10, weight: .medium)).foregroundStyle(Theme.text).lineLimit(1)
+                Text(L("\(c.count)")).font(.system(size: 9).monospacedDigit()).foregroundStyle(Theme.muted)
             }.frame(maxWidth: .infinity).contentShape(Rectangle())
         }.buttonStyle(WiiPlainButtonStyle())
     }

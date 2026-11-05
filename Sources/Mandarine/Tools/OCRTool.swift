@@ -13,18 +13,18 @@ struct OCRTool: View {
     @State private var copied = false
 
     var body: some View {
-        ToolShell(title: "Extract Text", close: close) {
+        ToolShell(title: L("Extract Text"), close: close) {
             VStack(alignment: .leading, spacing: 10) {
                 if running {
                     HStack(spacing: 10) {
                         ProgressView(value: fraction).frame(width: 120)
-                        Text(status).font(.system(size: 12)).foregroundStyle(Theme.muted)
+                        Text(L(status)).font(.system(size: 12)).foregroundStyle(Theme.muted)
                     }
                 } else {
                     HStack {
-                        Text(text.isEmpty ? "No text found" : "\(text.split(whereSeparator: \.isNewline).count) lines · \(text.count) characters").sectionLabel()
+                        Text(text.isEmpty ? L("No text found") : L("\(text.split(whereSeparator: \.isNewline).count) lines · \(text.count) characters")).sectionLabel()
                         Spacer()
-                        Toggle("Keep line breaks", isOn: $keepBreaks).font(.system(size: 12))
+                        Toggle(L("Keep line breaks"), isOn: $keepBreaks).font(.system(size: 12))
                             .onChange(of: keepBreaks) { _ in rebuild() }
                     }
                 }
@@ -34,12 +34,12 @@ struct OCRTool: View {
                     .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(Color.white.opacity(0.85)))
                     .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).stroke(Color.black.opacity(0.1)))
                     .disabled(running)
-                Text("Recognized on this Mac, offline. The language is detected automatically. You can edit the text before using it.")
+                Text(L("Recognized on this Mac, offline. The language is detected automatically. You can edit the text before using it."))
                     .sectionLabel().fixedSize(horizontal: false, vertical: true)
             }.frame(width: 476)
         } footer: {
-            Button("Save as .txt") { save() }.buttonStyle(PillButtonStyle()).disabled(running || text.isEmpty)
-            Button(copied ? "Copied" : "Copy Text") { copy() }.buttonStyle(PillButtonStyle()).disabled(running || text.isEmpty)
+            Button(L("Save as .txt")) { save() }.buttonStyle(PillButtonStyle()).disabled(running || text.isEmpty)
+            Button(copied ? L("Copied") : L("Copy Text")) { copy() }.buttonStyle(PillButtonStyle()).disabled(running || text.isEmpty)
         }
         .task { await read() }
     }
@@ -61,7 +61,7 @@ struct OCRTool: View {
                 }.value
                 all.append((f.lastPathComponent, pages))
             } catch {
-                Toast.shared.fail("Couldn't read file", subtitle: "\(f.lastPathComponent)\n\(error.localizedDescription)")
+                Toast.shared.fail(L("Couldn't read file"), subtitle: L("\(f.lastPathComponent)\n\(error.localizedDescription)"))
             }
         }
         results = all
@@ -84,7 +84,7 @@ struct OCRTool: View {
     private func save() {
         let out = OutputNaming.sibling(of: urls[0], ext: "txt"), s = text
         close()
-        Dispatcher.job("Saving text…", light: true) { _ in
+        Dispatcher.job(L("Saving text…"), light: true) { _ in
             try s.write(to: out, atomically: true, encoding: .utf8)
             return [out]
         }

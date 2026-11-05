@@ -85,7 +85,7 @@ final class JobQueue {
         e.replaces = replaces
         e.replaceNow = !replaces.isEmpty && (replace ?? ReplaceMode.shared.effectiveNow())
         entries.append(e)
-        Toast.shared.add(ToastItem(id: e.id, phase: .waiting, title: title, subtitle: "Waiting…", progress: nil, cancel: { [weak self] in self?.cancel(e.id) }))
+        Toast.shared.add(ToastItem(id: e.id, phase: .waiting, title: title, subtitle: L("Waiting…"), progress: nil, cancel: { [weak self] in self?.cancel(e.id) }))
         pump()
         return e.id
     }
@@ -107,7 +107,7 @@ final class JobQueue {
                 if heavyRunning >= Self.maxHeavy {
                     ahead += 1
                     let n = heavyRunning + ahead - Self.maxHeavy
-                    Toast.shared.update(e.id) { $0.subtitle = n <= 1 ? "Waiting — next in line" : "Waiting — \(n) jobs ahead" }
+                    Toast.shared.update(e.id) { $0.subtitle = n <= 1 ? L("Waiting — next in line") : L("Waiting — \(n) jobs ahead") }
                     continue
                 }
                 heavyRunning += 1
@@ -119,7 +119,7 @@ final class JobQueue {
     private func start(_ e: Entry) {
         e.started = true
         let n = e.count
-        Toast.shared.update(e.id) { $0.phase = .running; $0.subtitle = n > 1 ? "0 of \(n) done" : e.subtitle; $0.progress = n > 1 ? 0 : -1 }
+        Toast.shared.update(e.id) { $0.phase = .running; $0.subtitle = n > 1 ? L("0 of \(n) done") : e.subtitle; $0.progress = n > 1 ? 0 : -1 }
         let id = e.id
         let queue = self
         e.startedAt = Date()
@@ -134,7 +134,7 @@ final class JobQueue {
                         Toast.shared.update(id) {
                             $0.progress = p
                             if changed { $0.eta = eta }
-                            if n > 1, $0.phase == .running { $0.subtitle = "\(min(max(Int((p * Double(n)).rounded(.down)), 0), n - 1)) of \(n) done" }
+                            if n > 1, $0.phase == .running { $0.subtitle = L("\(min(max(Int((p * Double(n)).rounded(.down)), 0), n - 1)) of \(n) done") }
                         }
                     }
                 }, { text in
@@ -175,7 +175,7 @@ final class JobQueue {
             let id = e.id, originals = e.replaces
             Toast.shared.update(e.id) {
                 $0.phase = .done; $0.title = title
-                $0.subtitle = Self.savedDetail(shown) + (replaced ? "\nThe original is in the Trash" : "") + (note.isEmpty ? "" : "\n" + note)
+                $0.subtitle = Self.savedDetail(shown) + (replaced ? L("\nThe original is in the Trash") : "") + (note.isEmpty ? "" : "\n" + note)
                 $0.progress = nil; $0.reveal = shown; $0.cancel = nil; $0.eta = ""
                 if replaced { $0.action = ("Undo", { ReplaceFlow.undo(id: id, replacements, originals: originals, outputs: outs) }) }
                 else if pairable { $0.action = ("Replace original", { ReplaceFlow.apply(id: id, originals: originals, outputs: outs) }) }
@@ -186,8 +186,8 @@ final class JobQueue {
             if error is CancellationError { Toast.shared.remove(e.id); return }
             if let part = error as? Partial, let first = part.outs.first {
                 Toast.shared.update(e.id) {
-                    $0.phase = .done; $0.title = "Saved \(part.outs.count) of \(part.total)"
-                    $0.subtitle = "\(part.failed) failed\n\(part.message)"; $0.detail = part.message; $0.progress = nil; $0.reveal = part.outs; $0.cancel = nil; $0.eta = ""
+                    $0.phase = .done; $0.title = L("Saved \(part.outs.count) of \(part.total)")
+                    $0.subtitle = L("\(part.failed) failed\n\(part.message)"); $0.detail = part.message; $0.progress = nil; $0.reveal = part.outs; $0.cancel = nil; $0.eta = ""
                 }
                 Feedback.shared.done()
                 if AppSettings.shared.revealAfterSave { NSWorkspace.shared.activateFileViewerSelecting(part.outs) }
@@ -198,7 +198,7 @@ final class JobQueue {
             Toast.shared.update(e.id) {
                 let task = e.title.replacingOccurrences(of: "…", with: "")
                 let short = task.count <= 24
-                $0.phase = .failed; $0.title = short ? task + " failed" : "Failed"
+                $0.phase = .failed; $0.title = short ? task + L(" failed") : L("Failed")
                 $0.subtitle = short ? msg : task + "\n" + msg; $0.detail = msg; $0.progress = nil; $0.cancel = nil; $0.eta = ""
             }
         }
@@ -212,13 +212,13 @@ enum ReplaceFlow {
             let done = try Replacer.replace(originals: originals, outputs: outputs)
             let finals = done.map(\.final)
             Toast.shared.update(id) {
-                $0.title = done.count == 1 ? "Replaced" : "Replaced \(done.count) items"
-                $0.subtitle = JobQueue.savedDetail(finals) + "\nThe original is in the Trash"
+                $0.title = done.count == 1 ? L("Replaced") : L("Replaced \(done.count) items")
+                $0.subtitle = JobQueue.savedDetail(finals) + L("\nThe original is in the Trash")
                 $0.reveal = finals
                 $0.action = ("Undo", { undo(id: id, done, originals: originals, outputs: outputs) })
             }
         } catch {
-            Toast.shared.update(id) { $0.subtitle = "Couldn't replace the original: \(error.localizedDescription)"; $0.action = nil }
+            Toast.shared.update(id) { $0.subtitle = L("Couldn't replace the original: \(error.localizedDescription)"); $0.action = nil }
         }
     }
 
@@ -226,7 +226,7 @@ enum ReplaceFlow {
         do {
             try Replacer.undo(done)
             Toast.shared.update(id) {
-                $0.title = outputs.count == 1 ? "Saved" : "Saved \(outputs.count) items"
+                $0.title = outputs.count == 1 ? L("Saved") : L("Saved \(outputs.count) items")
                 $0.subtitle = JobQueue.savedDetail(outputs)
                 $0.reveal = outputs
                 $0.action = ("Replace original", { apply(id: id, originals: originals, outputs: outputs) })

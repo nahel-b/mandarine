@@ -95,7 +95,7 @@ struct FrameImageTool: View {
     private let ratios: [(String, CGFloat?)] = [("Auto", nil), ("1:1", 1), ("16:9", 16.0 / 9), ("4:5", 4.0 / 5)]
 
     var body: some View {
-        ToolShell(title: "Add BG", close: close) {
+        ToolShell(title: L("Add BG"), close: close) {
             VStack(spacing: 12) {
                 if let img = (cutEnabled ? cutPreview : nil) ?? src.preview {
                     let cs = FrameComposition.canvasSize(for: img.size, params: p)
@@ -107,17 +107,17 @@ struct FrameImageTool: View {
                 }
                 HStack {
                     Toggle(isOn: Binding(get: { cutEnabled }, set: { setCut($0) })) {
-                        Label(cutting ? "Removing background…" : "Remove the original background first", systemImage: "wand.and.stars").font(.system(size: 12))
+                        Label(cutting ? L("Removing background…") : L("Remove the original background first"), systemImage: "wand.and.stars").font(.system(size: 12))
                     }.disabled(!BackgroundRemover.isAvailable || cutting)
                     if cutting { ProgressView().controlSize(.small) }
                     Spacer()
                 }
                 HStack(alignment: .top) {
-                    Text("Background").sectionLabel().frame(width: 70, alignment: .leading)
+                    Text(L("Background")).sectionLabel().frame(width: 70, alignment: .leading)
                     VStack(alignment: .leading, spacing: 8) {
                         HStack(spacing: 6) {
                             ForEach(0..<BGPresets.gradients.count, id: \.self) { i in swatch(.gradient(i)) { LinearGradient(colors: BGPresets.gradients[i], startPoint: .topLeading, endPoint: .bottomTrailing) } }
-                            Button { pickImage() } label: { Image(systemName: "photo").frame(width: 24, height: 24) }
+                            Button { pickImage() } label: { Image(systemName: L("photo")).frame(width: 24, height: 24) }
                                 .buttonStyle(WiiPlainButtonStyle())
                         }
                         HStack(spacing: 6) {
@@ -126,18 +126,18 @@ struct FrameImageTool: View {
                         }
                     }
                 }
-                slider("Padding", $p.padding, 0...0.4, "%.0f px") { Int($0 * Double(max(src.pixelSize.width, src.pixelSize.height))) }
-                slider("Corners", $p.corners, 0...0.15, "%.0f px") { Int($0 * Double(max(src.pixelSize.width, src.pixelSize.height))) }
-                slider("Shadow", $p.shadow, 0...1, "%.0f px") { Int($0 * 60) }
+                slider(L("Padding"), $p.padding, 0...0.4, "%.0f px") { Int($0 * Double(max(src.pixelSize.width, src.pixelSize.height))) }
+                slider(L("Corners"), $p.corners, 0...0.15, "%.0f px") { Int($0 * Double(max(src.pixelSize.width, src.pixelSize.height))) }
+                slider(L("Shadow"), $p.shadow, 0...1, "%.0f px") { Int($0 * 60) }
                 HStack {
-                    Text("Ratio").sectionLabel().frame(width: 70, alignment: .leading)
+                    Text(L("Ratio")).sectionLabel().frame(width: 70, alignment: .leading)
                     Spacer()
                     PillPicker(options: ratios.enumerated().map { ($0.offset, $0.element.0) }, selection: Binding(get: { ratioChoice }, set: { ratioChoice = $0; p.ratio = ratios[$0].1 }))
                 }
             }.frame(width: 400)
         } footer: {
-            Button("Reset") { p = FrameParams(); ratioChoice = 0; bgImage = nil; cutEnabled = false }.buttonStyle(PillButtonStyle())
-            ReplaceButton("Save with Background") { save() }
+            Button(L("Reset")) { p = FrameParams(); ratioChoice = 0; bgImage = nil; cutEnabled = false }.buttonStyle(PillButtonStyle())
+            ReplaceButton(L("Save with Background")) { save() }
         }
     }
 
@@ -149,9 +149,9 @@ struct FrameImageTool: View {
 
     private func slider(_ title: String, _ v: Binding<Double>, _ r: ClosedRange<Double>, _ f: String, _ display: @escaping (Double) -> Int) -> some View {
         HStack {
-            Text(title).sectionLabel().frame(width: 70, alignment: .leading)
+            Text(L(title)).sectionLabel().frame(width: 70, alignment: .leading)
             Slider(value: v, in: r).controlSize(.mini)
-            Text("\(display(v.wrappedValue)) px").font(.system(size: 11).monospacedDigit()).foregroundStyle(Theme.muted).frame(width: 60, alignment: .trailing)
+            Text(L("\(display(v.wrappedValue)) px")).font(.system(size: 11).monospacedDigit()).foregroundStyle(Theme.muted).frame(width: 60, alignment: .trailing)
         }
     }
 
@@ -165,7 +165,7 @@ struct FrameImageTool: View {
             DispatchQueue.main.async {
                 cutting = false
                 if let out = out { cutPreview = NSImage(cgImage: out, size: NSSize(width: out.width, height: out.height)) }
-                else { cutEnabled = false; Toast.shared.fail("No subject found", subtitle: "The background couldn't be removed from this image.") }
+                else { cutEnabled = false; Toast.shared.fail(L("No subject found"), subtitle: L("The background couldn't be removed from this image.")) }
             }
         }
     }
@@ -181,7 +181,7 @@ struct FrameImageTool: View {
     @MainActor private func save() {
         let params = p, files = urls, bg = bgImage, cut = cutEnabled
         close()
-        Dispatcher.job("Adding background…", light: true, replaces: files) { _ in
+        Dispatcher.job(L("Adding background…"), light: true, replaces: files) { _ in
             try await MainActor.run {
                 try files.map { url in
                     var (cg, _) = try ImageEngine.load(url)
@@ -190,7 +190,7 @@ struct FrameImageTool: View {
                     let size = FrameComposition.canvasSize(for: ns.size, params: params)
                     let r = ImageRenderer(content: FrameComposition(image: ns, bgImage: bg, params: params, size: size))
                     r.scale = 1
-                    guard let out = r.cgImage else { throw MandarineError("Rendu impossible.") }
+                    guard let out = r.cgImage else { throw MandarineError(L("Rendu impossible.")) }
                     let dest = OutputNaming.sibling(of: url, suffix: " framed", ext: "png")
                     try ImageEngine.write(out, to: dest, ext: "png")
                     return dest
@@ -276,7 +276,7 @@ struct CollageTool: View {
     private var ordered: [NSImage] { urls.compactMap { images[$0] } }
 
     var body: some View {
-        ToolShell(title: "Create Collage", close: close) {
+        ToolShell(title: L("Create Collage"), close: close) {
             VStack(spacing: 10) {
                 let cs = canvasSize
                 let k = min(380 / cs.width, 300 / cs.height)
@@ -287,26 +287,26 @@ struct CollageTool: View {
                             .scaleEffect(k)
                     }
                 }.frame(width: 380, height: 300).clipShape(RoundedRectangle(cornerRadius: 8))
-                row("Style") { Picker("", selection: $style) { ForEach(CollageStyle.allCases, id: \.self) { Text($0.rawValue).tag($0) } }.labelsHidden().frame(width: 150) }
-                if style == .grid { row("Columns") { Stepper("\(columns)", value: $columns, in: 1...6).frame(width: 90) } }
-                row("Canvas") { Picker("", selection: $canvasIdx) { ForEach(Array(canvases.enumerated()), id: \.offset) { Text($1.0).tag($0) } }.labelsHidden().frame(width: 170) }
-                row("Width") { Picker("", selection: $width) { ForEach([1024, 2048, 3072, 4096], id: \.self) { Text("\($0) px").tag($0) } }.labelsHidden().frame(width: 120) }
-                row("Image fit") { Picker("", selection: $fill) { Text("Fill cells (crop edges)").tag(true); Text("Fit inside cells").tag(false) }.labelsHidden().frame(width: 190) }
+                row(L("Style")) { Picker("", selection: $style) { ForEach(CollageStyle.allCases, id: \.self) { Text(L($0.rawValue)).tag($0) } }.labelsHidden().frame(width: 150) }
+                if style == .grid { row(L("Columns")) { Stepper(L("\(columns)"), value: $columns, in: 1...6).frame(width: 90) } }
+                row(L("Canvas")) { Picker("", selection: $canvasIdx) { ForEach(Array(canvases.enumerated()), id: \.offset) { Text(L($1.0)).tag($0) } }.labelsHidden().frame(width: 170) }
+                row(L("Width")) { Picker("", selection: $width) { ForEach([1024, 2048, 3072, 4096], id: \.self) { Text(L("\($0) px")).tag($0) } }.labelsHidden().frame(width: 120) }
+                row(L("Image fit")) { Picker("", selection: $fill) { Text(L("Fill cells (crop edges)")).tag(true); Text(L("Fit inside cells")).tag(false) }.labelsHidden().frame(width: 190) }
                 Divider()
-                DisclosureGroup("Spacing & background", isExpanded: $showSpacing) {
+                DisclosureGroup(L("Spacing & background"), isExpanded: $showSpacing) {
                     VStack {
-                        row("Spacing") { Slider(value: $spacing, in: 0...8).frame(width: 160) }
-                        row("Corners") { Slider(value: $corners, in: 0...10).frame(width: 160) }
-                        row("Background") { ColorPicker("", selection: $bg).labelsHidden() }
+                        row(L("Spacing")) { Slider(value: $spacing, in: 0...8).frame(width: 160) }
+                        row(L("Corners")) { Slider(value: $corners, in: 0...10).frame(width: 160) }
+                        row(L("Background")) { ColorPicker("", selection: $bg).labelsHidden() }
                     }.padding(.top, 6)
                 }
-                DisclosureGroup("Image order", isExpanded: $showOrder) {
+                DisclosureGroup(L("Image order"), isExpanded: $showOrder) {
                     OrderEditor(urls: $urls, thumbs: images, accepts: FileKind.imageExts, noun: "image", types: [.image], width: 380, height: 210).padding(.top, 6)
                 }
             }.frame(width: 380).font(.system(size: 12))
         } footer: {
-            Button("Reset Layout") { style = .grid; columns = 2; spacing = 0; corners = 0; urls.sort { $0.path < $1.path } }.buttonStyle(PillButtonStyle())
-            Button("Create Collage") { save() }.buttonStyle(PillButtonStyle()).keyboardShortcut(.defaultAction)
+            Button(L("Reset Layout")) { style = .grid; columns = 2; spacing = 0; corners = 0; urls.sort { $0.path < $1.path } }.buttonStyle(PillButtonStyle())
+            Button(L("Create Collage")) { save() }.buttonStyle(PillButtonStyle()).keyboardShortcut(.defaultAction)
         }
         .task(id: urls) {
             for u in urls where images[u] == nil {
@@ -315,13 +315,13 @@ struct CollageTool: View {
         }
     }
 
-    private func row<V: View>(_ t: String, @ViewBuilder _ v: () -> V) -> some View { HStack { Text(t).foregroundStyle(Theme.muted); Spacer(); v() } }
+    private func row<V: View>(_ t: String, @ViewBuilder _ v: () -> V) -> some View { HStack { Text(L(t)).foregroundStyle(Theme.muted); Spacer(); v() } }
 
     @MainActor private func save() {
         let files = urls, cs = canvasSize
         let (st, cols, sp, co, f, b) = (style, columns, spacing, corners, fill, bg)
         close()
-        Dispatcher.job("Creating collage…", light: true) { _ in
+        Dispatcher.job(L("Creating collage…"), light: true) { _ in
             try await MainActor.run {
                 let imgs: [NSImage] = try files.map { u in
                     let (cg, _) = try ImageEngine.load(u, maxSide: Int(cs.width))
@@ -329,7 +329,7 @@ struct CollageTool: View {
                 }
                 let r = ImageRenderer(content: CollageView(images: imgs, style: st, columns: cols, size: cs, spacing: sp / 100 * cs.width, corners: co / 100 * cs.width, fill: f, background: b))
                 r.scale = 1
-                guard let out = r.cgImage else { throw MandarineError("Rendu impossible.") }
+                guard let out = r.cgImage else { throw MandarineError(L("Rendu impossible.")) }
                 let dest = OutputNaming.sibling(of: files[0], suffix: " collage", ext: "png")
                 try ImageEngine.write(out, to: dest, ext: "png")
                 return [dest]

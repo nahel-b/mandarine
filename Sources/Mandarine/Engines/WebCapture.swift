@@ -42,7 +42,7 @@ final class WebCapture: NSObject, WKNavigationDelegate {
                 let cfg = WKSnapshotConfiguration(); cfg.rect = rect; cfg.snapshotWidth = NSNumber(value: Double(width))
                 let image = try await job.webView.takeSnapshot(configuration: cfg)
                 guard let tiff = image.tiffRepresentation, let png = NSBitmapImageRep(data: tiff)?.representation(using: .png, properties: [:])
-                else { throw MandarineError("Couldn't render the page as an image.") }
+                else { throw MandarineError(L("Couldn't render the page as an image.")) }
                 try png.write(to: out)
             }
         }
@@ -67,7 +67,7 @@ final class WebCapture: NSObject, WKNavigationDelegate {
         webView.load(URLRequest(url: link, cachePolicy: .useProtocolCachePolicy, timeoutInterval: 30))
         let timeout = Task { @MainActor in
             try await Task.sleep(nanoseconds: 45_000_000_000)
-            self.finish(.failure(MandarineError("The page took too long to load.")))
+            self.finish(.failure(MandarineError(L("The page took too long to load."))))
         }
         defer { timeout.cancel() }
         try await withCheckedThrowingContinuation { (c: CheckedContinuation<Void, Error>) in loaded = c }
@@ -111,7 +111,7 @@ final class WebCapture: NSObject, WKNavigationDelegate {
 
     private func markdown(title: String, link: URL) async throws -> String {
         let body = try await webView.callAsyncJavaScript(Self.markdownScript, arguments: [:], in: nil, contentWorld: .page) as? String ?? ""
-        guard body.trimmingCharacters(in: .whitespacesAndNewlines).count > 20 else { throw MandarineError("No readable text found on this page.") }
+        guard body.trimmingCharacters(in: .whitespacesAndNewlines).count > 20 else { throw MandarineError(L("No readable text found on this page.")) }
         let source = "> Source: " + link.absoluteString
         // la page commence déjà par son titre (h1) : on met la source juste dessous, sans répéter le titre
         if body.hasPrefix("# "), let end = body.range(of: "\n\n") {

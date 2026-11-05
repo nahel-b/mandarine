@@ -28,7 +28,7 @@ enum Upscaler {
         guard let config = VTSuperResolutionScalerConfiguration(frameWidth: w, frameHeight: h, scaleFactor: factor, inputType: .image,
                                                                 usePrecomputedFlow: false, qualityPrioritization: .normal,
                                                                 revision: VTSuperResolutionScalerConfiguration.defaultRevision) else {
-            throw MandarineError("L'upscale par IA ne prend pas en charge cette taille d'image.")
+            throw MandarineError(L("L'upscale par IA ne prend pas en charge cette taille d'image."))
         }
         // Le modèle peut devoir être téléchargé la première fois.
         if config.configurationModelStatus != .ready {
@@ -37,7 +37,7 @@ enum Upscaler {
             }
             var waited = 0
             while config.configurationModelStatus != .ready && waited < 600 { try await Task.sleep(nanoseconds: 500_000_000); waited += 1 }
-            guard config.configurationModelStatus == .ready else { throw MandarineError("Le modèle d'upscale d'Apple n'a pas pu être téléchargé.") }
+            guard config.configurationModelStatus == .ready else { throw MandarineError(L("Le modèle d'upscale d'Apple n'a pas pu être téléchargé.")) }
         }
 
         let src = try makeBuffer(width: w, height: h, attributes: config.sourcePixelBufferAttributes)
@@ -51,11 +51,11 @@ enum Upscaler {
               let df = VTFrameProcessorFrame(buffer: dst, presentationTimeStamp: .zero),
               let params = VTSuperResolutionScalerParameters(sourceFrame: sf, previousFrame: nil, previousOutputFrame: nil,
                                                              opticalFlow: nil, submissionMode: .sequential, destinationFrame: df) else {
-            throw MandarineError("Préparation de l'upscale impossible.")
+            throw MandarineError(L("Préparation de l'upscale impossible."))
         }
         _ = try await processor.process(parameters: params)
 
-        guard let result = cgImage(from: dst) else { throw MandarineError("Lecture du résultat impossible.") }
+        guard let result = cgImage(from: dst) else { throw MandarineError(L("Lecture du résultat impossible.")) }
         return result
     }
 
@@ -70,7 +70,7 @@ enum Upscaler {
         attrs[kCVPixelBufferPixelFormatTypeKey as String] = format
         var buf: CVPixelBuffer?
         let r = CVPixelBufferCreate(kCFAllocatorDefault, width, height, format, attrs as CFDictionary, &buf)
-        guard r == kCVReturnSuccess, let b = buf else { throw MandarineError("Mémoire insuffisante pour l'upscale (\(width)×\(height)).") }
+        guard r == kCVReturnSuccess, let b = buf else { throw MandarineError(L("Mémoire insuffisante pour l'upscale (\(width)×\(height)).")) }
         return b
     }
 
@@ -91,7 +91,7 @@ enum Upscaler {
                             bitmapInfo: CGImageAlphaInfo.premultipliedFirst.rawValue | CGBitmapInfo.byteOrder32Little.rawValue)
         default: ctx = nil
         }
-        guard let c = ctx else { throw MandarineError("Format de pixels non pris en charge par l'upscale (\(format)).") }
+        guard let c = ctx else { throw MandarineError(L("Format de pixels non pris en charge par l'upscale (\(format)).")) }
         c.draw(image, in: CGRect(x: 0, y: 0, width: image.width, height: image.height))
     }
 
@@ -115,7 +115,7 @@ enum Upscaler {
     /// Agrandit : IA si possible (facteur supporté, image assez petite), sinon Lanczos. Retourne aussi la méthode utilisée.
     static func upscale(_ image: CGImage, factor: Int, preferAI: Bool) async throws -> (CGImage, usedAI: Bool) {
         let size = CGSize(width: image.width, height: image.height)
-        guard max(size.width, size.height) * CGFloat(factor) <= 16384 else { throw MandarineError("Le résultat dépasserait 16 384 px.") }
+        guard max(size.width, size.height) * CGFloat(factor) <= 16384 else { throw MandarineError(L("Le résultat dépasserait 16 384 px.")) }
         if preferAI, #available(macOS 26.0, *), canUseAI(size, factor: factor) {
             if let r = try? await ai(image, factor: factor) { return (r, true) }
         }

@@ -305,12 +305,12 @@ struct WheelView: View {
             if model.replacing {                      // voyant : ce dépôt remplacera le fichier d'origine
                 VStack(spacing: 2) {
                     Image(systemName: "arrow.triangle.2.circlepath").font(.system(size: 13, weight: .bold))
-                    Text("REPLACES").font(.system(size: 9.5, weight: .heavy)); Text("THE ORIGINAL").font(.system(size: 7.5, weight: .bold)).opacity(0.85)
+                    Text(L("REPLACES")).font(.system(size: 9.5, weight: .heavy)); Text(L("THE ORIGINAL")).font(.system(size: 7.5, weight: .bold)).opacity(0.85)
                 }.foregroundStyle(.white).transition(.scale.combined(with: .opacity))
             } else {
             VStack(spacing: 1.5) {
                 ForEach(Array(lines.enumerated()), id: \.offset) { i, line in
-                    Text(line)
+                    Text(L(line))
                         .font(.system(size: i == 0 ? 10.5 : 8, weight: i == 0 ? .bold : .medium))
                         .foregroundStyle(Color.white.opacity(i == 0 ? 1 : 0.7))
                         .lineLimit(1).minimumScaleFactor(0.55)

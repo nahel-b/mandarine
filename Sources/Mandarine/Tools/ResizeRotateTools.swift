@@ -44,9 +44,9 @@ struct ResizeImageTool: View {
     private var ratio: Double { src.pixelSize.height > 0 ? Double(src.pixelSize.width / src.pixelSize.height) : 1 }
 
     var body: some View {
-        ToolShell(title: "Resize", close: close) {
+        ToolShell(title: L("Resize"), close: close) {
             VStack(alignment: .leading, spacing: 12) {
-                Text(urls.count == 1 ? "\(urls[0].lastPathComponent) · \(Int(src.pixelSize.width)) × \(Int(src.pixelSize.height)) px" : "\(urls.count) images")
+                Text(urls.count == 1 ? L("\(urls[0].lastPathComponent) · \(Int(src.pixelSize.width)) × \(Int(src.pixelSize.height)) px") : L("\(urls.count) images"))
                     .sectionLabel().lineLimit(1).truncationMode(.middle)
                 previewBox
                 PillPicker(options: [(Mode.dimensions, "Dimensions"), (.percent, "Percent"), (.multiple, "Sizes"), (.upscale, "Upscale")], selection: $mode)
@@ -55,14 +55,14 @@ struct ResizeImageTool: View {
                     HStack(spacing: 8) {
                         field("W", $w) { if lock { h = Int((Double($0) / ratio).rounded()) } }
                         Button { lock.toggle(); if lock { h = Int((Double(w) / ratio).rounded()) } } label: {
-                            Image(systemName: lock ? "link" : "link.badge.plus").foregroundStyle(lock ? Theme.orange : Theme.muted)
-                        }.buttonStyle(WiiPlainButtonStyle()).help("Keep proportions")
+                            Image(systemName: lock ? L("link") : L("link.badge.plus")).foregroundStyle(lock ? Theme.orange : Theme.muted)
+                        }.buttonStyle(WiiPlainButtonStyle()).help(L("Keep proportions"))
                         field("H", $h) { if lock { w = Int((Double($0) * ratio).rounded()) } }
-                        Text("px").sectionLabel()
+                        Text(L("px")).sectionLabel()
                     }
                     if urls.count > 1 || !lock {
-                        HStack { Text("Mode").sectionLabel(); Spacer()
-                            Picker("", selection: $fit) { Text("Fit inside").tag(Fit.fit); Text("Fill and crop").tag(Fit.fill); Text("Stretch").tag(Fit.stretch) }
+                        HStack { Text(L("Mode")).sectionLabel(); Spacer()
+                            Picker("", selection: $fit) { Text(L("Fit inside")).tag(Fit.fit); Text(L("Fill and crop")).tag(Fit.fill); Text(L("Stretch")).tag(Fit.stretch) }
                                 .labelsHidden().frame(width: 150) }
                     }
                 case .percent:
@@ -74,40 +74,40 @@ struct ResizeImageTool: View {
                     HStack(spacing: 6) { ForEach([25, 50, 75, 150, 200], id: \.self) { p in
                         Button("\(p)%") { percent = Double(p) }.buttonStyle(PillButtonStyle()) } }
                 case .multiple:
-                    Text("Longest side — one copy per size").sectionLabel()
+                    Text(L("Longest side — one copy per size")).sectionLabel()
                     LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 6), count: 3), spacing: 6) {
                         ForEach(presets, id: \.self) { s in
-                            Text("\(s) px").font(.system(size: 12, weight: .medium)).frame(maxWidth: .infinity, minHeight: 28)
+                            Text(L("\(s) px")).font(.system(size: 12, weight: .medium)).frame(maxWidth: .infinity, minHeight: 28)
                                 .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(sizes.contains(s) ? Theme.orange : Color.black.opacity(0.07)))
                                 .foregroundStyle(sizes.contains(s) ? .white : Theme.text)
                                 .wiiHoverGrow().onTapGesture { if sizes.contains(s) { sizes.remove(s) } else { sizes.insert(s) } }
                         }
                     }
-                    Text("\(sizes.count) size\(sizes.count == 1 ? "" : "s") × \(urls.count) image\(urls.count == 1 ? "" : "s") = \(sizes.count * urls.count) files").sectionLabel()
+                    Text(L("\(sizes.count) size\(sizes.count == 1 ? "" : "s") × \(urls.count) image\(urls.count == 1 ? "" : "s") = \(sizes.count * urls.count) files")).sectionLabel()
                 case .upscale:
-                    HStack { Text("Method").sectionLabel(); Spacer()
+                    HStack { Text(L("Method")).sectionLabel(); Spacer()
                         Picker("", selection: $useAI) {
-                            Text("AI (Apple)").tag(true).disabled(!Upscaler.aiAvailable)
-                            Text("Smooth (Lanczos)").tag(false)
+                            Text(L("AI (Apple)")).tag(true).disabled(!Upscaler.aiAvailable)
+                            Text(L("Smooth (Lanczos)")).tag(false)
                         }.labelsHidden().frame(width: 170)
                             .onChange(of: useAI) { ai in upFactor = ai ? (Upscaler.aiFactors.first ?? 4) : max(upFactor, 2) } }
-                    HStack { Text("Scale").sectionLabel(); Spacer()
+                    HStack { Text(L("Scale")).sectionLabel(); Spacer()
                         PillPicker(options: (useAI ? Upscaler.aiFactors : [2, 3, 4]).map { ($0, "×\($0)") }, selection: $upFactor) }
                     Text(useAI ? (Int(max(src.pixelSize.width, src.pixelSize.height)) > Upscaler.aiMaxInput
-                                  ? "This image is larger than \(Upscaler.aiMaxInput) px: it will be enlarged with Lanczos instead of AI."
-                                  : "Apple's on-device model rebuilds fine detail. The first use may download the model.")
+                                  ? L("This image is larger than \(Upscaler.aiMaxInput) px: it will be enlarged with Lanczos instead of AI.")
+                                  : L("Apple's on-device model rebuilds fine detail. The first use may download the model."))
                                : "Classic smooth enlargement (Core Image Lanczos). It does not add detail.")
                         .sectionLabel().fixedSize(horizontal: false, vertical: true)
-                    if !Upscaler.aiAvailable { Text("AI upscaling needs macOS 26 or later.").sectionLabel() }
+                    if !Upscaler.aiAvailable { Text(L("AI upscaling needs macOS 26 or later.")).sectionLabel() }
                 }
                 if mode == .dimensions || mode == .multiple {
-                    Toggle("Don't enlarge images", isOn: $noEnlarge).font(.system(size: 12))
+                    Toggle(L("Don't enlarge images"), isOn: $noEnlarge).font(.system(size: 12))
                 }
             }.frame(width: 360, alignment: .leading)
         } footer: {
-            Button { let f = urls; close(); ToolWindowController.present(.editImage, urls: f) } label: { Label("Edit…", systemImage: "slider.horizontal.3") }
-                .buttonStyle(PillButtonStyle()).help("Open Edit Photo for the same image")
-            ReplaceButton(mode == .upscale ? "Upscale" : "Resize") { mode == .upscale ? upscale() : apply() }.disabled(mode == .multiple && sizes.isEmpty)
+            Button { let f = urls; close(); ToolWindowController.present(.editImage, urls: f) } label: { Label(L("Edit…"), systemImage: L("slider.horizontal.3")) }
+                .buttonStyle(PillButtonStyle()).help(L("Open Edit Photo for the same image"))
+            ReplaceButton(mode == .upscale ? L("Upscale") : L("Resize")) { mode == .upscale ? upscale() : apply() }.disabled(mode == .multiple && sizes.isEmpty)
         }
         .onAppear { w = Int(src.pixelSize.width); h = Int(src.pixelSize.height) }
         .task(id: key) {
@@ -127,8 +127,8 @@ struct ResizeImageTool: View {
                 Theme.previewBG
                 if mode == .upscale, let before = previewBefore, let after = previewAfter {
                     HStack(spacing: 6) {
-                        labeled("Before", before, smooth: false)
-                        labeled("After", after, smooth: true)
+                        labeled(L("Before"), before, smooth: false)
+                        labeled(L("After"), after, smooth: true)
                     }.padding(6)
                 } else if let after = previewAfter {
                     Image(nsImage: after).resizable().scaledToFit().padding(6)
@@ -136,7 +136,7 @@ struct ResizeImageTool: View {
                 if previewBusy { ProgressView().controlSize(.small).padding(8).background(Circle().fill(.ultraThinMaterial)) }
             }
             .frame(width: 360, height: 220).clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-            Text(previewInfo).font(.system(size: 11).monospacedDigit()).foregroundStyle(Theme.muted)
+            Text(L(previewInfo)).font(.system(size: 11).monospacedDigit()).foregroundStyle(Theme.muted)
                 .frame(maxWidth: .infinity, alignment: .leading).lineLimit(2)
         }
     }
@@ -144,7 +144,7 @@ struct ResizeImageTool: View {
     private func labeled(_ title: String, _ img: NSImage, smooth: Bool) -> some View {
         ZStack(alignment: .topLeading) {
             Image(nsImage: img).resizable().interpolation(smooth ? .high : .medium).scaledToFill().frame(maxWidth: .infinity, maxHeight: .infinity).clipped()
-            Text(title).font(.system(size: 10, weight: .bold)).foregroundStyle(.white).padding(.horizontal, 6).padding(.vertical, 2)
+            Text(L(title)).font(.system(size: 10, weight: .bold)).foregroundStyle(.white).padding(.horizontal, 6).padding(.vertical, 2)
                 .background(Capsule().fill(Color.black.opacity(0.6))).padding(6)
         }.clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
@@ -186,7 +186,7 @@ struct ResizeImageTool: View {
     private func upscale() {
         let (factor, ai, files) = (upFactor, useAI, urls)
         close()
-        Dispatcher.job(ai ? "Upscaling with AI…" : "Upscaling…", count: files.count, replaces: files) { progress in
+        Dispatcher.job(ai ? L("Upscaling with AI…") : L("Upscaling…"), count: files.count, replaces: files) { progress in
             var outs: [URL] = []
             for (i, url) in files.enumerated() {
                 let (img, props) = try ImageEngine.load(url)
@@ -204,7 +204,7 @@ struct ResizeImageTool: View {
 
     private func field(_ label: String, _ v: Binding<Int>, _ changed: @escaping (Int) -> Void) -> some View {
         HStack(spacing: 4) {
-            Text(label).sectionLabel()
+            Text(L(label)).sectionLabel()
             TextField("", value: Binding(get: { v.wrappedValue }, set: { v.wrappedValue = max(1, $0); changed(max(1, $0)) }), format: .number.grouping(.never))
                 .textFieldStyle(.roundedBorder).frame(width: 74).multilineTextAlignment(.trailing)
         }
@@ -255,7 +255,7 @@ struct ResizeImageTool: View {
         let (m, w, h, f, p, sz, ne) = (mode == .dimensions ? 0 : (mode == .percent ? 1 : 2), self.w, self.h, fit == .fit ? 0 : (fit == .fill ? 1 : 2), percent, Array(sizes), noEnlarge)
         let files = urls
         close()
-        Dispatcher.job("Resizing…", count: files.count, replaces: files) { progress in
+        Dispatcher.job(L("Resizing…"), count: files.count, replaces: files) { progress in
             try await Task.detached {
                 var outs: [URL] = []
                 var folder: URL?
@@ -332,7 +332,7 @@ struct RotateImageTool: View {
     private var changed: Bool { turns % 4 != 0 || flipH || flipV }
 
     var body: some View {
-        ToolShell(title: "Rotate & Flip", close: close) {
+        ToolShell(title: L("Rotate & Flip"), close: close) {
             VStack(spacing: 12) {
                 ZStack {
                     Theme.previewBG
@@ -344,11 +344,11 @@ struct RotateImageTool: View {
                     tile("arrow.left.and.right.righttriangle.left.righttriangle.right", "Flip H") { flipH.toggle(); update() }
                     tile("arrow.up.and.down.righttriangle.up.righttriangle.down", "Flip V") { flipV.toggle(); update() }
                 }
-                Text(exifText).sectionLabel().frame(maxWidth: .infinity, alignment: .leading)
+                Text(L(exifText)).sectionLabel().frame(maxWidth: .infinity, alignment: .leading)
             }.frame(width: 380)
         } footer: {
-            Button("Reset") { turns = 0; flipH = false; flipV = false; update() }.buttonStyle(PillButtonStyle()).disabled(!changed)
-            ReplaceButton(changed ? "Save Rotated Copy" : "Straighten (EXIF)") { save() }.disabled(!changed && exif == 1)
+            Button(L("Reset")) { turns = 0; flipH = false; flipV = false; update() }.buttonStyle(PillButtonStyle()).disabled(!changed)
+            ReplaceButton(changed ? L("Save Rotated Copy") : L("Straighten (EXIF)")) { save() }.disabled(!changed && exif == 1)
         }
         .task {
             exif = ImageTransform.exifOrientation(urls[0])
@@ -358,7 +358,7 @@ struct RotateImageTool: View {
 
     private func tile(_ symbol: String, _ title: String, _ action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            VStack(spacing: 4) { Image(systemName: symbol).font(.system(size: 16, weight: .medium)); Text(title).font(.system(size: 10)) }
+            VStack(spacing: 4) { Image(systemName: symbol).font(.system(size: 16, weight: .medium)); Text(L(title)).font(.system(size: 10)) }
                 .frame(maxWidth: .infinity, minHeight: 48)
                 .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(Color.black.opacity(0.07)))
         }.buttonStyle(WiiPlainButtonStyle())
@@ -373,7 +373,7 @@ struct RotateImageTool: View {
     private func save() {
         let (t, h, v, files) = (turns, flipH, flipV, urls)
         close()
-        Dispatcher.job("Rotating…", count: files.count, replaces: files) { progress in
+        Dispatcher.job(L("Rotating…"), count: files.count, replaces: files) { progress in
             try await Task.detached {
                 var outs: [URL] = []
                 for (i, url) in files.enumerated() {
@@ -401,16 +401,16 @@ struct ExtractAudioTool: View {
     @State private var codec = ""
 
     var body: some View {
-        ToolShell(title: "Extract Audio", close: close) {
+        ToolShell(title: L("Extract Audio"), close: close) {
             VStack(alignment: .leading, spacing: 12) {
-                Text(urls.count == 1 ? urls[0].lastPathComponent : "\(urls.count) videos").sectionLabel().lineLimit(1).truncationMode(.middle)
-                Text("Format").font(.system(size: 15, weight: .semibold))
+                Text(urls.count == 1 ? urls[0].lastPathComponent : L("\(urls.count) videos")).sectionLabel().lineLimit(1).truncationMode(.middle)
+                Text(L("Format")).font(.system(size: 15, weight: .semibold))
                 PillPicker(options: [("original", "Original"), ("mp3", "MP3"), ("m4a", "M4A"), ("wav", "WAV"), ("flac", "FLAC")], selection: $choice)
-                Text(choice == "original" ? (codec.isEmpty ? "Copies the audio track without re-encoding." : "Copies the \(codec.uppercased()) track without re-encoding — no quality loss.")
-                                          : "Re-encodes the audio track as \(choice.uppercased()).")
+                Text(choice == "original" ? (codec.isEmpty ? L("Copies the audio track without re-encoding.") : L("Copies the \(codec.uppercased()) track without re-encoding — no quality loss."))
+                                          : L("Re-encodes the audio track as \(choice.uppercased())."))
                     .sectionLabel().fixedSize(horizontal: false, vertical: true)
             }.frame(width: 380, alignment: .leading)
-        } footer: { Button("Extract Audio") { apply() }.buttonStyle(PillButtonStyle()).keyboardShortcut(.defaultAction) }
+        } footer: { Button(L("Extract Audio")) { apply() }.buttonStyle(PillButtonStyle()).keyboardShortcut(.defaultAction) }
         .task { codec = await ExtractAudioTool.codecName(urls[0]) ?? "" }
     }
 
@@ -443,11 +443,11 @@ struct ExtractAudioTool: View {
     private func apply() {
         let (c, files) = (choice, urls)
         close()
-        Dispatcher.job("Extracting audio…", count: files.count) { progress in
+        Dispatcher.job(L("Extracting audio…"), count: files.count) { progress in
             var outs: [URL] = []
             for (i, f) in files.enumerated() {
                 let info = await FFmpeg.probe(f)
-                guard info.hasAudio else { throw MandarineError("\(f.lastPathComponent) n'a pas de piste audio.") }
+                guard info.hasAudio else { throw MandarineError(L("\(f.lastPathComponent) n'a pas de piste audio.")) }
                 var args = ["-i", f.path, "-vn"]
                 var ext = c
                 if c == "original" {
@@ -468,7 +468,7 @@ enum PDFImageExtractor {
     private final class Box { var images: [(name: String, stream: CGPDFStreamRef)] = [] }
 
     static func extract(_ url: URL, into dir: URL) throws -> Int {
-        guard let doc = CGPDFDocument(url as CFURL) else { throw MandarineError("PDF illisible.") }
+        guard let doc = CGPDFDocument(url as CFURL) else { throw MandarineError(L("PDF illisible.")) }
         var n = 0
         var seen = Set<String>()
         for p in 1...max(doc.numberOfPages, 1) {
@@ -553,15 +553,15 @@ struct QuickLookTool: View {
         ToolShell(title: urls[index].lastPathComponent, close: close) {
             VStack(spacing: 10) {
                 if urls.count > 1 {
-                    Picker("", selection: $index) { ForEach(Array(urls.enumerated()), id: \.offset) { Text($1.lastPathComponent).tag($0) } }
+                    Picker("", selection: $index) { ForEach(Array(urls.enumerated()), id: \.offset) { Text(L($1.lastPathComponent)).tag($0) } }
                         .labelsHidden().frame(maxWidth: .infinity)
                 }
                 QLPreview(url: urls[index]).frame(width: 560, height: 400).clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
                 Text(urls[index].fileSize.humanSize + " · " + urls[index].deletingLastPathComponent().path).sectionLabel().lineLimit(1).truncationMode(.middle)
             }.frame(width: 560)
         } footer: {
-            Button("Show in Finder") { NSWorkspace.shared.activateFileViewerSelecting([urls[index]]) }.buttonStyle(PillButtonStyle())
-            Button("Open") { NSWorkspace.shared.open(urls[index]) }.buttonStyle(PillButtonStyle())
+            Button(L("Show in Finder")) { NSWorkspace.shared.activateFileViewerSelecting([urls[index]]) }.buttonStyle(PillButtonStyle())
+            Button(L("Open")) { NSWorkspace.shared.open(urls[index]) }.buttonStyle(PillButtonStyle())
         }
     }
 }

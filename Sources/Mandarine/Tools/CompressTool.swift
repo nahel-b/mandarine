@@ -26,49 +26,49 @@ struct CompressTool: View {
     private var supportsPreset: Bool { mixed || (kind != .folder && kind != .other) }
 
     var body: some View {
-        ToolShell(title: "Compress", close: close) {
+        ToolShell(title: L("Compress"), close: close) {
             VStack(alignment: .leading, spacing: 14) {
-                Text(urls.count == 1 ? urls[0].lastPathComponent : "\(urls.count) files")
+                Text(urls.count == 1 ? urls[0].lastPathComponent : L("\(urls.count) files"))
                     .font(.system(size: 13)).foregroundStyle(Theme.muted).lineLimit(1).truncationMode(.middle)
-                Text("Original size: \(total.humanSize)").font(.system(size: 15, weight: .medium))
+                Text(L("Original size: \(total.humanSize)")).font(.system(size: 15, weight: .medium))
                 if urls.count > 1 {
-                    Toggle("Put everything in one ZIP archive", isOn: $asArchive)
-                    Text(asArchive ? "Creates a single Archive.zip with all the files." : "Each file is compressed on its own, with the options below.")
+                    Toggle(L("Put everything in one ZIP archive"), isOn: $asArchive)
+                    Text(asArchive ? L("Creates a single Archive.zip with all the files.") : L("Each file is compressed on its own, with the options below."))
                         .font(.system(size: 12)).foregroundStyle(Theme.muted)
                 }
                 if supportsPreset && !asArchive {
-                    Text("Compression preset").font(.system(size: 16, weight: .semibold))
+                    Text(L("Compression preset")).font(.system(size: 16, weight: .semibold))
                     PillPicker(options: [(false, "Balanced"), (true, "Strong")], selection: $strong)
-                    Text(strong ? "Much smaller files, with visible quality loss." : "Smaller files with less quality loss.")
+                    Text(strong ? L("Much smaller files, with visible quality loss.") : L("Smaller files with less quality loss."))
                         .font(.system(size: 12)).foregroundStyle(Theme.muted)
                 }
                 if (kind == .image || kind == .video) && !asArchive {
                     HStack {
-                        Text(kind == .image ? "Image size" : "Video size").font(.system(size: 15))
+                        Text(kind == .image ? L("Image size") : L("Video size")).font(.system(size: 15))
                         Picker("", selection: $sizeChoice) {
-                            ForEach(Array(sizeOptions.enumerated()), id: \.offset) { Text($1.0).tag($0) }
+                            ForEach(Array(sizeOptions.enumerated()), id: \.offset) { Text(L($1.0)).tag($0) }
                         }.labelsHidden().frame(maxWidth: 230)
                     }
                 }
                 if supportsTarget && !asArchive {
                     Divider()
-                    Toggle("Compress to target file size", isOn: $useTarget)
+                    Toggle(L("Compress to target file size"), isOn: $useTarget)
                     if useTarget {
                         HStack {
                             Slider(value: $targetMB, in: 0.05...max(0.1, Double(total) / 1_000_000), step: 0.05)
-                            Text(String(format: "%.2f MB", targetMB)).font(.system(size: 12).monospacedDigit()).frame(width: 70, alignment: .trailing)
+                            Text(String(format: L("%.2f MB"), targetMB)).font(.system(size: 12).monospacedDigit()).frame(width: 70, alignment: .trailing)
                         }
                     }
                 }
                 if mixed && !asArchive {
-                    Text("Each file is compressed according to its type: photos, videos, sounds and PDFs.").font(.system(size: 12)).foregroundStyle(Theme.muted)
+                    Text(L("Each file is compressed according to its type: photos, videos, sounds and PDFs.")).font(.system(size: 12)).foregroundStyle(Theme.muted)
                 } else if (kind == .other || kind == .folder) && !asArchive {
-                    Text("This item will be compressed into a ZIP archive.").font(.system(size: 12)).foregroundStyle(Theme.muted)
+                    Text(L("This item will be compressed into a ZIP archive.")).font(.system(size: 12)).foregroundStyle(Theme.muted)
                 }
             }
             .frame(width: 400, alignment: .leading)
         } footer: {
-            ReplaceButton("Compress") { run() }
+            ReplaceButton(L("Compress")) { run() }
         }
         .onAppear { targetMB = max(0.05, min(targetMB, Double(total) / 2_000_000)) }
     }
@@ -82,10 +82,10 @@ struct CompressTool: View {
         let archive = asArchive && files.count > 1
         close()
         if archive {
-            Dispatcher.job("Zipping…", subtitle: "\(files.count) files") { _ in [try await ZipEngine.make(files)] }
+            Dispatcher.job(L("Zipping…"), subtitle: L("\(files.count) files")) { _ in [try await ZipEngine.make(files)] }
             return
         }
-        Dispatcher.job("Compressing…", subtitle: files.count == 1 ? files[0].lastPathComponent : "\(files.count) files", count: files.count, replaces: files) { progress in
+        Dispatcher.job(L("Compressing…"), subtitle: files.count == 1 ? files[0].lastPathComponent : L("\(files.count) files"), count: files.count, replaces: files) { progress in
             var outs: [URL] = []
             for (i, f) in files.enumerated() {
                 let o = try await Compressor.run(f, options: o) { p in progress((Double(i) + p) / Double(files.count)) }

@@ -265,3 +265,6 @@ la molette d'une souris ne fait rien, et les travaux en cours ne se balaient pas
 Idée : sous-pétales AirDrop avec les personnes proches. Le framework privé `Sharing` (SFBrowser) démarre bien et `sharingd` découvre l'iPhone voisin, mais refuse de le transmettre à Mandarine :
 « is not entitled to do AirDrop discovery » (droit réservé aux apps signées par Apple). Aucun contournement propre ; le code a été retiré. Pistes restantes : implémenter le protocole AirDrop soi-même (type OpenDrop, seulement
 pour les appareils en mode « Tout le monde »), ou un pétale « Partage » via les services publics (Messages, Mail avec destinataire).
+
+## Langue (Réglages → General → Language)
+System / English / Français. Tous les textes passent par `L("…")` (Core/L10n.swift) ; le français vient de `Resources/Localization/fr.json` (clé = texte anglais, `%@` = partie variable), copié dans l'app par `build_app.sh`. Les menus se reconstruisent au changement, les nouvelles fenêtres suivent tout de suite. Pour voir les textes oubliés : `MANDARINE_LANG=fr MANDARINE_L10NLOG=1` affiche `L10N-MISS …` sur stderr.
