@@ -42,6 +42,78 @@ enum WhatsNew {
             WhatsNewItem(symbol: "lock.open", title: "Full Disk Access, once",
                          text: "Mandarine asks once so macOS stops asking folder by folder. Settings → General shows the state."),
         ]),
+        WhatsNewRelease(version: "1.3.9", headline: "Download counts", items: [
+            WhatsNewItem(symbol: "chart.bar", title: "Downloads per version",
+                         text: "Settings → Download shows how many times each release was downloaded (disk image and updates)."),
+        ]),
+        WhatsNewRelease(version: "1.3.8", headline: "All features, a shorter guide", items: [
+            WhatsNewItem(symbol: "square.grid.2x2", title: "All features",
+                         text: "A window that lists everything Mandarine can do, file type by file type, with a search field. It is built from the real wheels, so it is always up to date."),
+            WhatsNewItem(symbol: "questionmark.circle", title: "A shorter guide",
+                         text: "The welcome guide went from ten pages to four; the details live in All features."),
+            WhatsNewItem(symbol: "arrow.down.circle", title: "Download tab",
+                         text: "Settings → Download lists the published versions and downloads any of them."),
+        ]),
+        WhatsNewRelease(version: "1.3.7", headline: "Web pages and time left", items: [
+            WhatsNewItem(symbol: "link", title: "Save a web page",
+                         text: "Drag a link and use the PDF, MARKDOWN or SCREENSHOT petals to keep the page as a PDF, a Markdown text or a full-page picture."),
+            WhatsNewItem(symbol: "clock", title: "Time left",
+                         text: "Long jobs show “About 3 min left” in their notification."),
+        ]),
+        WhatsNewRelease(version: "1.3.6", headline: "Draggable notifications", items: [
+            WhatsNewItem(symbol: "hand.draw", title: "Take the file from the notification",
+                         text: "Drag a finished notification onto a Finder window, a message, or back onto the wheel. Notifications without a file carry their text, and stay a little longer."),
+            WhatsNewItem(symbol: "text.alignleft", title: "Shorter titles",
+                         text: "Titles are short; the details are in the description."),
+        ]),
+        WhatsNewRelease(version: "1.3.5", headline: "Fixes", items: [
+            WhatsNewItem(symbol: "wrench.and.screwdriver", title: "Small fixes", text: "Stability and polish."),
+        ]),
+        WhatsNewRelease(version: "1.3.4", headline: "Compress a batch into a ZIP", items: [
+            WhatsNewItem(symbol: "doc.zipper", title: "One archive for a batch",
+                         text: "Compress can put several files into a single ZIP, and the update notification is simpler."),
+        ]),
+        WhatsNewRelease(version: "1.3.3", headline: "Batches and faces", items: [
+            WhatsNewItem(symbol: "list.number", title: "One notification per batch",
+                         text: "Converting ten files shows one line with “3 of 10 done” instead of ten."),
+            WhatsNewItem(symbol: "face.smiling", title: "Face Select remembers",
+                         text: "Faces you already picked are remembered, and files can be dragged from the Finder more reliably."),
+        ]),
+        WhatsNewRelease(version: "1.3.2", headline: "Engines without Homebrew", items: [
+            WhatsNewItem(symbol: "arrow.down.circle", title: "One-click engines",
+                         text: "Mandarine downloads ffmpeg, yt-dlp and the face model itself — no Homebrew, no Terminal. Updates found while the app was busy resume at the next launch."),
+        ]),
+        WhatsNewRelease(version: "1.3.1", headline: "Fixes", items: [
+            WhatsNewItem(symbol: "wrench.and.screwdriver", title: "Small fixes", text: "Stability and polish."),
+        ]),
+        WhatsNewRelease(version: "1.3.0", headline: "Bubbles", items: [
+            WhatsNewItem(symbol: "circle.circle", title: "Bubbles menu",
+                         text: "A new menu style in Settings: bubbles around a stack of your files, with its own entrance animation."),
+        ]),
+        WhatsNewRelease(version: "1.2.0", headline: "Type Select", items: [
+            WhatsNewItem(symbol: "line.3.horizontal.decrease.circle", title: "Type Select",
+                         text: "Select files by extension, kind, Finder tag, size or date inside your selection. Tool windows also get new looks in Settings."),
+        ]),
+        WhatsNewRelease(version: "1.1.2", headline: "One update check a day", items: [
+            WhatsNewItem(symbol: "arrow.triangle.2.circlepath", title: "Quieter updates",
+                         text: "Mandarine checks for updates once a day, also after your Mac wakes up."),
+        ]),
+        WhatsNewRelease(version: "1.1.1", headline: "Fixes", items: [
+            WhatsNewItem(symbol: "wrench.and.screwdriver", title: "yt-dlp version", text: "Settings shows the right yt-dlp version."),
+        ]),
+        WhatsNewRelease(version: "1.1.0", headline: "Scan and text tools", items: [
+            WhatsNewItem(symbol: "doc.viewfinder", title: "Scan Document",
+                         text: "Straighten a photo of a sheet of paper, clean it up and save it as a PDF."),
+            WhatsNewItem(symbol: "character.bubble", title: "Translate and Summarize",
+                         text: "Drag some text onto the wheel to translate it or summarize it on your Mac."),
+        ]),
+        WhatsNewRelease(version: "1.0.1", headline: "Fixes", items: [
+            WhatsNewItem(symbol: "wrench.and.screwdriver", title: "Build fix", text: "The release is now built on the latest macOS."),
+        ]),
+        WhatsNewRelease(version: "1.0.0", headline: "Mandarine", items: [
+            WhatsNewItem(symbol: "hand.draw", title: "Drag, tap, drop",
+                         text: "Drag a file, tap ⇧ ⌘ or ⌃ and a wheel appears under your cursor: convert, edit, or act. Everything runs on your Mac."),
+        ]),
     ]
 
     /// Versions à présenter : celles plus récentes que la dernière vue, sans dépasser la version installée (au plus trois).
@@ -58,13 +130,14 @@ enum WhatsNew {
         if last.isEmpty, ["lastUpdateCheck", "fullDiskAccessAsked", "showWelcome", "appearance"].contains(where: { d.object(forKey: $0) != nil }) { last = "1.3.9" }
         guard !last.isEmpty, last != current else { d.set(current, forKey: "lastSeenVersion"); return }
         let list = pending(since: last, current: current)
-        if !list.isEmpty { WhatsNewWindowController.show(list) }
+        if !list.isEmpty { WhatsNewWindowController.show(highlighting: list.map(\.version)) }
         d.set(current, forKey: "lastSeenVersion")          // noté une fois la fenêtre demandée (et pas avant, pour ne rien perdre si le lancement échoue)
     }
 }
 
 struct WhatsNewView: View {
     let releases: [WhatsNewRelease]
+    var highlighted: Set<String> = []          // versions apparues depuis la dernière fois : repérées par une pastille « NEW »
     let close: () -> Void
 
     var body: some View {
@@ -76,14 +149,15 @@ struct WhatsNewView: View {
                             Image(nsImage: NSApp.applicationIconImage).resizable().frame(width: 46, height: 46)
                             Text("What's new").font(.system(size: 30, weight: .bold)).foregroundStyle(Theme.text)
                         }
-                        Text("Here is what changed since you last opened Mandarine.").font(.system(size: 13)).foregroundStyle(Theme.muted)
+                        Text(highlighted.isEmpty ? "Every version, newest first." : "The new versions are marked; scroll down for the earlier ones.").font(.system(size: 13)).foregroundStyle(Theme.muted)
                     }
                     ForEach(releases, id: \.version) { r in
                         VStack(alignment: .leading, spacing: 12) {
                             HStack(spacing: 10) {
                                 Text(r.version).font(.system(size: 12, weight: .bold).monospacedDigit()).foregroundStyle(.white)
-                                    .padding(.horizontal, 9).padding(.vertical, 3).background(Capsule().fill(Theme.orange))
+                                    .padding(.horizontal, 9).padding(.vertical, 3).background(Capsule().fill(highlighted.isEmpty || highlighted.contains(r.version) ? Theme.orange : Color(white: 0.62)))
                                 Text(r.headline).font(.system(size: 17, weight: .semibold)).foregroundStyle(Theme.text)
+                                if highlighted.contains(r.version) { Text("NEW").font(.system(size: 9.5, weight: .heavy)).tracking(0.8).foregroundStyle(Theme.orange) }
                             }
                             ForEach(r.items, id: \.title) { it in
                                 HStack(alignment: .top, spacing: 13) {
@@ -119,11 +193,12 @@ final class WhatsNewWindowController: NSObject, NSWindowDelegate {
     static let shared = WhatsNewWindowController()
     private var window: NSWindow?
 
-    static func show(_ releases: [WhatsNewRelease]? = nil) { shared.present(releases ?? Array(WhatsNew.releases.prefix(2))) }
+    /// Toutes les versions, la plus récente d'abord ; `highlighting` : celles à signaler comme nouvelles.
+    static func show(highlighting: [String] = []) { shared.present(WhatsNew.releases, highlighted: Set(highlighting)) }
 
-    private func present(_ list: [WhatsNewRelease]) {
+    private func present(_ list: [WhatsNewRelease], highlighted: Set<String>) {
         window?.close()
-        let host = NSHostingView(rootView: WhatsNewView(releases: list, close: { [weak self] in self?.window?.close() }))
+        let host = NSHostingView(rootView: WhatsNewView(releases: list, highlighted: highlighted, close: { [weak self] in self?.window?.close() }))
         let w = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 600, height: 620), styleMask: [.titled, .closable, .fullSizeContentView], backing: .buffered, defer: false)
         w.titleVisibility = .hidden
         w.titlebarAppearsTransparent = true

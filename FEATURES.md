@@ -243,7 +243,7 @@ Ces deux cas passent maintenant en HEVC 10 bits (couleurs et étiquettes HDR con
 - Astuce unique à la première ouverture d'un outil concerné (`ReplaceTip`). Essai : `--replacetest`.
 
 ## What's New
-Fenêtre « What's New » affichée une fois après une mise à jour (les versions plus récentes que la dernière vue, trois au plus ; pas à la première installation), et depuis le menu de la barre de menus.
+Fenêtre « What's New » affichée une fois après une mise à jour (pas à la première installation), et depuis le menu de la barre de menus : **toutes les versions**, de la plus récente à la 1.0.0, dans une liste qui défile ; celles apparues depuis la dernière ouverture portent « NEW ».
 Les notes sont dans `App/WhatsNew.swift` (`WhatsNew.releases`) : **à compléter à chaque version**.
 
 ## Notifications : deux styles
