@@ -567,6 +567,45 @@ extension AppDelegate {
             }
             return
         }
+        if a.first == "--whatsnewtest" {      // test : quelles versions seraient présentées (--whatsnewtest dernière_vue version_installée)
+            let last = a.count > 1 ? a[1] : "1.4.1", cur = a.count > 2 ? a[2] : ((Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String) ?? "0")
+            print("depuis", last, "→", cur, ":", WhatsNew.pending(since: last, current: cur).map(\.version))
+            exit(0)
+        }
+        if a.first == "--swipemap" {      // test : les zones des lignes (SwiftUI) correspondent-elles à la vue AppKit sous le pointeur ?
+            let t = Toast.shared, c = Toast.shared.center
+            t.done("First", subtitle: "a.png\nin Downloads"); t.done("Second", subtitle: "b.png\nin Downloads")
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
+                guard let h = t.debugHost else { print("pas de vue"); exit(1) }
+                print("vue : flipped =", h.isFlipped, "bounds =", h.bounds)
+                for id in c.items.map(\.id) { print("SwiftUI :", c.frames[id] ?? .zero) }
+                for r in h.debugHandles() { print("AppKit  :", r) }
+                exit(0)
+            }
+            return
+        }
+        if a.first == "--swipetest" {      // test : balayage vers la droite d'une notification (suite d'évènements fictifs)
+            let t = Toast.shared, c = Toast.shared.center
+            t.done("First", subtitle: "a.png\nin Downloads"); t.done("Second", subtitle: "b.png\nin Downloads"); t.done("Third", subtitle: "c.png\nin Downloads")
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
+                let ids = c.items.map(\.id)
+                guard ids.count == 3, let f1 = c.frames[ids[0]], let f2 = c.frames[ids[1]], let f3 = c.frames[ids[2]] else { print("pas de zones", c.frames.count); exit(1) }
+                func swipe(_ f: CGRect, _ steps: [(CGFloat, CGFloat)]) {
+                    let p = CGPoint(x: f.midX, y: f.midY)
+                    c.feedSwipe(phase: .began, dx: 0, dy: 0, at: p)
+                    for s in steps { c.feedSwipe(phase: .changed, dx: s.0, dy: s.1, at: p) }
+                    c.feedSwipe(phase: .ended, dx: 0, dy: 0, at: p)
+                }
+                swipe(f1, (0..<6).map { _ in (30, 1) })        // long balayage horizontal → la ligne part
+                swipe(f2, [(8, 0), (6, 0), (4, 0)])             // court et lent → elle revient
+                swipe(f3, (0..<6).map { _ in (2, 30) })         // vertical → ignoré
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.9) {
+                    print("restantes :", c.items.map(\.title), "| décalages :", c.swipe)
+                    exit(0)
+                }
+            }
+            return
+        }
         if a.first == "--etatest" {      // test : estimation du temps restant sur des relevés fictifs
             func eta(_ label: String, _ s: [(t: Double, p: Double)]) { print(label, "→", JobQueue.etaText(samples: s).isEmpty ? "(rien)" : JobQueue.etaText(samples: s)) }
             eta("début (3 s, 5 %)", [(0, 0), (3, 0.05)])

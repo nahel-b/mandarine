@@ -256,3 +256,12 @@ Le son de fin de travail joue dans tous les styles de menu. Les maquettes sont d
   pas par rapport aux Réglages). Sans ⌥ au dépôt, la base est le réglage. Code : `ReplaceMode.baseForNewWindow`, environnement `replaceBase`, `ReplaceButton`. Essai : `--entertest image.png [optdrop]`.
 - **Entrée** lance l'outil dans toutes les fenêtres (bouton principal en `keyboardShortcut(.defaultAction)`), classiques ou dans l'écran Wii. Exceptions : outils à zone de texte (Extract Text, Translate, Summarize),
   Quick Sort, Quick Look. Dans Metadata, Entrée = « Save » (pas « Remove All »).
+
+## Balayer une notification
+Deux doigts vers la droite sur une notification terminée (résultat ou erreur) : elle suit les doigts et part si on a assez glissé (ou d'un coup sec) ; sinon elle revient. Un geste plutôt vertical est ignoré,
+la molette d'une souris ne fait rien, et les travaux en cours ne se balaient pas. Code : `ToastCenter.feedSwipe`, `ToastHostingView.scrollWheel`. Essai : `--swipetest`.
+
+## AirDrop vers une personne : impossible pour une app tierce (essayé, retiré)
+Idée : sous-pétales AirDrop avec les personnes proches. Le framework privé `Sharing` (SFBrowser) démarre bien et `sharingd` découvre l'iPhone voisin, mais refuse de le transmettre à Mandarine :
+« is not entitled to do AirDrop discovery » (droit réservé aux apps signées par Apple). Aucun contournement propre ; le code a été retiré. Pistes restantes : implémenter le protocole AirDrop soi-même (type OpenDrop, seulement
+pour les appareils en mode « Tout le monde »), ou un pétale « Partage » via les services publics (Messages, Mail avec destinataire).

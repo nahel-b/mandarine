@@ -22,6 +22,43 @@ struct ToastItem: Identifiable {
 
 final class ToastCenter: ObservableObject {
     @Published var items: [ToastItem] = []
+    @Published var swipe: [UUID: CGFloat] = [:]          // décalage vers la droite d'une ligne qu'on est en train de balayer au trackpad
+    var frames: [UUID: CGRect] = [:]                      // zone de chaque ligne dans la pile : pour savoir laquelle est sous les doigts
+
+    /// Ligne terminée (résultat ou erreur) sous ce point, s'il y en a une : seules celles-là se balaient pour disparaître.
+    func swipeableRow(at p: CGPoint) -> UUID? {
+        items.first { ($0.phase == .done || $0.phase == .failed) && (frames[$0.id]?.contains(p) ?? false) }?.id
+    }
+
+    /// Balayage de deux doigts vers la droite sur une ligne : elle suit les doigts, et part si on a assez glissé (ou qu'on a lancé d'un coup sec).
+    private var swipeID: UUID?, swipeX: CGFloat = 0, lastDX: CGFloat = 0, decided = false, locked = false, travel: CGPoint = .zero
+    func feedSwipe(phase: NSEvent.Phase, dx: CGFloat, dy: CGFloat, at p: CGPoint) {
+        if phase.contains(.began) || phase.contains(.mayBegin) {
+            swipeID = swipeableRow(at: p); swipeX = 0; lastDX = 0; decided = false; locked = false; travel = .zero
+            return
+        }
+        guard let id = swipeID else { return }
+        if phase.contains(.changed) {
+            if locked { return }
+            if !decided {
+                travel.x += dx; travel.y += dy
+                guard abs(travel.x) + abs(travel.y) > 5 else { return }
+                if abs(travel.x) > abs(travel.y) * 1.2 { decided = true; swipeX = travel.x } else { locked = true; return }     // plutôt vertical : on laisse tomber
+            } else { swipeX += dx }
+            lastDX = dx
+            swipe[id] = swipeX < 0 ? swipeX / 5 : swipeX          // vers la gauche : résistance
+        } else if phase.contains(.ended) || phase.contains(.cancelled) {
+            defer { swipeID = nil; decided = false; locked = false }
+            guard decided else { return }
+            if swipeX > 90 || (swipeX > 30 && lastDX > 9) {
+                withAnimation(.easeOut(duration: 0.2)) { swipe[id] = 460 }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { [weak self] in Toast.shared.remove(id); self?.swipe[id] = nil }
+            } else {
+                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) { swipe[id] = 0 }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { [weak self] in self?.swipe[id] = nil }
+            }
+        }
+    }
 }
 
 /// Petits éléments communs aux deux styles de notification.
@@ -74,6 +111,7 @@ private struct SpinningArc: View {
 
 private struct ToastRow: View {
     let item: ToastItem
+    var swipe: CGFloat = 0
     let dismiss: () -> Void
     @ObservedObject private var settings = AppSettings.shared
     /// Ce qu'on emporte en glissant : les fichiers créés, sinon les fichiers concernés, sinon le texte de la notification.
@@ -98,14 +136,23 @@ private struct ToastRow: View {
     private func copyError() { NSPasteboard.general.clearContents(); NSPasteboard.general.setString(item.detail, forType: .string) }
     private func show() { NSWorkspace.shared.activateFileViewerSelecting(item.reveal) }
 
+    private var swipeFade: Double { 1 - Double(min(max(swipe, 0) / 300, 1)) * 0.8 }
+    private var lift: Double { item.dragging ? 0.06 : 0.11 }
+
     var body: some View {
-        Group { if settings.notificationStyle == .card { card } else { capsule } }
+        content
             .environment(\.colorScheme, .light)
             // saisie : la ligne se tasse, devient translucide, comme une place vide d'où l'on vient de sortir quelque chose
-            .shadow(color: .black.opacity(item.dragging ? 0.06 : 0.11), radius: item.dragging ? 4 : 10, y: item.dragging ? 1 : 4)
+            .shadow(color: .black.opacity(lift), radius: item.dragging ? 4 : 10, y: item.dragging ? 1 : 4)
             .scaleEffect(item.dragging ? 0.94 : 1)
             .opacity(item.dragging ? 0.6 : 1)
             .animation(.spring(response: 0.28, dampingFraction: 0.62), value: item.dragging)
+            .offset(x: swipe)
+            .opacity(swipeFade)
+    }
+
+    @ViewBuilder private var content: some View {
+        if settings.notificationStyle == .card { card } else { capsule }
     }
 
     // MARK: Style capsule (par défaut) : icône entourée d'un arc vert, texte, boutons à droite
@@ -235,13 +282,18 @@ struct ToastStack: View {
     var body: some View {
         VStack(alignment: .trailing, spacing: 10) {
             ForEach(center.items.suffix(6)) { item in
-                ToastRow(item: item) { Toast.shared.remove(item.id) }
+                ToastRow(item: item, swipe: center.swipe[item.id] ?? 0) { Toast.shared.remove(item.id) }
                     .transition(.move(edge: .trailing).combined(with: .opacity))
+                    .background(GeometryReader { g in
+                        let f = g.frame(in: .named("toastStack"))
+                        Color.clear.onAppear { center.frames[item.id] = f }.onChange(of: f) { center.frames[item.id] = $0 }
+                    })
             }
         }
         .animation(.easeOut(duration: 0.2), value: center.items.map(\.id))
         .padding(.horizontal, 30).padding(.top, 20).padding(.bottom, 40)          // marge pour que l'ombre (rayon 16, décalée de 6) ne soit pas rognée
         .onHover { Toast.shared.setHovering($0) }
+        .coordinateSpace(name: "toastStack")
     }
 }
 
@@ -255,6 +307,8 @@ final class Toast {
     private var timers: [UUID: DispatchWorkItem] = [:]
     private var hovering = false
     private var bag = Set<AnyCancellable>()
+
+    var debugHost: ToastHostingView? { host }
 
     private func ensurePanel() {
         if panel != nil { return }

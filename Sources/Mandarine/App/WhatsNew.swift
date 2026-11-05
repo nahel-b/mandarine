@@ -8,6 +8,10 @@ struct WhatsNewRelease { let version: String; let headline: String; let items: [
 enum WhatsNew {
     /// À compléter à chaque version (la plus récente d'abord) : c'est ce que voit l'utilisateur après la mise à jour.
     static let releases: [WhatsNewRelease] = [
+        WhatsNewRelease(version: "1.5.1", headline: "Swipe to dismiss", items: [
+            WhatsNewItem(symbol: "hand.draw", title: "Swipe notifications away",
+                         text: "Swipe a finished notification to the right with two fingers on the trackpad to dismiss it."),
+        ]),
         WhatsNewRelease(version: "1.5.0", headline: "Keep the original, or replace it", items: [
             WhatsNewItem(symbol: "arrow.triangle.2.circlepath", title: "Replace the original",
                          text: "Settings → General: results keep your original (default) or replace it. Hold ⌥ when you click a tool's button or drop on a petal to do the opposite — the button even changes to “Replace original”. Drop on a tool with ⌥ held and its window opens in replace mode (⌥-click then keeps both). The old file goes to the Trash."),
@@ -50,12 +54,12 @@ enum WhatsNew {
         let d = UserDefaults.standard
         let current = (Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String) ?? "0"
         var last = d.string(forKey: "lastSeenVersion") ?? ""
-        d.set(current, forKey: "lastSeenVersion")
         // Version d'avant cette fonction : si l'app a déjà servi (réglages ou vérifications de mise à jour présents), c'est une mise à jour, pas une première installation.
         if last.isEmpty, ["lastUpdateCheck", "fullDiskAccessAsked", "showWelcome", "appearance"].contains(where: { d.object(forKey: $0) != nil }) { last = "1.3.9" }
-        guard !last.isEmpty, last != current else { return }
+        guard !last.isEmpty, last != current else { d.set(current, forKey: "lastSeenVersion"); return }
         let list = pending(since: last, current: current)
         if !list.isEmpty { WhatsNewWindowController.show(list) }
+        d.set(current, forKey: "lastSeenVersion")          // noté une fois la fenêtre demandée (et pas avant, pour ne rien perdre si le lancement échoue)
     }
 }
 
@@ -131,8 +135,12 @@ final class WhatsNewWindowController: NSObject, NSWindowDelegate {
         w.delegate = self
         w.center()
         window = w
+        // juste après une mise à jour l'app se relance en arrière-plan : la fenêtre se place au-dessus de tout un instant pour qu'on la voie
+        w.level = .floating
         NSApp.activate(ignoringOtherApps: true)
         w.makeKeyAndOrderFront(nil)
+        w.orderFrontRegardless()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak w] in w?.level = .normal }
     }
 
     func windowWillClose(_ notification: Notification) { window?.contentView = nil; window = nil }

@@ -24,6 +24,18 @@ final class ToastHostingView: NSHostingView<ToastStack> {
         if let handle = Self.handles(in: self).first(where: { !$0.isHiddenOrHasHiddenAncestor && $0.convert($0.bounds, to: self).contains(p) }) { return handle }
         return super.hitTest(point)
     }
+    /// Balayage de deux doigts vers la droite : fait partir la notification sous le pointeur (voir ToastCenter.feedSwipe). La molette d'une souris ne fait rien.
+    override func scrollWheel(with e: NSEvent) {
+        guard e.phase != [] || e.momentumPhase != [] else { super.scrollWheel(with: e); return }
+        if e.momentumPhase != [] { return }                       // l'inertie qui suit le geste : sans effet
+        let p = convert(e.locationInWindow, from: nil)
+        let point = CGPoint(x: p.x, y: isFlipped ? p.y : bounds.height - p.y)
+        let finger: CGFloat = e.isDirectionInvertedFromDevice ? 1 : -1      // sens du doigt, quel que soit le réglage « défilement naturel »
+        rootView.center.feedSwipe(phase: e.phase, dx: e.scrollingDeltaX * finger, dy: e.scrollingDeltaY * finger, at: point)
+    }
+
+    func debugHandles() -> [NSRect] { Self.handles(in: self).map { $0.convert($0.bounds, to: self) } }
+
     private static func handles(in view: NSView) -> [FileDragView] {
         view.subviews.flatMap { ($0 as? FileDragView).map { [$0] } ?? handles(in: $0) }
     }
