@@ -22,26 +22,48 @@ final class JobQueue {
         var startedAt = Date()
         var samples: [(t: Double, p: Double)] = []      // progression relevée au fil du temps, pour estimer ce qui reste
         var eta = ""
+        var etaLeft: Double?, etaAt = 0.0          // secondes restantes lissées, et l'instant (depuis le début) où elles ont été calculées
         init(title: String, subtitle: String, heavy: Bool, count: Int, work: @escaping StatusWork) {
             self.title = title; self.subtitle = subtitle; self.heavy = heavy; self.count = count; self.work = work
         }
     }
 
-    /// Temps restant d'un travail long, d'après sa vitesse des dernières secondes (ou depuis le début s'il est trop récent).
-    /// Vide tant que l'estimation serait peu fiable (travail court, début, fin) ; arrondi pour ne pas clignoter.
-    static func etaText(samples: [(t: Double, p: Double)]) -> String {
-        guard let first = samples.first, let last = samples.last, last.p > 0.02, last.p < 0.98, last.t >= 6 else { return "" }
+    /// Temps restant brut (en secondes) d'un travail long, d'après sa vitesse des dernières secondes (ou depuis le début s'il est trop récent).
+    /// nil tant que l'estimation serait peu fiable (début du travail, aucune vitesse mesurable).
+    static func etaSeconds(samples: [(t: Double, p: Double)]) -> Double? {
+        guard let first = samples.first, let last = samples.last, last.p > 0.02, last.p < 0.98, last.t >= 6 else { return nil }
         let recent = samples.filter { $0.t >= last.t - 30 }
         let from = (recent.first.map { last.t - $0.t >= 6 } ?? false) ? recent.first! : first
         let rate = (last.p - from.p) / max(last.t - from.t, 0.001)
-        guard rate > 0.00001 else { return "" }
-        let left = (1 - last.p) / rate
-        guard left >= 10 else { return "" }
-        if left < 60 { return "About \(Int((left / 5).rounded()) * 5) s left" }
+        guard rate > 0.00001 else { return nil }
+        return (1 - last.p) / rate
+    }
+
+    /// Texte affiché pour un nombre de secondes restantes : arrondi pour ne pas clignoter.
+    static func etaLabel(seconds left: Double) -> String {
+        if left < 8 { return "Almost done" }
+        if left < 60 { return "About \(max(Int((left / 5).rounded()), 2) * 5) s left" }
         let minutes = max(1, Int((left / 60).rounded()))
         if minutes < 60 { return "About \(minutes) min left" }
         let h = minutes / 60, m = (minutes % 60 / 5) * 5
         return m == 0 ? "About \(h) h left" : "About \(h) h \(m) min left"
+    }
+
+    /// Estimation affichable d'après des relevés isolés (vide tant qu'elle serait peu fiable ou quasi terminée) — sert aux tests.
+    static func etaText(samples: [(t: Double, p: Double)]) -> String {
+        guard let left = etaSeconds(samples: samples), left >= 10 else { return "" }
+        return etaLabel(seconds: left)
+    }
+
+    /// Lisse l'estimation d'un travail en cours : une fois affichée, elle reste (elle décompte entre deux relevés au lieu de disparaître),
+    /// et chaque nouvelle mesure ne la corrige que d'un quart, pour qu'elle ne saute pas de 15 s à 10 s puis revienne à 15 s.
+    private static func smoothedETA(_ e: Entry) -> String {
+        let now = Date().timeIntervalSince(e.startedAt)
+        let counted = e.etaLeft.map { max($0 - (now - e.etaAt), 0) }
+        if let raw = etaSeconds(samples: e.samples) { e.etaLeft = counted.map { $0 * 0.75 + raw * 0.25 } ?? raw }
+        else { e.etaLeft = counted }
+        e.etaAt = now
+        return e.etaLeft.map { etaLabel(seconds: $0) } ?? ""
     }
 
     private var entries: [Entry] = []
@@ -101,7 +123,7 @@ final class JobQueue {
                 let outs = try await e.work({ p in
                     DispatchQueue.main.async {
                         if p >= 0 { e.samples.append((Date().timeIntervalSince(e.startedAt), p)); if e.samples.count > 600 { e.samples.removeFirst(100) } }
-                        let eta = e.cancelled ? "" : Self.etaText(samples: e.samples)
+                        let eta = e.cancelled ? "" : Self.smoothedETA(e)
                         let changed = eta != e.eta
                         e.eta = eta
                         Toast.shared.update(id) {
@@ -139,6 +161,7 @@ final class JobQueue {
                 $0.phase = .done; $0.title = title; $0.subtitle = Self.savedDetail(outs)
                 $0.progress = nil; $0.reveal = outs; $0.cancel = nil; $0.eta = ""
             }
+            Feedback.shared.done()
             if AppSettings.shared.revealAfterSave { NSWorkspace.shared.activateFileViewerSelecting(outs) }
         case .failure(let error):
             if error is CancellationError { Toast.shared.remove(e.id); return }
@@ -147,6 +170,7 @@ final class JobQueue {
                     $0.phase = .done; $0.title = "Saved \(part.outs.count) of \(part.total)"
                     $0.subtitle = "\(part.failed) failed\n\(part.message)"; $0.detail = part.message; $0.progress = nil; $0.reveal = part.outs; $0.cancel = nil; $0.eta = ""
                 }
+                Feedback.shared.done()
                 if AppSettings.shared.revealAfterSave { NSWorkspace.shared.activateFileViewerSelecting(part.outs) }
                 _ = first
                 return

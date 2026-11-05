@@ -187,9 +187,9 @@ struct OrderEditor: View {
                 Text("\(urls.count) \(noun)\(urls.count == 1 ? "" : "s")" + (selection.count > 1 ? " · \(selection.count) selected" : "")).sectionLabel()
                 Spacer()
                 Button("Add…") { Pickers.files(types) { picked in urls.append(contentsOf: picked) } }
-                    .buttonStyle(.plain).font(.system(size: 12, weight: .medium)).foregroundStyle(Theme.orange)
+                    .buttonStyle(WiiPlainButtonStyle()).font(.system(size: 12, weight: .medium)).foregroundStyle(Theme.orange)
                 Button("Remove") { remove() }
-                    .buttonStyle(.plain).font(.system(size: 12, weight: .medium))
+                    .buttonStyle(WiiPlainButtonStyle()).font(.system(size: 12, weight: .medium))
                     .foregroundStyle(selection.isEmpty ? Theme.muted.opacity(0.5) : Theme.orange).disabled(selection.isEmpty)
             }
             OrderList(urls: $urls, selection: $selection, thumbs: thumbs, accepts: accepts)

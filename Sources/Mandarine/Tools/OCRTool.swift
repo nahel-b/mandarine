@@ -24,7 +24,7 @@ struct OCRTool: View {
                     HStack {
                         Text(text.isEmpty ? "No text found" : "\(text.split(whereSeparator: \.isNewline).count) lines · \(text.count) characters").sectionLabel()
                         Spacer()
-                        Toggle("Keep line breaks", isOn: $keepBreaks).toggleStyle(.checkbox).font(.system(size: 12))
+                        Toggle("Keep line breaks", isOn: $keepBreaks).font(.system(size: 12))
                             .onChange(of: keepBreaks) { _ in rebuild() }
                     }
                 }

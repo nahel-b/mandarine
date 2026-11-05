@@ -137,7 +137,7 @@ struct AnnotateTool: View {
                             .foregroundStyle(tool == k ? .white : Theme.text)
                             .frame(maxWidth: .infinity, minHeight: 28)
                             .background(RoundedRectangle(cornerRadius: 7, style: .continuous).fill(tool == k ? Theme.orange : Color.black.opacity(0.07)))
-                            .onTapGesture { tool = k; if k == .image { pickImage() } }
+                            .wiiHoverGrow().onTapGesture { tool = k; if k == .image { pickImage() } }
                     }
                 }
                 HStack {
@@ -158,7 +158,7 @@ struct AnnotateTool: View {
     }
 
     private func smallButton(_ name: String, enabled: Bool, _ a: @escaping () -> Void) -> some View {
-        Button(action: a) { Image(systemName: name).frame(width: 30, height: 22) }.buttonStyle(.plain)
+        Button(action: a) { Image(systemName: name).frame(width: 30, height: 22) }.buttonStyle(WiiPlainButtonStyle())
             .background(RoundedRectangle(cornerRadius: 6).fill(Color.black.opacity(0.07))).opacity(enabled ? 1 : 0.35).disabled(!enabled)
     }
 

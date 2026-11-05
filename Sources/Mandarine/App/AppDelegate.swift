@@ -29,6 +29,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         monitor.start()
         runLaunchArguments()
         if CommandLine.arguments.count < 2 { Updater.shared.start() }
+        if CommandLine.arguments.count < 2 { DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { FullDiskAccess.checkAtLaunch() } }
         if AppSettings.shared.showWelcome && CommandLine.arguments.count < 2 {            // guide d'accueil (réglable dans le guide et les Réglages)
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { HelpWindowController.show() }
         }
@@ -426,6 +427,93 @@ extension AppDelegate {
                 exit(0)
             }
             return
+        }
+        if a.first == "--wiishot", a.count >= 3 {      // test : l'écran Wii qui plonge dans un outil, image par image. Usage : --wiishot <outil> <préfixe> [fichier]
+            let tool = ToolID(rawValue: a[1]) ?? .compress
+            let urls = [a.count > 3 ? URL(fileURLWithPath: a[3]) : HelpAssets.fakeImage]
+            let wc = WheelController.shared, shell = WiiShell.shared
+            wc.model.mode = .tools; wc.model.items = Catalog.items(mode: .tools, urls: urls); wc.model.appear = true
+            wc.model.fileCount = 1; wc.model.infoLines = ["2.4 MB", "4032 × 3024", "JPG"]
+            let idx = wc.model.items.firstIndex { $0.id == tool.rawValue || $0.children.contains { $0.id == tool.rawValue } } ?? 0
+            let tile = WiiLayout.slotRect(idx)
+            let view = ToolRegistry.view(for: tool, urls: urls, close: {})
+            shell.debugPose(tool: view, panel: 1, zoom: 1, tab: 1, content: 1, tile: tile, hasMenu: true)
+            let host = NSHostingView(rootView: WiiShellView(model: wc.model, shell: shell).environment(\.colorScheme, .light))
+            let win = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 1000, height: 800), styleMask: [.borderless], backing: .buffered, defer: false)
+            win.contentView = host; win.appearance = NSAppearance(named: .aqua); win.backgroundColor = NSColor(white: 0.55, alpha: 1); win.orderBack(nil)
+            let poses: [(String, CGFloat, CGFloat, CGFloat, Double)] = [("1-menu", 0, 0, 0, 0), ("2-zoom", 0, 0.5, 0, 0), ("3-dark", 0.05, 1, 0, 0), ("4-grow", 0.3, 1, 0, 0),
+                                                                        ("5-grow", 0.65, 1, 0, 0), ("6-tab", 1, 1, 0.5, 0), ("7-done", 1, 1, 1, 1)]
+            func capture(_ i: Int) {
+                guard i < poses.count else { exit(0) }
+                let q = poses[i]
+                shell.debugPose(tool: view, panel: q.1, zoom: q.2, tab: q.3, content: q.4, tile: tile, hasMenu: true)
+                shell.pointer.point = CGPoint(x: 420, y: 330); shell.pointer.closed = i % 2 == 0
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                    let st = shell.stage
+                    print(q.0, "natural", shell.naturalSize, "stage", st)
+                    host.frame = NSRect(origin: .zero, size: st); win.setContentSize(st)
+                    host.layoutSubtreeIfNeeded()
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                        if let rep = host.bitmapImageRepForCachingDisplay(in: host.bounds) {
+                            host.cacheDisplay(in: host.bounds, to: rep)
+                            try? rep.representation(using: .png, properties: [:])?.write(to: URL(fileURLWithPath: a[2] + q.0 + ".png"))
+                        }
+                        capture(i + 1)
+                    }
+                }
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { capture(0) }
+            return
+        }
+        if a.first == "--wiiflow", a.count >= 3 {      // test : le vrai parcours Wii (dépôt simulé, zoom, outil, retour, sortie). Usage : MANDARINE_APPEARANCE=wii --wiiflow <outil> <préfixe>
+            let tool = ToolID(rawValue: a[1]) ?? .compress
+            let urls = [HelpAssets.fakeImage]
+            let wc = WheelController.shared, shell = WiiShell.shared
+            wc.show(mode: .tools, urls: urls, at: NSPoint(x: (NSScreen.main?.frame.midX ?? 800), y: (NSScreen.main?.frame.midY ?? 500)))
+            func grab(_ name: String) {
+                guard let v = shell.debugContentView, let rep = v.bitmapImageRepForCachingDisplay(in: v.bounds) else { print(name, "(pas de fenêtre)"); return }
+                v.cacheDisplay(in: v.bounds, to: rep)
+                try? rep.representation(using: .png, properties: [:])?.write(to: URL(fileURLWithPath: a[2] + name + ".png"))
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
+                guard let idx = wc.model.items.firstIndex(where: { $0.id == tool.rawValue || $0.children.contains { $0.id == tool.rawValue } }) else { print("outil absent"); exit(1) }
+                wc.model.hover = idx
+                if let c = wc.model.items[idx].children.firstIndex(where: { $0.id == tool.rawValue }) { wc.model.hoverChild = c }
+                print("drop →", wc.drop(), "shell ouvert :", shell.isOpen)
+                for (i, t) in [0.12, 0.3, 0.45, 0.6, 0.8, 1.0, 1.5, 2.8].enumerated() {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + t) { grab("a\(i)") }
+                }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 3.2) {
+                    print("interactif :", shell.interactive, "taille :", shell.naturalSize)
+                    shell.backToMenu()
+                    for (i, t) in [0.2, 0.45, 0.7, 2.0].enumerated() { DispatchQueue.main.asyncAfter(deadline: .now() + t) { grab("b\(i)") } }
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 2.4) {
+                        print("après retour : interactif menu =", wc.model.wiiInteractive, "taille avant réouverture", shell.naturalSize)
+                        wc.model.hover = idx; wc.model.hoverChild = nil
+                        shell.chooseHovered()
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                            grab("c0"); print("2e ouverture, interactif :", shell.interactive, "taille :", shell.naturalSize)
+                            shell.finish()
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.7) { print("fermé :", !shell.isOpen); exit(0) }
+                        }
+                    }
+                }
+            }
+            return
+        }
+        if a.first == "--bgedit", a.count >= 3, #available(macOS 14.0, *) {      // test : gomme et pinceau sur le masque. Usage : --bgedit image sortie.png
+            do {
+                let (cg, _) = try ImageEngine.load(URL(fileURLWithPath: a[1]), maxSide: 800)
+                let s = try BGSession(cg)
+                var o = BGOptions(); o.fill = .color; o.color = NSColor.systemTeal
+                o.edits = [BGStroke(points: [CGPoint(x: 0.1, y: 0.1), CGPoint(x: 0.9, y: 0.12)], radius: 0.05, restore: true),      // pinceau en haut : remet l'image
+                           BGStroke(points: [CGPoint(x: 0.5, y: 0.45), CGPoint(x: 0.5, y: 0.7)], radius: 0.06, restore: false)]      // gomme au centre
+                if a.count > 3 { o.edits = [] }                                                           // 4ᵉ argument : sans retouche, pour comparer
+                let img = try s.render(o)
+                try ImageEngine.write(img, properties: [:], to: URL(fileURLWithPath: a[2]), ext: "png", quality: 1)
+                print("ok", img.width, img.height)
+            } catch { print("ÉCHEC", error.localizedDescription) }
+            exit(0)
         }
         if a.first == "--etatest" {      // test : estimation du temps restant sur des relevés fictifs
             func eta(_ label: String, _ s: [(t: Double, p: Double)]) { print(label, "→", JobQueue.etaText(samples: s).isEmpty ? "(rien)" : JobQueue.etaText(samples: s)) }

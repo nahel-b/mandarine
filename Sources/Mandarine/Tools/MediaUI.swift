@@ -194,6 +194,7 @@ struct TimeRangeSelector<Content: View>: View {
     @State private var grabOffset: CGFloat = 0
     @State private var lastStart = CGPoint(x: -1, y: -1)       // détecte un nouveau glissement même si « onEnded » n'a pas été appelé
     @State private var lastEvent = Date.distantPast
+    @State private var pendingClick = false        // le geste n'a pas encore bougé : si on relâche ainsi, c'est un simple clic (on place la tête de lecture)
     private let space = "timeRangeSelector"
     private let minLen = 0.05
     private let hw: CGFloat = 14           // largeur d'une barre
@@ -223,14 +224,20 @@ struct TimeRangeSelector<Content: View>: View {
             .coordinateSpace(name: space)
             .gesture(DragGesture(minimumDistance: 0, coordinateSpace: .named(space))
                 .onChanged { v in drag(v, track: track, x0: x0, x1: x1) }
-                .onEnded { _ in mode = nil })
+                .onEnded { v in
+                    // un clic sans déplacement, dans la sélection ou à côté : la tête de lecture se place là où l'on a cliqué
+                    if pendingClick, duration > 0 { onScrub?(min(max(0, Double((v.location.x - hw) / track) * duration), duration)) }
+                    pendingClick = false; mode = nil
+                })
         }
     }
 
     private func drag(_ v: DragGesture.Value, track: CGFloat, x0: CGFloat, x1: CGFloat) {
         let t = { (x: CGFloat) in min(max(0, Double((x - hw) / track) * duration), duration) }
-        // Nouveau glissement (autre point de départ, ou longue pause depuis le dernier évènement) : on repart de zéro.
-        if v.startLocation != lastStart || Date().timeIntervalSince(lastEvent) > 0.4 { mode = nil }
+        // Nouveau glissement : autre point de départ, ou premier évènement d'un appui (déplacement nul) après un silence — « onEnded » n'est pas
+        // toujours appelé. Une simple pause en gardant le bouton enfoncé n'en est pas un : sinon la plage était reprise en cours de route, avec un
+        // déplacement compté deux fois.
+        if v.startLocation != lastStart || (v.translation == .zero && Date().timeIntervalSince(lastEvent) > 0.15) { mode = nil }
         lastStart = v.startLocation; lastEvent = Date()
         if mode == nil {
             let sx = v.startLocation.x, grab: CGFloat = hw + 10
@@ -242,6 +249,12 @@ struct TimeRangeSelector<Content: View>: View {
             // on garde l'écart entre le clic et le bord intérieur de la barre : la barre ne « saute » pas sous la souris
             grabOffset = mode == .start ? sx - x0 : (mode == .end ? sx - x1 : 0)
             initial = (start, end)
+            // Dans la sélection ou à côté des barres, on attend un vrai glissement : un simple clic ne déplace rien (et ne remet pas la lecture au début)
+            pendingClick = mode == .move || !((sx >= x0 - grab && sx <= x0 + 2) || (sx >= x1 - 2 && sx <= x1 + grab))
+        }
+        if pendingClick {
+            guard hypot(v.translation.width, v.translation.height) > 4 else { return }
+            pendingClick = false
         }
         switch mode {
         case .start:
@@ -281,9 +294,9 @@ struct FrameStepRow: View {
     var showPlay = true
     var body: some View {
         HStack(spacing: 14) {
-            Button { player.step(-1) } label: { Image(systemName: "backward.frame") }.buttonStyle(.plain)
-            if showPlay { Button { player.toggle() } label: { Image(systemName: player.isPlaying ? "pause.fill" : "play.fill") }.buttonStyle(.plain) }
-            Button { player.step(1) } label: { Image(systemName: "forward.frame") }.buttonStyle(.plain)
+            Button { player.step(-1) } label: { Image(systemName: "backward.frame") }.buttonStyle(WiiPlainButtonStyle())
+            if showPlay { Button { player.toggle() } label: { Image(systemName: player.isPlaying ? "pause.fill" : "play.fill") }.buttonStyle(WiiPlainButtonStyle()) }
+            Button { player.step(1) } label: { Image(systemName: "forward.frame") }.buttonStyle(WiiPlainButtonStyle())
             Spacer()
             Text("\(timecode(player.time)) / \(timecode(player.duration))").font(.system(size: 11).monospacedDigit()).foregroundStyle(Theme.muted)
         }.foregroundStyle(Theme.text.opacity(0.8))

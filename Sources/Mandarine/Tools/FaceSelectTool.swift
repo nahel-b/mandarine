@@ -89,7 +89,7 @@ struct FaceSelectTool: View {
                     .opacity(on ? 1 : 0.7)
                 Text(c.files.count == 1 ? "1 file" : "\(c.files.count) files").font(.system(size: 10).monospacedDigit()).foregroundStyle(Theme.muted)
             }.contentShape(Rectangle())
-        }.buttonStyle(.plain)
+        }.buttonStyle(WiiPlainButtonStyle())
     }
 
     // MARK: Étapes

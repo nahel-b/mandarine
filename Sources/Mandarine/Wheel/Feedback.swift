@@ -14,6 +14,8 @@ final class Feedback {
     // sons du style « Wii » : survol, relâchement, ouverture
     private var wiiHover: [AVAudioPlayer] = [], wiiDrop: [AVAudioPlayer] = [], wiiOpen: [AVAudioPlayer] = []
     private var wiiHoverNext = 0
+    private var wiiTool: [AVAudioPlayer] = [], wiiDoneP: [AVAudioPlayer] = [], wiiCloseP: [AVAudioPlayer] = [], wiiBtnHoverP: [AVAudioPlayer] = [], wiiPressP: [AVAudioPlayer] = [], wiiReleaseP: [AVAudioPlayer] = [], wiiSlideP: [AVAudioPlayer] = []
+    private var lastSlide = Date.distantPast, lastBtnHover = Date.distantPast
     private var isWii: Bool { AppSettings.shared.appearance == .wii }
 
     private init() {
@@ -30,6 +32,18 @@ final class Feedback {
             return (0..<n).compactMap { _ in (try? AVAudioPlayer(data: d)).map { $0.volume = volume; $0.prepareToPlay(); return $0 } }
         }
         wiiHover = pool("WiiHover.mp3", 4, 0.6); wiiDrop = pool("WiiDrop.mp3", 2, 0.7); wiiOpen = pool("WiiOpen.mp3", 2, 0.28)
+        // Écran Wii : ouverture d'un outil (fichier fourni), puis clic, relâchement et curseur qui glisse sur les réglages des outils (synthétisés, sauf fichier WiiClick/WiiRelease/WiiSlide)
+        wiiTool = pool("WiiTool.mp3", 2, 0.6)
+        wiiDoneP = pool("WiiDone.mp3", 2, 0.6)
+        wiiCloseP = pool("WiiClose.mp3", 2, 0.6)
+        wiiBtnHoverP = pool("WiiButtonHover.mp3", 3, 0.5)
+        func tone(_ names: [String], _ freqs: [(Double, Double)], _ dur: Double, _ decay: Double, _ n: Int, _ volume: Float) -> [AVAudioPlayer] {
+            let d = Feedback.loadSound(names) ?? Feedback.synthesized(freqs, duration: dur, decay: decay)
+            return (0..<n).compactMap { _ in (try? AVAudioPlayer(data: d)).map { $0.volume = volume; $0.prepareToPlay(); return $0 } }
+        }
+        wiiPressP = tone(["WiiClick.mp3", "WiiClick.wav"], [(1150, 0.65), (2300, 0.35)], 0.07, 55, 3, 0.6)
+        wiiReleaseP = tone(["WiiRelease.mp3", "WiiRelease.wav"], [(1750, 0.65), (3500, 0.35)], 0.05, 85, 3, 0.32)
+        wiiSlideP = tone(["WiiSlide.mp3", "WiiSlide.wav"], [(2700, 1.0)], 0.025, 170, 4, 0.22)
         if let d = Feedback.loadSound(["DropSound.mp3", "DropSound.wav"]) {
             for _ in 0..<2 { if let p = try? AVAudioPlayer(data: d) { p.volume = 0.6; p.prepareToPlay(); dropPlayers.append(p) } }
         }
@@ -46,6 +60,35 @@ final class Feedback {
         dropNext += 1
         p.currentTime = 0
         p.play()
+    }
+
+    private func playFirst(_ pool: [AVAudioPlayer]) {
+        guard let p = pool.first(where: { !$0.isPlaying }) ?? pool.first else { return }
+        p.currentTime = 0; p.play()
+    }
+
+    /// Ouverture d'un outil dans l'écran Wii.
+    func toolOpen() {
+        NSHapticFeedbackManager.defaultPerformer.perform(.levelChange, performanceTime: .now)
+        if wiiTool.isEmpty { drop() } else { playFirst(wiiTool) }
+    }
+    /// Retour de l'outil à l'accueil (« Wii Menu ») ou fermeture de l'écran.
+    func wiiClose() { playFirst(wiiCloseP) }
+    /// Le pointeur arrive sur un bouton ou un choix d'un outil.
+    func wiiButtonHover() {
+        guard Date().timeIntervalSince(lastBtnHover) > 0.06 else { return }
+        lastBtnHover = Date(); playFirst(wiiBtnHoverP)
+    }
+
+    /// Un travail s'est terminé avec succès (style Wii).
+    func done() { if isWii { playFirst(wiiDoneP) } }
+
+    /// Appui sur un élément d'un outil (bouton, case, curseur…), relâchement, et déplacement d'un curseur ou d'une poignée.
+    func wiiPress() { NSHapticFeedbackManager.defaultPerformer.perform(.alignment, performanceTime: .now); playFirst(wiiPressP) }
+    func wiiRelease() { playFirst(wiiReleaseP) }
+    func wiiSlide() {
+        guard Date().timeIntervalSince(lastSlide) > 0.045 else { return }
+        lastSlide = Date(); playFirst(wiiSlideP)
     }
 
     /// Apparition de la roue / de l'écran : son d'ouverture en style Wii, sinon le « tick » habituel.
@@ -90,14 +133,16 @@ final class Feedback {
         return nil
     }
 
-    /// WAV mono 16 bits, 44,1 kHz : deux sinusoïdes très brèves à décroissance exponentielle.
-    private static func synthesizedTick() -> Data {
-        let rate = 44100, n = Int(Double(rate) * 0.05)
+    private static func synthesizedTick() -> Data { synthesized([(1900, 0.7), (3800, 0.3)], duration: 0.05, decay: 90) }
+
+    /// WAV mono 16 bits, 44,1 kHz : quelques sinusoïdes (fréquence, poids) très brèves à décroissance exponentielle.
+    static func synthesized(_ tones: [(Double, Double)], duration: Double, decay: Double) -> Data {
+        let rate = 44100, n = Int(Double(rate) * duration)
         var pcm = [Int16](repeating: 0, count: n)
         for i in 0..<n {
             let t = Double(i) / Double(rate)
-            let env = exp(-t * 90)
-            let v = (sin(2 * .pi * 1900 * t) * 0.7 + sin(2 * .pi * 3800 * t) * 0.3) * env
+            let env = exp(-t * decay)
+            let v = tones.reduce(0.0) { $0 + sin(2 * .pi * $1.0 * t) * $1.1 } * env
             pcm[i] = Int16(max(-1, min(1, v)) * 0.6 * Double(Int16.max))
         }
         func le32(_ v: Int) -> [UInt8] { (0..<4).map { UInt8((v >> (8 * $0)) & 0xFF) } }

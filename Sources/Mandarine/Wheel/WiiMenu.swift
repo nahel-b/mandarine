@@ -340,25 +340,60 @@ private struct WiiTile: View {
 }
 
 // MARK: Curseur « main »
-private struct WiiHand: View {
+/// Le pointeur de la télécommande : main qui montre du doigt (badge « 1 »), ou poing fermé quand on appuie / attrape.
+struct WiiHand: View {
+    var closed = false
     var body: some View {
         ZStack {
-            Image(systemName: "hand.point.up.left.fill").font(.system(size: 44)).foregroundStyle(Color(white: 0.45)).blur(radius: 0.6)
-            Image(systemName: "hand.point.up.left.fill").font(.system(size: 40)).foregroundStyle(
-                LinearGradient(colors: [.white, Color(white: 0.9)], startPoint: .top, endPoint: .bottom))
+            pointing.opacity(closed ? 0 : 1).scaleEffect(closed ? 0.8 : 1)
+            fist.opacity(closed ? 1 : 0).scaleEffect(closed ? 1 : 1.15)
             ZStack {
                 Circle().fill(Color(red: 0.34, green: 0.72, blue: 0.93))
                 Circle().strokeBorder(Color.white.opacity(0.9), lineWidth: 1)
                 Text("1").font(.system(size: 10, weight: .heavy, design: .rounded)).foregroundStyle(.white)
-            }.frame(width: 17, height: 17).offset(x: 6, y: 13)
+            }.frame(width: 17, height: 17).offset(x: closed ? 12 : 6, y: closed ? 14 : 13)
         }
+        .frame(width: 46, height: 46)
         .shadow(color: .black.opacity(0.3), radius: 2, y: 1)
+        .animation(.spring(response: 0.16, dampingFraction: 0.7), value: closed)
+    }
+
+    private var pointing: some View {
+        ZStack {
+            Image(systemName: "hand.point.up.left.fill").font(.system(size: 44)).foregroundStyle(Color(white: 0.45)).blur(radius: 0.6)
+            Image(systemName: "hand.point.up.left.fill").font(.system(size: 40)).foregroundStyle(
+                LinearGradient(colors: [.white, Color(white: 0.9)], startPoint: .top, endPoint: .bottom))
+        }
+    }
+
+    /// Poing de gant blanc, vu de face : quatre doigts repliés côte à côte, pouce en travers par-dessus, poignet. Contours nets et ombrage doux
+    /// pour rester lisible sur un fond blanc.
+    private var fist: some View {
+        Canvas { ctx, _ in
+            let ink = Color(white: 0.30)
+            let glove = Gradient(colors: [.white, Color(white: 0.80)])
+            func part(_ p: Path, lineWidth: CGFloat = 1.7) {
+                ctx.fill(p, with: .linearGradient(glove, startPoint: CGPoint(x: 20, y: 6), endPoint: CGPoint(x: 20, y: 38)))
+                ctx.stroke(p, with: .color(ink), style: StrokeStyle(lineWidth: lineWidth, lineJoin: .round))
+            }
+            part(Path(roundedRect: CGRect(x: 13, y: 31, width: 19, height: 8), cornerRadius: 3))                                 // poignet
+            part(Path(roundedRect: CGRect(x: 5, y: 14, width: 31, height: 21), cornerRadius: 9))                                  // poing
+            for i in 0..<4 {                                                                                                      // doigts repliés
+                part(Path(roundedRect: CGRect(x: 6 + CGFloat(i) * 7.4, y: 7, width: 7.6, height: 13), cornerRadius: 3.8), lineWidth: 1.5)
+            }
+            var thumb = Path(roundedRect: CGRect(x: 2.5, y: 22, width: 20, height: 9.5), cornerRadius: 4.7)                      // pouce
+            thumb = thumb.applying(CGAffineTransform(translationX: -12.5, y: -26.5).rotated(by: -0.2).translatedBy(x: 12.5, y: 26.5))
+            part(thumb, lineWidth: 1.6)
+        }
+        .frame(width: 40, height: 40)
     }
 }
 
 // MARK: Écran
 struct WiiMenuView: View {
     @ObservedObject var model: WheelModel
+    var onChoose: (() -> Void)? = nil           // clic sur une case (écran resté ouvert après un dépôt)
+    var onClose: (() -> Void)? = nil            // clic sur le bouton rond de gauche
     @ObservedObject private var settings = AppSettings.shared
     private let blue = Color(red: 0.17, green: 0.63, blue: 0.88)
     private let ink = Color(red: 0.56, green: 0.58, blue: 0.60)
@@ -395,6 +430,11 @@ struct WiiMenuView: View {
             if let c = model.cursor { WiiHand().position(x: c.x + 15, y: c.y + 18).allowsHitTesting(false) }
         }
         .frame(width: WiiLayout.size.width, height: WiiLayout.size.height)
+        .overlay { if model.wiiInteractive { interaction } }
+        // caméra : zoom sur la case choisie, l'écran s'assombrit (le panneau de l'outil en sort ensuite)
+        .scaleEffect(1 + WiiShell.zoomAmount * model.wiiZoom, anchor: model.wiiAnchor)
+        .overlay(Color.black.opacity(Double(model.wiiDim)).allowsHitTesting(false))
+        .overlay(WiiCRT())                                                  // même look de téléviseur à tube que les outils
         .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: 24, style: .continuous).strokeBorder(Color.white.opacity(0.85), lineWidth: 2))
         .scaleEffect(WiiLayout.scale, anchor: .topLeading)
@@ -405,12 +445,27 @@ struct WiiMenuView: View {
         .environment(\.colorScheme, .light)
     }
 
+    /// Écran resté ouvert : la grille se survole et se clique comme avec la télécommande.
+    private var interaction: some View {
+        Color.clear.contentShape(Rectangle())
+            .onContinuousHover { phase in
+                switch phase {
+                case .active(let p): WheelController.shared.wiiHover(at: p); model.cursor = nil
+                case .ended: WheelController.shared.wiiExited()
+                }
+            }
+            .gesture(SpatialTapGesture().onEnded { v in
+                let barCenter = CGPoint(x: 62, y: WiiLayout.barTop + 46)
+                if hypot(v.location.x - barCenter.x, v.location.y - barCenter.y) < 30 { onClose?(); return }
+                WheelController.shared.wiiHover(at: v.location); model.cursor = nil
+                if model.wiiNav { model.wiiPage = (model.wiiPage + 1) % WiiLayout.pageCount(model.items.count); model.hover = nil }
+                else { onChoose?() }
+            })
+    }
+
     private var background: some View {
         ZStack {
             LinearGradient(colors: [Color(red: 0.97, green: 0.97, blue: 0.98), Color(red: 0.90, green: 0.91, blue: 0.93)], startPoint: .top, endPoint: .bottom)
-            Canvas { ctx, size in
-                for y in stride(from: 0, to: size.height, by: 3) { ctx.fill(Path(CGRect(x: 0, y: y, width: size.width, height: 1)), with: .color(Color.black.opacity(0.025))) }
-            }
         }
     }
 

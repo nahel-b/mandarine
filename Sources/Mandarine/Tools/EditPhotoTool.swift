@@ -167,7 +167,7 @@ struct EditPhotoTool: View {
             Text(String(format: "%@%.\(p.decimals)f%@", (values[p.id] ?? 0) > 0 && p.range.lowerBound < 0 ? "+" : "", values[p.id] ?? p.neutral, p.unit))
                 .font(.system(size: 11).monospacedDigit()).foregroundStyle(Theme.muted).frame(width: 56, alignment: .trailing)
             Button { values[p.id] = p.neutral; refresh() } label: { Image(systemName: "arrow.counterclockwise") }
-                .buttonStyle(.plain).foregroundStyle(Theme.muted).opacity((values[p.id] ?? p.neutral) == p.neutral ? 0.3 : 1)
+                .buttonStyle(WiiPlainButtonStyle()).foregroundStyle(Theme.muted).opacity((values[p.id] ?? p.neutral) == p.neutral ? 0.3 : 1)
         }
     }
 

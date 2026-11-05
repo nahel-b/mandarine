@@ -9,10 +9,15 @@ struct ToolShell<Content: View, Footer: View>: View {
     @ViewBuilder var content: () -> Content
     @ViewBuilder var footer: () -> Footer
     @ObservedObject private var settings = AppSettings.shared
+    @Environment(\.wiiHost) private var wiiHost
 
     private var style: ToolStyle { ToolStyle.current }
 
     @ViewBuilder var body: some View {
+        if let h = wiiHost { WiiToolFrame(host: h, title: title, content: inner, footer: footer()) } else { framedBody }
+    }
+
+    @ViewBuilder private var framedBody: some View {
         let st = style
         switch st {
         case .rail: railLayout
@@ -566,7 +571,7 @@ final class ToolWindow: NSWindow {
 
 final class ToolWindowController: NSObject, NSWindowDelegate {
     private static var open: [ToolWindowController] = []
-    static var hasOpenWindows: Bool { !open.isEmpty }
+    static var hasOpenWindows: Bool { !open.isEmpty || WiiShell.shared.isOpen }
     private(set) var window: ToolWindow!
 
     private static var lastOpened: (key: String, date: Date)?
@@ -576,11 +581,18 @@ final class ToolWindowController: NSObject, NSWindowDelegate {
         let key = id.rawValue + "|" + urls.map(\.absoluteString).joined(separator: "|")
         if let last = lastOpened, last.key == key, Date().timeIntervalSince(last.date) < 1.5 { return }
         lastOpened = (key, Date())
-        present { close in ToolRegistry.view(for: id, urls: urls, close: close) }
+        // Style Wii : les outils à fenêtre s'ouvrent dans l'écran Wii ; ceux qui travaillent aussitôt gardent leur mécanisme
+        if AppSettings.shared.appearance == .wii && !ToolRegistry.isDirect(id) { WiiShell.shared.present { close in ToolRegistry.view(for: id, urls: urls, close: close) }; return }
+        presentWindow { close in ToolRegistry.view(for: id, urls: urls, close: close) }
     }
 
-    /// Fenêtre d'outil avec un contenu fourni par l'appelant (utilisé quand l'outil a besoin de données déjà lues).
+    /// Fenêtre d'outil avec un contenu fourni par l'appelant. En style Wii, elle s'ouvre dans l'écran Wii.
     static func present(_ make: (@escaping () -> Void) -> AnyView) {
+        if AppSettings.shared.appearance == .wii { WiiShell.shared.present(make); return }
+        presentWindow(make)
+    }
+
+    private static func presentWindow(_ make: (@escaping () -> Void) -> AnyView) {
         let c = ToolWindowController()
         let close: () -> Void = { [weak c] in c?.close() }
         let root = make(close)

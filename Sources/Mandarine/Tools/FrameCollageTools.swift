@@ -118,7 +118,7 @@ struct FrameImageTool: View {
                         HStack(spacing: 6) {
                             ForEach(0..<BGPresets.gradients.count, id: \.self) { i in swatch(.gradient(i)) { LinearGradient(colors: BGPresets.gradients[i], startPoint: .topLeading, endPoint: .bottomTrailing) } }
                             Button { pickImage() } label: { Image(systemName: "photo").frame(width: 24, height: 24) }
-                                .buttonStyle(.plain)
+                                .buttonStyle(WiiPlainButtonStyle())
                         }
                         HStack(spacing: 6) {
                             ForEach(0..<BGPresets.colors.count, id: \.self) { i in swatch(.color(i)) { BGPresets.colors[i] } }
@@ -144,7 +144,7 @@ struct FrameImageTool: View {
     private func swatch<S: View>(_ c: BGChoice, @ViewBuilder _ fill: () -> S) -> some View {
         fill().frame(width: 24, height: 24).clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
             .overlay(RoundedRectangle(cornerRadius: 6, style: .continuous).stroke(p.bg == c && p.customColor == nil ? Theme.orange : Color.black.opacity(0.1), lineWidth: p.bg == c && p.customColor == nil ? 2 : 1))
-            .onTapGesture { p.bg = c; p.customColor = nil }
+            .wiiHoverGrow().onTapGesture { p.bg = c; p.customColor = nil }
     }
 
     private func slider(_ title: String, _ v: Binding<Double>, _ r: ClosedRange<Double>, _ f: String, _ display: @escaping (Double) -> Int) -> some View {

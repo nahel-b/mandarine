@@ -102,8 +102,8 @@ struct PlaylistTool: View {
                 HStack {
                     Text("\(selected.count) of \(list.entries.count) selected" + (totalDuration > 0 ? " · \(WheelInfo.duration(totalDuration))" : "")).sectionLabel()
                     Spacer()
-                    Button("All") { selected = Set(list.entries.map(\.id)) }.buttonStyle(.plain).font(.system(size: 12, weight: .medium)).foregroundStyle(Theme.orange)
-                    Button("None") { selected = [] }.buttonStyle(.plain).font(.system(size: 12, weight: .medium)).foregroundStyle(Theme.orange)
+                    Button("All") { selected = Set(list.entries.map(\.id)) }.buttonStyle(WiiPlainButtonStyle()).font(.system(size: 12, weight: .medium)).foregroundStyle(Theme.orange)
+                    Button("None") { selected = [] }.buttonStyle(WiiPlainButtonStyle()).font(.system(size: 12, weight: .medium)).foregroundStyle(Theme.orange)
                 }
                 ScrollView {
                     LazyVStack(spacing: 0) {
@@ -120,7 +120,7 @@ struct PlaylistTool: View {
                                     if let d = e.duration { Text(WheelInfo.duration(d)).font(.system(size: 11).monospacedDigit()).foregroundStyle(Theme.muted) }
                                 }
                                 .padding(.vertical, 5).padding(.horizontal, 8).contentShape(Rectangle())
-                            }.buttonStyle(.plain)
+                            }.buttonStyle(WiiPlainButtonStyle())
                         }
                     }
                 }

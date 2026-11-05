@@ -108,7 +108,13 @@ struct PillButtonStyle: ButtonStyle {
     var prominent = false
     @Environment(\.isEnabled) private var enabled
     @Environment(\.toolStyle) private var style
+    @Environment(\.wiiHost) private var wii
     func makeBody(configuration: Configuration) -> some View {
+        // dans l'écran Wii, tout bouton grossit un peu sous le pointeur (les pilules de la barre le font déjà elles-mêmes)
+        styled(configuration).modifier(WiiHoverGrow(active: wii != nil && style != .wii && enabled))
+    }
+
+    @ViewBuilder private func styled(_ configuration: Configuration) -> some View {
         let p = configuration.isPressed
         switch style {
         case .graphite:
@@ -154,12 +160,7 @@ struct PillButtonStyle: ButtonStyle {
                 .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.black, lineWidth: prominent ? 3 : 1))
                 .opacity(enabled ? 1 : 0.4)
         case .wii:
-            configuration.label.font(.system(size: 13, weight: .bold, design: .rounded)).foregroundStyle(prominent ? Color.white : ToolPalette.wiiBlue)
-                .padding(.horizontal, 18).padding(.vertical, 7)
-                .background(Capsule().fill(prominent ? ToolPalette.wiiBlue : Color.white.opacity(p ? 0.8 : 1)))
-                .overlay(Capsule().stroke(ToolPalette.wiiBlue, lineWidth: 2))
-                .shadow(color: ToolPalette.wiiBlue.opacity(0.25), radius: 2, y: 1)
-                .opacity(enabled ? 1 : 0.45)
+            WiiPillButtonBody(label: configuration.label, pressed: p, prominent: prominent)
         case .capsule, .islands:
             configuration.label
                 .font(.system(size: 13, weight: .medium))
@@ -183,7 +184,12 @@ struct PillButtonStyle: ButtonStyle {
 struct PillPicker<T: Hashable>: View {
     let options: [(T, String)]
     @Binding var selection: T
+    @Environment(\.wiiHost) private var wii
     var body: some View {
+        if wii != nil { WiiChoiceGroup(options: options, selection: $selection) } else { classic }
+    }
+
+    private var classic: some View {
         HStack(spacing: 0) {
             ForEach(Array(options.enumerated()), id: \.offset) { _, o in
                 Text(o.1)
@@ -203,5 +209,34 @@ struct PillPicker<T: Hashable>: View {
 extension View {
     func sectionLabel() -> some View {
         self.font(.system(size: 11)).foregroundStyle(Theme.muted)
+    }
+}
+
+/// Petit grossissement sous le pointeur (et le tic de survol), pour les boutons des outils dans l'écran Wii.
+struct WiiHoverGrow: ViewModifier {
+    let active: Bool
+    @State private var hover = false
+    func body(content: Content) -> some View {
+        content
+            .scaleEffect(active && hover ? 1.07 : 1)
+            .animation(.spring(response: 0.2, dampingFraction: 0.68), value: hover)
+            .onHover { hover = $0; if active && $0 { Feedback.shared.wiiButtonHover() } }
+    }
+}
+
+/// Même grossissement sous le pointeur, mais seulement dans l'écran Wii (ailleurs, sans effet).
+struct WiiHoverGrowEnv: ViewModifier {
+    @Environment(\.wiiHost) private var wii
+    func body(content: Content) -> some View { content.modifier(WiiHoverGrow(active: wii != nil)) }
+}
+extension View {
+    /// Petit grossissement et tic de survol quand le pointeur passe dessus, dans l'écran Wii.
+    func wiiHoverGrow() -> some View { modifier(WiiHoverGrowEnv()) }
+}
+
+/// Bouton sans cadre (icône, vignette…) : comme `.plain`, mais il grossit un peu sous le pointeur dans l'écran Wii.
+struct WiiPlainButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label.opacity(configuration.isPressed ? 0.7 : 1).wiiHoverGrow()
     }
 }

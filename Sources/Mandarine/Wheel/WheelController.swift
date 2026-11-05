@@ -66,7 +66,7 @@ final class WheelController {
     var onDismiss: (() -> Void)?
 
     /// Élément réellement ciblé : le sous-pétale s'il y en a un survolé, sinon le pétale (un groupe seul n'est pas déposable).
-    private var targetItem: WheelItem? {
+    var targetItem: WheelItem? {
         guard let h = model.hover, model.items.indices.contains(h) else { return nil }
         let p = model.items[h]
         if let c = model.hoverChild, p.children.indices.contains(c) { return p.children[c] }
@@ -74,6 +74,18 @@ final class WheelController {
     }
 
     var hoveredItemEnabled: Bool { targetItem?.enabled ?? false }
+
+    /// Style Wii et outil à fenêtre : au dépôt on joue le son d'ouverture d'un outil plutôt que celui du dépôt.
+    var hoveredOpensWiiTool: Bool {
+        guard AppSettings.shared.appearance == .wii, case .tool(let id)? = targetItem?.payload else { return false }
+        return !ToolRegistry.isDirect(id)
+    }
+
+    /// Son au relâchement du bouton (voir DragMonitor).
+    func playReleaseSound() {
+        if hoveredOpensWiiTool { Feedback.shared.toolOpen() } else { Feedback.shared.drop() }
+        dropSoundFired = Date()
+    }
 
     func show(mode: WheelMode, urls: [URL], at mouse: NSPoint = NSEvent.mouseLocation) {
         self.urls = urls
@@ -111,7 +123,7 @@ final class WheelController {
             Feedback.shared.tick()
             return
         }
-        if look == .wii { showWii(at: mouse); return }
+        if look == .wii { WiiShell.shared.closeNow(); showWii(at: mouse); return }
         if look.isBubbles { showBubbles(at: mouse); return }
 
         let w = WheelGeometry.size, h = WheelGeometry.size + WheelGeometry.captionHeight
@@ -370,6 +382,16 @@ final class WheelController {
         (0..<12).contains { $0 != slot && WiiLayout.slotRect($0).contains(p) }
     }
 
+    /// Case survolée (ou sous-case), dans le repère de l'écran Wii : de là part le zoom.
+    func hoveredTileRect() -> CGRect {
+        guard let h = model.hover, model.items.indices.contains(h) else { return .zero }
+        let slot = h - model.wiiPage * WiiLayout.perPage(model.items.count)
+        if let c = model.hoverChild, model.items[h].children.indices.contains(c) {
+            return WiiLayout.childRects(parentSlot: slot, count: model.items[h].children.count)[c]
+        }
+        return WiiLayout.slotRect(slot)
+    }
+
     func wiiExited() { model.hover = nil; model.hoverChild = nil; model.cursor = nil; model.wiiNav = false }
 
     func hover(at rel: CGPoint) {
@@ -389,6 +411,18 @@ final class WheelController {
     func drop() -> Bool {
         guard let item = targetItem, item.enabled else { dismiss(); return false }
         let files = urls
+        // Style Wii, outil à fenêtre : l'écran Wii reste, zoome sur la case et devient la fenêtre de l'outil
+        if AppSettings.shared.appearance == .wii, case .tool(let id) = item.payload, !ToolRegistry.isDirect(id) {
+            if Date().timeIntervalSince(dropSoundFired) > 1.5 { Feedback.shared.toolOpen() }
+            let tile = hoveredTileRect()
+            let c = wiiPanel.map { NSPoint(x: $0.frame.midX, y: $0.frame.midY) } ?? NSEvent.mouseLocation
+            wiiNavTimer?.invalidate(); wiiNavTimer = nil
+            wiiPanel?.orderOut(nil)
+            model.wiiNav = false
+            WiiShell.shared.openFromMenu(tool: id, urls: files, tile: tile, center: c)
+            onDismiss?()
+            return true
+        }
         // le son part au relâchement (DragMonitor) ; ici seulement s'il n'a pas déjà été joué
         if Date().timeIntervalSince(dropSoundFired) > 1.5 { Feedback.shared.drop() }
         dismiss()

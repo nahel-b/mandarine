@@ -80,7 +80,7 @@ struct TypeSelectTool: View {
                         HStack(spacing: 6) {
                             Text("Kinds").sectionLabel()
                             ForEach(categories, id: \.1) { name, kind in
-                                Button(name) { toggle(kind) }.buttonStyle(.plain).font(.system(size: 11, weight: .medium))
+                                Button(name) { toggle(kind) }.buttonStyle(WiiPlainButtonStyle()).font(.system(size: 11, weight: .medium))
                                     .padding(.horizontal, 10).padding(.vertical, 4)
                                     .background(Capsule().fill(Color.primary.opacity(0.08)))
                             }
@@ -131,7 +131,7 @@ struct TypeSelectTool: View {
             .foregroundStyle(on ? Color.white : Theme.text)
             .padding(.horizontal, 12).padding(.vertical, 6).frame(maxWidth: .infinity)
             .background(Capsule().fill(on ? Theme.orange : Color.primary.opacity(0.08)))
-        }.buttonStyle(.plain)
+        }.buttonStyle(WiiPlainButtonStyle())
     }
 
     /// Rond de couleur d'une étiquette : sélectionné = bord blanc ; sinon estompé. « No tag » = rond vide.
@@ -147,7 +147,7 @@ struct TypeSelectTool: View {
                 Text(c.tag?.name ?? "No tag").font(.system(size: 10, weight: .medium)).foregroundStyle(Theme.text).lineLimit(1)
                 Text("\(c.count)").font(.system(size: 9).monospacedDigit()).foregroundStyle(Theme.muted)
             }.frame(maxWidth: .infinity).contentShape(Rectangle())
-        }.buttonStyle(.plain)
+        }.buttonStyle(WiiPlainButtonStyle())
     }
 
     private func toggle(_ kind: FileKind) {

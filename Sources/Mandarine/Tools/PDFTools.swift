@@ -75,7 +75,7 @@ struct OrganizePDFTool: View {
                     Text("\(m.pages.count) page\(m.pages.count == 1 ? "" : "s")").sectionLabel()
                     Spacer()
                     Button("Reset Order") { m.pages = (0..<m.doc.pageCount).map { PDFPageItem(sourceIndex: $0) } }
-                        .buttonStyle(.plain).font(.system(size: 11)).foregroundStyle(m.isModified ? Theme.text : Theme.muted.opacity(0.5))
+                        .buttonStyle(WiiPlainButtonStyle()).font(.system(size: 11)).foregroundStyle(m.isModified ? Theme.text : Theme.muted.opacity(0.5))
                         .disabled(!m.isModified)
                 }
                 ScrollView {
@@ -119,7 +119,7 @@ struct OrganizePDFTool: View {
         Button(action: action) {
             Image(systemName: name).font(.system(size: 10, weight: .semibold)).foregroundStyle(.white)
                 .frame(width: 22, height: 22).background(Circle().fill(Color.black.opacity(0.55)))
-        }.buttonStyle(.plain)
+        }.buttonStyle(WiiPlainButtonStyle())
     }
 
     private func save() {

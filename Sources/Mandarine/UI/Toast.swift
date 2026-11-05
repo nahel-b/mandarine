@@ -230,6 +230,7 @@ final class Toast {
     // MARK: Messages simples
 
     func done(_ title: String, subtitle: String = "", reveal: [URL] = [], files: [URL] = []) {
+        Feedback.shared.done()
         add(ToastItem(id: UUID(), phase: .done, title: title, subtitle: subtitle, reveal: reveal, files: files))
     }
 

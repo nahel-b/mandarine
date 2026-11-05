@@ -145,6 +145,10 @@ final class WheelModel: ObservableObject {
     // style « Wii »
     @Published var wiiPage = 0
     @Published var wiiNav = false               // le pointeur est sur la flèche « page suivante »
+    @Published var wiiZoom: CGFloat = 0         // zoom de la caméra sur la case choisie (0 : écran normal, 1 : plongé dans la case)
+    @Published var wiiDim: CGFloat = 0          // l'écran s'assombrit jusqu'au noir (0 : normal, 1 : noir)
+    var wiiAnchor = UnitPoint.center            // point visé par le zoom (la case choisie), dans l'écran Wii
+    @Published var wiiInteractive = false       // l'écran reste affiché après le dépôt : la grille se clique
     @Published var previews: [WheelPreviewItem] = []     // aperçus des fichiers (bulle du centre du menu « bulles »)
     @Published var cursor: CGPoint? = nil       // position du pointeur main (repère de l'écran Wii)
     @Published var fileCount = 1

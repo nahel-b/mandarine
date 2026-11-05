@@ -48,9 +48,9 @@ struct TrimVideoTool: View {
                     timeField("End", $end, nil, { player.duration })
                 }
                 HStack(spacing: 14) {
-                    Button { player.step(-1) } label: { Image(systemName: "backward.frame") }.buttonStyle(.plain)
-                    Button { player.loopRange = start...end; player.toggle() } label: { Image(systemName: player.isPlaying ? "pause.fill" : "play.fill") }.buttonStyle(.plain)
-                    Button { player.step(1) } label: { Image(systemName: "forward.frame") }.buttonStyle(.plain)
+                    Button { player.step(-1) } label: { Image(systemName: "backward.frame") }.buttonStyle(WiiPlainButtonStyle())
+                    Button { player.loopRange = start...end; player.toggle() } label: { Image(systemName: player.isPlaying ? "pause.fill" : "play.fill") }.buttonStyle(WiiPlainButtonStyle())
+                    Button { player.step(1) } label: { Image(systemName: "forward.frame") }.buttonStyle(WiiPlainButtonStyle())
                     Spacer()
                     Text("\(timecode(player.time)) / \(timecode(player.duration))").font(.system(size: 11).monospacedDigit()).foregroundStyle(Theme.muted)
                 }
@@ -151,7 +151,7 @@ struct SpeedVideoTool: View {
                 Slider(value: $speedIdx, in: 0...5, step: 1).controlSize(.small)
                 HStack { ForEach(speeds, id: \.self) { Text(label($0)).font(.system(size: 10)).foregroundStyle(Theme.muted).frame(maxWidth: .infinity) } }
                 HStack {
-                    Button { player.rate = Float(speed); player.toggle() } label: { Image(systemName: player.isPlaying ? "pause.fill" : "play.fill") }.buttonStyle(.plain)
+                    Button { player.rate = Float(speed); player.toggle() } label: { Image(systemName: player.isPlaying ? "pause.fill" : "play.fill") }.buttonStyle(WiiPlainButtonStyle())
                     Spacer()
                     Text("\(timecode(player.time)) / \(timecode(player.duration))").font(.system(size: 11).monospacedDigit()).foregroundStyle(Theme.muted)
                 }
@@ -268,7 +268,7 @@ struct SnapshotsTool: View {
                                 Text(timecode(f.t)).font(.system(size: 9, weight: .bold).monospacedDigit()).foregroundStyle(.white)
                                     .padding(.horizontal, 3).background(Color.black.opacity(0.6)).padding(3)
                                 Button { frames.remove(at: i) } label: { Image(systemName: "xmark").font(.system(size: 8, weight: .bold)).foregroundStyle(.white).padding(4).background(Circle().fill(.black.opacity(0.6))) }
-                                    .buttonStyle(.plain).frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing).padding(3)
+                                    .buttonStyle(WiiPlainButtonStyle()).frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing).padding(3)
                             }.clipShape(RoundedRectangle(cornerRadius: 8))
                         }
                     }
@@ -277,7 +277,7 @@ struct SnapshotsTool: View {
         } footer: {
             Button(frames.count == 1 ? "Save 1 Frame" : "Save \(frames.count) Frames") { save() }.buttonStyle(PillButtonStyle()).disabled(frames.isEmpty)
         }
-        .task { await player.load(urls[0]); add() }
+        .task { await player.load(urls[0]) }          // aucune image n'est choisie d'avance : on les ajoute soi-même
         .onReceive(player.$time) { pos = $0 }
     }
 

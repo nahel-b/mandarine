@@ -60,7 +60,7 @@ struct NormalizeTool: View {
                     GeometryReader { g in Rectangle().fill(Color.white.opacity(0.9)).frame(width: 2).offset(x: g.size.width * CGFloat(player.time / max(player.duration, 0.01))) }
                 }
                 HStack {
-                    Button { player.toggle() } label: { Image(systemName: player.isPlaying ? "pause.fill" : "play.fill") }.buttonStyle(.plain)
+                    Button { player.toggle() } label: { Image(systemName: player.isPlaying ? "pause.fill" : "play.fill") }.buttonStyle(WiiPlainButtonStyle())
                     Spacer()
                     Text("\(timecode(player.time)) / \(timecode(player.duration))").font(.system(size: 11).monospacedDigit()).foregroundStyle(Theme.muted)
                 }
@@ -173,13 +173,16 @@ struct TrimAudioTool: View {
     @State private var end = 1.0
     @State private var trimSilence = false
     @State private var dur = 0.0            // durée réelle (décodage ffmpeg) = échelle commune affichage / lecture / coupe
+    @State private var cursorSet = false    // la tête de lecture a été placée (clic) : on l'affiche même à l'arrêt
+    @AppStorage("trimAudioKeepGoing") private var keepGoing = false
+    @State private var made = 0             // extraits déjà enregistrés pendant cette session
 
     var body: some View {
         ToolShell(title: "Trim Audio", close: close) {
             VStack(alignment: .leading, spacing: 10) {
-                HStack { Text("Drag the ends to trim").sectionLabel(); Spacer(); Text("\(timecode(end - start)) selected").sectionLabel() }
+                HStack { Text("Drag the ends to trim · click to place the cursor").sectionLabel(); Spacer(); Text("\(timecode(end - start)) selected").sectionLabel() }
                 if dur > 0 {
-                    TimeRangeSelector(duration: dur, start: $start, end: $end, playhead: player.isPlaying ? player.time : nil, onScrub: { player.seek($0) }) {
+                    TimeRangeSelector(duration: dur, start: $start, end: $end, playhead: (player.isPlaying || cursorSet) ? player.time : nil, onScrub: { cursorSet = true; player.seek($0) }) {
                         ZStack { Theme.orange.opacity(0.08); WaveformView(peaks: peaks) }
                     }.frame(height: 100)
                 } else { Color.clear.frame(height: 100) }
@@ -189,11 +192,15 @@ struct TrimAudioTool: View {
                     Text("End \(timecode(end))").font(.system(size: 11).monospacedDigit()).foregroundStyle(Theme.muted)
                 }
                 Toggle("Trim silent ends automatically", isOn: $trimSilence).onChange(of: trimSilence) { _ in autoTrim() }
+                Toggle("Keep trimming: stay here to cut another part", isOn: $keepGoing)
+                if made > 0 {
+                    Label(made == 1 ? "1 clip saved" : "\(made) clips saved", systemImage: "checkmark.circle.fill").font(.system(size: 11)).foregroundStyle(Theme.muted)
+                }
                 Button { player.loopRange = start...end; player.toggle() } label: {
                     Label(player.isPlaying ? "Pause" : "Play Selected Range", systemImage: player.isPlaying ? "pause.fill" : "play.fill")
                 }.buttonStyle(PillButtonStyle()).frame(maxWidth: .infinity, alignment: .trailing)
             }.frame(width: 420)
-        } footer: { Button("Apply") { apply() }.buttonStyle(PillButtonStyle()) }
+        } footer: { Button(keepGoing ? "Apply & Keep Going" : "Apply") { apply() }.buttonStyle(PillButtonStyle()) }
         .task {
             let w = await WaveformLoader.peaks(urls[0], count: 90)
             peaks = w.peaks
@@ -213,7 +220,12 @@ struct TrimAudioTool: View {
 
     private func apply() {
         let (s, e, files) = (start, min(end, dur), urls)
-        close()
+        if keepGoing {
+            // on reste dans l'outil : l'extrait part en travail, la sélection repasse après lui pour couper le suivant
+            made += 1
+            player.pause(); cursorSet = false
+            if e < dur - 0.05 { start = e; end = dur; player.seek(e) } else { start = 0; end = dur; player.seek(0) }
+        } else { close() }
         Dispatcher.job("Trimming audio…") { progress in
             var outs: [URL] = []
             for f in files {

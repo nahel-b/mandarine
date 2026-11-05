@@ -162,7 +162,7 @@ struct MetadataTool: View {
                                         TextField("", text: $rows[i].value).textFieldStyle(.plain).font(.system(size: 12))
                                             .padding(.horizontal, 6).padding(.vertical, 3)
                                             .background(RoundedRectangle(cornerRadius: 5).fill(Color.black.opacity(rows[i].value != rows[i].original ? 0.1 : 0.05)))
-                                        Button { rows[i].removed = true } label: { Image(systemName: "minus.circle").foregroundStyle(Theme.muted) }.buttonStyle(.plain)
+                                        Button { rows[i].removed = true } label: { Image(systemName: "minus.circle").foregroundStyle(Theme.muted) }.buttonStyle(WiiPlainButtonStyle())
                                     }
                                 }
                             }

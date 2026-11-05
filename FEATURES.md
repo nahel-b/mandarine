@@ -161,3 +161,68 @@ y apparaît seul. Recherche en haut (nom, description, format, type de fichier).
 ## Réglages → Download
 Lit les releases GitHub du dépôt (sans identifiant) : dernière version, versions précédentes, taille, date, lien vers les notes ; « Download » /
 « Get » enregistre le .dmg dans Téléchargements (avec progression) puis le montre dans le Finder. Code : `App/DownloadTab.swift`.
+
+## Style Wii : les outils s'ouvrent dans l'écran Wii
+Quand on dépose sur un outil à fenêtre en style Wii, l'écran Wii **reste** : la caméra zoome sur la case (écran qui s'assombrit), puis un panneau de
+« chaîne » grandit depuis la case jusqu'à remplir l'écran, l'onglet bleu du titre glisse en haut à droite et le contenu apparaît (séquence relevée sur la
+vraie console). En bas, une bande beige : **Wii Menu** (retour à la grille, qui reste cliquable : on peut choisir un autre outil, la page suivante, ou
+fermer avec le bouton rond) et les boutons de l'outil, en pilules Wii. Quand l'outil lance son travail, l'écran se retire. Un outil ouvert depuis un autre
+(« Edit… » dans Resize) prend la place du courant. Les outils sans réglages (Zip, téléchargements…) gardent leur fonctionnement. Les autres styles ne changent pas.
+Code : `Wheel/WiiShell.swift` (cadre `WiiToolFrame` appliqué par `ToolShell` via l'environnement `wiiHost`). Essais : `--wiishot <outil> <préfixe> [image]`.
+
+## Notifications : temps restant stable
+« About 15 s left » ne disparaît plus puis ne revient plus à 10 s : l'estimation est lissée, elle décompte entre deux relevés et reste jusqu'à la fin
+(« Almost done » sous 8 s).
+
+## Video Snapshots
+Plus d'image prise d'avance : on ajoute soi-même les images voulues (« Add Frame »).
+
+## Wii : entrée plus nette, look CRT, accès complet au disque
+- Entrée d'un outil : la caméra plonge sur la case (les autres s'éteignent), la case devient un panneau blanc qui grandit d'un seul mouvement, aux proportions
+  de l'écran final (aucune déformation), pendant que l'écran passe au noir ; puis l'onglet du titre glisse et le contenu apparaît. La taille de l'écran ne bouge
+  plus pendant l'entrée.
+- Look de vieux téléviseur sur les outils en style Wii : lignes de balayage, bords assombris, reflet de la vitre, bande claire qui descend lentement (`WiiCRT`).
+- Accès complet au disque : demandé **une seule fois** au premier lancement (explication, ouverture du bon réglage, app montrée dans le Finder) ; état et
+  raccourci dans Réglages → General. L'app est signée « ad hoc » avec une exigence stable (`identifier "com.mandarine.app"`, voir `Scripts/build_app.sh`) pour
+  que macOS garde l'autorisation d'une version à l'autre.
+
+## Wii : main, sons ; Trim Audio
+- Après le dépôt, la main de la télécommande reste le pointeur sur l'écran Wii (le curseur système est caché au-dessus de l'écran) : doigt pointé au repos,
+  **poing fermé** tant que le bouton est enfoncé (appui, glissement d'un curseur ou d'une poignée).
+- Sons : `WiiTool.mp3` à l'ouverture d'un outil ; appui, relâchement et petits tics pendant un glissement sur les réglages des outils (synthétisés ; on peut les
+  remplacer par `WiiClick`, `WiiRelease`, `WiiSlide` .mp3/.wav dans Resources).
+- Trim Audio : un clic sur la forme d'onde place la tête de lecture (visible même à l'arrêt) au lieu de la remettre au début ; la sélection ne bouge qu'après un
+  vrai glissement. Case « Keep trimming » : après « Apply & Keep Going », l'outil reste ouvert, la sélection repart après l'extrait enregistré et le compteur
+  de clips enregistrés s'affiche.
+
+## Wii : cases à cocher et choix multiples ; Remove Background : gomme et pinceau
+- Dans l'écran Wii, les cases à cocher et les choix multiples (Transparent / Color / Blur, PNG / WebP…) deviennent des pilules de liste à la Wii : blanches à liseré
+  bleu clair, lavande quand elles sont choisies, **quatre coins rouges** sous le pointeur (cases à cocher : pastille ✓). Code : `WiiChoiceRow`, `WiiToggleStyle`,
+  `WiiChoiceGroup` (`PillPicker` les utilise dans ce style). Les menus déroulants restent natifs.
+- Remove Background → « Touch up » : **Eraser** (rend transparent ce qu'on peint) et **Brush** (remet l'image d'origine, même ce que la détection avait écarté) ;
+  taille réglable, Undo, Clear. Les traits suivent l'image (même résultat à l'export qu'à l'aperçu ; pendant la retouche l'aperçu montre l'image entière).
+  Une seule image à la fois. Moteur : `BGStroke` / `BGOptions.edits` dans `BackgroundRemoval.swift`. Essai : `--bgedit image sortie.png`.
+
+## Wii : sons fournis, poing redessiné, clics, CRT sur le menu
+- Sons : `WiiClick.mp3` (appui), `WiiTool.mp3` (ouverture d'un outil), `WiiDone.mp3` (travail terminé avec succès, style Wii seulement). Plus de son au relâchement du bouton ;
+  les petits tics pendant un glissement sur un réglage restent.
+- Poing fermé redessiné (quatre doigts repliés, pouce en travers, poignet, contours nets).
+- Un voile presque invisible couvre tout l'écran Wii : macOS laisse passer les clics sur les pixels entièrement transparents d'une fenêtre (c'était alors le Finder derrière
+  qui les recevait).
+- Plage d'un Trim : une pause en gardant le bouton enfoncé ne réinitialise plus le glissement (le déplacement était compté deux fois).
+- Le look CRT couvre aussi le menu Wii.
+
+## Wii : fenêtre stable quand le contenu change
+Une case qui révèle un réglage (ex. « Compress to target file size ») ne fait plus trembler la fenêtre : la taille du contenu est mesurée à sa taille idéale (elle ne dépend plus de la
+place offerte, d'où l'ancienne boucle), la fenêtre ne fait que grandir tant que l'outil est ouvert, et le panneau s'adapte en douceur (sans rebond).
+
+## Wii : outil rouvert
+Rouvrir le même outil après « Wii Menu » (même taille que la fois précédente) n'envoyait aucune mesure : le panneau restait à sa taille par défaut, contenu coupé en haut et en bas et réglages
+hors du panneau (donc curseurs inutilisables). Les mesures sont maintenant oubliées à chaque ouverture d'outil.
+
+## Wii : sélecteur de fichier
+Quand une autre fenêtre de l'app passe au-dessus de l'écran Wii (sélecteur « Custom image », notification…), la main s'efface et le vrai curseur reparaît au-dessus d'elle.
+
+## Wii : sons de survol / retour, boutons qui grossissent
+`WiiButtonHover.mp3` quand le pointeur arrive sur un bouton ou un choix d'un outil, `WiiClose.mp3` au retour à l'accueil (« Wii Menu ») et à la fermeture de l'écran. Les boutons grossissent un peu
+sous le pointeur (ressort léger), y compris ceux du contenu des outils (`WiiHoverGrow`).

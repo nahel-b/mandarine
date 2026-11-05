@@ -1,6 +1,14 @@
 import SwiftUI
 
 enum ToolRegistry {
+    /// Outils sans fenêtre : ils lancent leur travail tout de suite (voir DirectToolView).
+    static func isDirect(_ id: ToolID) -> Bool {
+        switch id {
+        case .splitPDF, .extractArchive, .muteVideo, .extractImages, .openInCode, .downloadMP3, .downloadMP4, .downloadWAV, .savePagePDF, .savePageMarkdown, .savePageScreenshot, .speakText, .zipFiles: return true
+        default: return false
+        }
+    }
+
     static func view(for id: ToolID, urls: [URL], close: @escaping () -> Void) -> AnyView {
         switch id {
         case .compress: return AnyView(CompressTool(urls: urls, close: close))

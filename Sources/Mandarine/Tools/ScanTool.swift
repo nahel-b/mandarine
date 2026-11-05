@@ -38,9 +38,9 @@ struct ScanTool: View {
                         .pickerStyle(.segmented).frame(width: 170).labelsHidden()
                     Spacer()
                     if pages.count > 1 {
-                        Button { index = max(0, index - 1) } label: { Image(systemName: "chevron.left") }.buttonStyle(.plain).disabled(index == 0)
+                        Button { index = max(0, index - 1) } label: { Image(systemName: "chevron.left") }.buttonStyle(WiiPlainButtonStyle()).disabled(index == 0)
                         Text("Page \(index + 1) of \(pages.count)").font(.system(size: 12).monospacedDigit()).foregroundStyle(Theme.muted)
-                        Button { index = min(pages.count - 1, index + 1) } label: { Image(systemName: "chevron.right") }.buttonStyle(.plain).disabled(index == pages.count - 1)
+                        Button { index = min(pages.count - 1, index + 1) } label: { Image(systemName: "chevron.right") }.buttonStyle(WiiPlainButtonStyle()).disabled(index == pages.count - 1)
                     }
                 }
                 HStack {

@@ -56,7 +56,7 @@ struct ResizeImageTool: View {
                         field("W", $w) { if lock { h = Int((Double($0) / ratio).rounded()) } }
                         Button { lock.toggle(); if lock { h = Int((Double(w) / ratio).rounded()) } } label: {
                             Image(systemName: lock ? "link" : "link.badge.plus").foregroundStyle(lock ? Theme.orange : Theme.muted)
-                        }.buttonStyle(.plain).help("Keep proportions")
+                        }.buttonStyle(WiiPlainButtonStyle()).help("Keep proportions")
                         field("H", $h) { if lock { w = Int((Double($0) * ratio).rounded()) } }
                         Text("px").sectionLabel()
                     }
@@ -80,7 +80,7 @@ struct ResizeImageTool: View {
                             Text("\(s) px").font(.system(size: 12, weight: .medium)).frame(maxWidth: .infinity, minHeight: 28)
                                 .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(sizes.contains(s) ? Theme.orange : Color.black.opacity(0.07)))
                                 .foregroundStyle(sizes.contains(s) ? .white : Theme.text)
-                                .onTapGesture { if sizes.contains(s) { sizes.remove(s) } else { sizes.insert(s) } }
+                                .wiiHoverGrow().onTapGesture { if sizes.contains(s) { sizes.remove(s) } else { sizes.insert(s) } }
                         }
                     }
                     Text("\(sizes.count) size\(sizes.count == 1 ? "" : "s") × \(urls.count) image\(urls.count == 1 ? "" : "s") = \(sizes.count * urls.count) files").sectionLabel()
@@ -361,7 +361,7 @@ struct RotateImageTool: View {
             VStack(spacing: 4) { Image(systemName: symbol).font(.system(size: 16, weight: .medium)); Text(title).font(.system(size: 10)) }
                 .frame(maxWidth: .infinity, minHeight: 48)
                 .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(Color.black.opacity(0.07)))
-        }.buttonStyle(.plain)
+        }.buttonStyle(WiiPlainButtonStyle())
     }
 
     private func update() {

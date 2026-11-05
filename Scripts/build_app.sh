@@ -40,5 +40,7 @@ cat > "$APP/Contents/Info.plist" <<PLIST
   <key>NSAppleEventsUsageDescription</key><string>Mandarine pilote Pages, Keynote et Numbers pour convertir leurs formats.</string>
 </dict></plist>
 PLIST
-codesign --force --deep --sign - "$APP" >/dev/null 2>&1 || true
+# Signature « ad hoc », mais avec une exigence stable (l'identifiant de l'app) plutôt que l'empreinte du binaire : sans cela, macOS
+# oublie l'accès complet au disque (et les autres autorisations) à chaque nouvelle version.
+codesign --force --deep --sign - -r='designated => identifier "com.mandarine.app"' "$APP" >/dev/null 2>&1 || codesign --force --deep --sign - "$APP" >/dev/null 2>&1 || true
 echo "→ $APP"

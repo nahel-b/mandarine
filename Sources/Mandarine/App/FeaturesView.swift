@@ -466,7 +466,7 @@ private struct Masonry<Item: Identifiable, Card: View>: View {
 }
 
 /// Étiquettes qui passent à la ligne.
-private struct FlowLayout: Layout {
+struct FlowLayout: Layout {
     var spacing: CGFloat = 8
     var alignment: HorizontalAlignment = .leading
     func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {

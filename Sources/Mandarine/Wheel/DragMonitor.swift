@@ -58,7 +58,7 @@ final class DragMonitor {
     private func released() {
         if wheel.isVisible {
             if wheel.hoveredItemEnabled {
-                Feedback.shared.drop(); wheel.dropSoundFired = Date()          // son et haptique au relâchement exact du bouton
+                wheel.playReleaseSound()          // son et haptique au relâchement exact du bouton
                 let hovered = wheel.model.hover, hoveredChild = wheel.model.hoverChild
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [wheel] in
                     if wheel.isVisible { wheel.model.hover = hovered; wheel.model.hoverChild = hoveredChild; if !wheel.drop() { wheel.dismiss() } }

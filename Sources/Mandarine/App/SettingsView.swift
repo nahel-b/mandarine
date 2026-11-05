@@ -70,6 +70,7 @@ struct SettingsView: View {
                     ForEach(TerminalApp.allCases) { Text($0.title).tag($0) }
                 }
             }
+            Section("Files") { FullDiskAccessRow() }
         case .appearance:
             Section("Appearance") {
                 Picker("Menu style", selection: $s.appearance) { ForEach(MenuAppearance.allCases) { Text($0.title).tag($0) } }
