@@ -17,7 +17,7 @@ struct MergePDFTool: View {
                     try await Task.detached { try PDFEngine.merge(files, to: out) }.value
                     return [out]
                 }
-            }.buttonStyle(PillButtonStyle()).disabled(urls.count < 2)
+            }.buttonStyle(PillButtonStyle()).disabled(urls.count < 2).keyboardShortcut(.defaultAction)
         }
         .task(id: urls) {
             let missing = urls.filter { thumbs[$0] == nil }
@@ -88,7 +88,7 @@ struct OrganizePDFTool: View {
                 Text("Pages are scaled proportionally to match the narrowest page; their heights may still differ.").sectionLabel()
             }.frame(width: 560, alignment: .leading)
         } footer: {
-            Button("Save Organized PDF") { save() }.buttonStyle(PillButtonStyle()).disabled(m.pages.isEmpty)
+            Button("Save Organized PDF") { save() }.buttonStyle(PillButtonStyle()).disabled(m.pages.isEmpty).keyboardShortcut(.defaultAction)
         }
     }
 

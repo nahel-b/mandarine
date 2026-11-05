@@ -30,6 +30,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         runLaunchArguments()
         if CommandLine.arguments.count < 2 { Updater.shared.start() }
         if CommandLine.arguments.count < 2 { DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { FullDiskAccess.checkAtLaunch() } }
+        if CommandLine.arguments.count < 2 { DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) { WhatsNew.showIfNeeded() } }
         if AppSettings.shared.showWelcome && CommandLine.arguments.count < 2 {            // guide d'accueil (réglable dans le guide et les Réglages)
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { HelpWindowController.show() }
         }
@@ -46,6 +47,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         m.addItem(hint)
         m.addItem(.separator())
         m.addItem(withTitle: "All Features", action: #selector(showFeatures), keyEquivalent: "").target = self
+        m.addItem(withTitle: "What's New", action: #selector(showWhatsNew), keyEquivalent: "").target = self
         m.addItem(withTitle: "Help", action: #selector(showHelp), keyEquivalent: "?").target = self
         m.addItem(withTitle: "Check for Updates…", action: #selector(checkUpdates), keyEquivalent: "").target = self
         m.addItem(withTitle: "Choose File to Process…", action: #selector(chooseFile), keyEquivalent: "o").target = self
@@ -57,6 +59,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc private func showHelp() { HelpWindowController.show() }
     @objc private func showFeatures() { FeaturesWindowController.show() }
+    @objc private func showWhatsNew() { WhatsNewWindowController.show() }
     @objc private func checkUpdates() { Task { await Updater.shared.check(userInitiated: true) } }
 
     @objc private func chooseFile() {
@@ -515,6 +518,55 @@ extension AppDelegate {
             } catch { print("ÉCHEC", error.localizedDescription) }
             exit(0)
         }
+        if a.first == "--replacetest" {      // test : remplacement de l'original (Corbeille), même nom, changement d'extension, annulation
+            let fm = FileManager.default
+            let dir = fm.temporaryDirectory.appendingPathComponent("mandarine-replace-" + UUID().uuidString)
+            try? fm.createDirectory(at: dir, withIntermediateDirectories: true)
+            func make(_ name: String, _ text: String) -> URL { let u = dir.appendingPathComponent(name); try? text.write(to: u, atomically: true, encoding: .utf8); return u }
+            let o1 = make("photo.png", "ORIGINAL-1"), r1 = make("photo compressed.png", "RESULT-1")
+            let o2 = make("clip.mov", "ORIGINAL-2"), r2 = make("clip converted.mp4", "RESULT-2")
+            do {
+                let done = try Replacer.replace(originals: [o1, o2], outputs: [r1, r2])
+                print("remplacé :", done.map { $0.final.lastPathComponent }, "| photo.png =", (try? String(contentsOf: o1)) ?? "?", "| mov présent :", fm.fileExists(atPath: o2.path), "| résultats d'origine présents :", fm.fileExists(atPath: r1.path))
+                print("corbeille :", done.map { fm.fileExists(atPath: $0.trashed.path) })
+                try Replacer.undo(done)
+                print("annulé : photo.png =", (try? String(contentsOf: o1)) ?? "?", "| résultat revenu :", fm.fileExists(atPath: r1.path), (try? String(contentsOf: r1)) ?? "?", "| mov =", (try? String(contentsOf: o2)) ?? "?", "| mp4 revenu :", fm.fileExists(atPath: r2.path))
+            } catch { print("ERR", error.localizedDescription) }
+            // via la file de travaux : réglage « garder » + touche inversée simulée par le paramètre explicite
+            let o3 = make("doc.txt", "ORIGINAL-3")
+            JobQueue.shared.add("Test", replaces: [o3], replace: true) { _ in let r = dir.appendingPathComponent("doc edited.txt"); try "RESULT-3".write(to: r, atomically: true, encoding: .utf8); return [r] }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                print("job : doc.txt =", (try? String(contentsOf: o3)) ?? "?", "| doc edited.txt présent :", fm.fileExists(atPath: dir.appendingPathComponent("doc edited.txt").path))
+                let o4 = make("keep.txt", "ORIGINAL-4")
+                JobQueue.shared.add("Test2", replaces: [o4], replace: false) { _ in let r = dir.appendingPathComponent("keep edited.txt"); try "RESULT-4".write(to: r, atomically: true, encoding: .utf8); return [r] }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                    print("job garder : keep.txt =", (try? String(contentsOf: o4)) ?? "?", "| keep edited.txt présent :", fm.fileExists(atPath: dir.appendingPathComponent("keep edited.txt").path))
+                    try? fm.removeItem(at: dir); exit(0)
+                }
+            }
+            return
+        }
+        if a.first == "--entertest", a.count >= 2 {      // test : Entrée dans une fenêtre d'outil lance l'outil. Usage : --entertest image.png
+            let fm = FileManager.default
+            let dir = fm.temporaryDirectory.appendingPathComponent("mandarine-enter-" + UUID().uuidString)
+            try? fm.createDirectory(at: dir, withIntermediateDirectories: true)
+            let src = dir.appendingPathComponent("pic.png"); try? fm.copyItem(at: URL(fileURLWithPath: a[1]), to: src)
+            if a.count > 2 && a[2] == "optdrop" { ReplaceMode.shared.debugCapture(held: true) }      // comme un dépôt avec ⌥ maintenue
+            ToolWindowController.present(.compress, urls: [src])
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                guard let w = NSApp.windows.first(where: { $0 is ToolWindow }) else { print("pas de fenêtre"); exit(1) }
+                w.makeKeyAndOrderFront(nil)
+                let e = NSEvent.keyEvent(with: .keyDown, location: .zero, modifierFlags: [], timestamp: ProcessInfo.processInfo.systemUptime, windowNumber: w.windowNumber, context: nil, characters: "\r", charactersIgnoringModifiers: "\r", isARepeat: false, keyCode: 36)!
+                let handled = w.performKeyEquivalent(with: e)
+                print("Entrée traitée :", handled)
+                DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+                    let files = ((try? fm.contentsOfDirectory(atPath: dir.path)) ?? []).sorted()
+                    print("fichiers :", files, "| fenêtre fermée :", !NSApp.windows.contains { $0 is ToolWindow && $0.isVisible })
+                    try? fm.removeItem(at: dir); exit(0)
+                }
+            }
+            return
+        }
         if a.first == "--etatest" {      // test : estimation du temps restant sur des relevés fictifs
             func eta(_ label: String, _ s: [(t: Double, p: Double)]) { print(label, "→", JobQueue.etaText(samples: s).isEmpty ? "(rien)" : JobQueue.etaText(samples: s)) }
             eta("début (3 s, 5 %)", [(0, 0), (3, 0.05)])
@@ -750,6 +802,8 @@ extension AppDelegate {
             JobQueue.shared.cancel(ids[0])
             Toast.shared.done("Saved", subtitle: "photo.png\nin Pictures", reveal: URL(fileURLWithPath: "/tmp"))
             Toast.shared.fail("Conversion failed", subtitle: "ffmpeg a échoué (code 1).")
+            Toast.shared.add(ToastItem(id: UUID(), phase: .done, title: "Saved", subtitle: "photo compressed.png\nin Downloads", reveal: [URL(fileURLWithPath: "/tmp")], action: ("Replace original", {})))
+            Toast.shared.add(ToastItem(id: UUID(), phase: .done, title: "Tip: keep or replace", subtitle: "Hold ⌥ while you click the button to replace the original instead of keeping both — the old file goes to the Trash. The default is in Settings → General.", action: ("Got it", {}), sticky: true))
             view = AnyView(ToastStack(center: Toast.shared.center).background(Color(white: 0.55)))
         } else if target[0] == "settings" {
             view = AnyView(SettingsView(tab: SettingsView.Tab(rawValue: target.count > 1 ? target[1] : "") ?? .general).background(Color(white: 0.55)))
@@ -772,6 +826,10 @@ extension AppDelegate {
             view = AnyView(BubbleMenuView(model: model).background(Color(white: 0.55)))
         } else if target[0] == "wiitiles" {
             view = AnyView(WiiTilesDebug().background(Color(white: 0.55)))
+        } else if target[0] == "toaststyles" {
+            view = AnyView(ToastLab(page: Int(target.count > 1 ? target[1] : "1") ?? 1))
+        } else if target[0] == "whatsnew" {
+            view = AnyView(WhatsNewView(releases: Array(WhatsNew.releases.prefix(2)), close: {}))
         } else if target[0] == "features" {
             view = AnyView(FeaturesView(startTab: target.count > 1 ? target[1] : "image", startQuery: target.count > 2 ? target[2] : "", close: {}))
         } else if target[0] == "help" {

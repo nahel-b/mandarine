@@ -23,6 +23,13 @@ enum TriggerKey: String, CaseIterable, Identifiable {
     }
 }
 
+/// Aspect des notifications : capsule (par défaut, une ligne) ou carte (un peu plus grande, boutons en bas).
+enum NotificationStyle: String, CaseIterable, Identifiable {
+    case capsule, card
+    var id: String { rawValue }
+    var title: String { self == .capsule ? "Capsule" : "Card" }
+}
+
 enum MenuAppearance: String, CaseIterable, Identifiable {
     case wheel, wii, bubbles
     var id: String { rawValue }
@@ -61,6 +68,8 @@ final class AppSettings: ObservableObject {
     @Published var revealAfterSave: Bool { didSet { d.set(revealAfterSave, forKey: "revealAfterSave") } }
     @Published var appearance: MenuAppearance { didSet { d.set(appearance.rawValue, forKey: "appearance") } }
     @Published var showWelcome: Bool { didSet { d.set(showWelcome, forKey: "showWelcome") } }
+    @Published var notificationStyle: NotificationStyle { didSet { d.set(notificationStyle.rawValue, forKey: "notificationStyle") } }
+    @Published var replaceOriginal: Bool { didSet { d.set(replaceOriginal, forKey: "replaceOriginal") } }     // true : le résultat remplace le fichier d'origine (qui va à la Corbeille)
     @Published var autoCheckUpdates: Bool { didSet { d.set(autoCheckUpdates, forKey: "autoCheckUpdates") } }
     @Published var autoInstallUpdates: Bool { didSet { d.set(autoInstallUpdates, forKey: "autoInstallUpdates") } }
     // Pétales facultatifs de la roue ⌘
@@ -103,6 +112,8 @@ final class AppSettings: ObservableObject {
         let rawAppearance = ProcessInfo.processInfo.environment["MANDARINE_APPEARANCE"] ?? d.string(forKey: "appearance") ?? ""
         appearance = MenuAppearance(rawValue: ["glass": "bubbles", "paper": "bubbles"][rawAppearance] ?? rawAppearance) ?? .wheel
         showWelcome = d.object(forKey: "showWelcome") as? Bool ?? true
+        replaceOriginal = d.object(forKey: "replaceOriginal") as? Bool ?? false
+        notificationStyle = NotificationStyle(rawValue: ProcessInfo.processInfo.environment["MANDARINE_NOTIFSTYLE"] ?? d.string(forKey: "notificationStyle") ?? "") ?? .capsule
         autoCheckUpdates = d.object(forKey: "autoCheckUpdates") as? Bool ?? true
         autoInstallUpdates = d.object(forKey: "autoInstallUpdates") as? Bool ?? true
         enableFaceSelect = d.object(forKey: "enableFaceSelect") as? Bool ?? true

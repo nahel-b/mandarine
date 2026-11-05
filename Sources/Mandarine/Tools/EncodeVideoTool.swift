@@ -112,7 +112,7 @@ struct EncodeVideoTool: View {
                 }
             }.frame(width: 460, alignment: .leading).font(.system(size: 12))
         } footer: {
-            Button("Encode") { run() }.buttonStyle(PillButtonStyle(prominent: true))
+            ReplaceButton("Encode", prominent: true) { run() }
         }
         .task {
             info = await FFmpeg.probe(urls[0])
@@ -173,7 +173,7 @@ struct EncodeVideoTool: View {
     private func run() {
         let (opts, files) = (o, urls)
         close()
-        Dispatcher.job("Encoding…", subtitle: files.count == 1 ? files[0].lastPathComponent : "\(files.count) videos", count: files.count) { progress in
+        Dispatcher.job("Encoding…", subtitle: files.count == 1 ? files[0].lastPathComponent : "\(files.count) videos", count: files.count, replaces: files) { progress in
             var outs: [URL] = []
             for (i, f) in files.enumerated() {
                 let names = [3840: "4K", 2560: "1440p", 1920: "1080p", 1280: "720p", 854: "480p"]

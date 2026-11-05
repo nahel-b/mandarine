@@ -70,7 +70,16 @@ struct SettingsView: View {
                     ForEach(TerminalApp.allCases) { Text($0.title).tag($0) }
                 }
             }
-            Section("Files") { FullDiskAccessRow() }
+            Section("Notifications") {
+                Picker("Style", selection: $s.notificationStyle) { ForEach(NotificationStyle.allCases) { Text($0.title).tag($0) } }.pickerStyle(.segmented)
+                Text("Capsule: one slim line. Card: a little larger, with the buttons underneath.").font(.caption).foregroundStyle(.secondary)
+            }
+            Section("Files") {
+                Picker("Original file", selection: $s.replaceOriginal) { Text("Keep it").tag(false); Text("Replace it").tag(true) }.pickerStyle(.segmented)
+                Text("Hold \(ReplaceMode.shared.symbol) when you click a tool's button or drop on a petal to do the opposite. A replaced original goes to the Trash, so you can still get it back.")
+                    .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                FullDiskAccessRow()
+            }
         case .appearance:
             Section("Appearance") {
                 Picker("Menu style", selection: $s.appearance) { ForEach(MenuAppearance.allCases) { Text($0.title).tag($0) } }

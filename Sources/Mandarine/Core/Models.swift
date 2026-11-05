@@ -61,6 +61,15 @@ enum ToolID: String {
     case normalizeAudio, audioToVideo, trimAudio, audioChannels, redactAudio
     case mergePDF, organizePDF, splitPDF, extractArchive, ocr
 
+    /// Outils qui font une nouvelle version d'un fichier : leur résultat peut remplacer l'original (voir ReplaceMode).
+    var replacesOriginal: Bool {
+        switch self {
+        case .compress, .metadata, .editImage, .annotateImage, .frameImage, .cropImage, .redactImage, .resizeImage, .rotateImage, .removeBackground,
+             .trimVideo, .cropVideo, .changeVideoSpeed, .redactVideo, .muteVideo, .encodeVideo, .normalizeAudio, .trimAudio, .audioChannels, .redactAudio: return true
+        default: return false
+        }
+    }
+
     var title: String {
         switch self {
         case .compress: return "Compress"

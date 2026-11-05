@@ -147,7 +147,7 @@ struct PlaylistTool: View {
                 let (l, entries, k, q) = (list, chosen, kind, quality)
                 close()
                 DownloadFlow.playlist(l, entries: entries, kind: k, maxHeight: q == 0 ? nil : q)
-            }.buttonStyle(PillButtonStyle()).disabled(selected.isEmpty)
+            }.buttonStyle(PillButtonStyle()).disabled(selected.isEmpty).keyboardShortcut(.defaultAction)
         }
     }
 }

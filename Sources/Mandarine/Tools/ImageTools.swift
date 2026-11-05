@@ -46,7 +46,7 @@ struct CropImageTool: View {
             .frame(width: 400)
         } footer: {
             Button("Reset") { regions[0].rect = CGRect(x: 0, y: 0, width: 1, height: 1); ratio = AspectRatioChoice.all[0] }.buttonStyle(PillButtonStyle())
-            Button("Apply") { apply() }.buttonStyle(PillButtonStyle())
+            ReplaceButton("Apply") { apply() }
         }
     }
 
@@ -54,7 +54,7 @@ struct CropImageTool: View {
         let r = regions[0].rect
         let files = urls
         close()
-        Dispatcher.job("Cropping…", light: true) { _ in
+        Dispatcher.job("Cropping…", light: true, replaces: files) { _ in
             try await Task.detached {
                 try files.map { url in
                     let (img, props) = try ImageEngine.load(url)
@@ -113,7 +113,7 @@ struct RedactImageTool: View {
             .frame(width: 400)
         } footer: {
             Button("Reset") { regions = []; selected = nil }.buttonStyle(PillButtonStyle())
-            Button("Save Redacted Copy") { save() }.buttonStyle(PillButtonStyle()).disabled(regions.isEmpty)
+            ReplaceButton("Save Redacted Copy") { save() }.disabled(regions.isEmpty)
         }
     }
 
@@ -154,7 +154,7 @@ struct RedactImageTool: View {
         let rects = regions.map(\.rect), style = style, color = NSColor(color)
         let file = urls[0]
         close()
-        Dispatcher.job("Redacting…", light: true) { _ in
+        Dispatcher.job("Redacting…", light: true, replaces: [file]) { _ in
             [try await Task.detached { try Self.render(file, rects: rects, style: style, color: color) }.value]
         }
     }

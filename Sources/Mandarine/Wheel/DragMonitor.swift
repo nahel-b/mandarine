@@ -127,6 +127,9 @@ final class DragMonitor {
     private func poll() {
         guard dragging else { return }
         refreshFromPasteboard()
+        ReplaceMode.shared.refresh()
+        let replacing = wheel.isVisible && ReplaceMode.shared.effective
+        if wheel.model.replacing != replacing { wheel.model.replacing = replacing }
         if NSEvent.pressedMouseButtons & 1 == 0 {            // le bouton a été relâché ailleurs
             if !wheel.isVisible { reset() }
             return
@@ -159,6 +162,7 @@ final class DragMonitor {
     }
 
     private func reset() {
+        wheel.model.replacing = false
         otherKeyHeld = false
         internalDrag = false
         dragging = false

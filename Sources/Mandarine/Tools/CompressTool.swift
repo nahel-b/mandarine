@@ -68,7 +68,7 @@ struct CompressTool: View {
             }
             .frame(width: 400, alignment: .leading)
         } footer: {
-            Button("Compress") { run() }.buttonStyle(PillButtonStyle())
+            ReplaceButton("Compress") { run() }
         }
         .onAppear { targetMB = max(0.05, min(targetMB, Double(total) / 2_000_000)) }
     }
@@ -85,7 +85,7 @@ struct CompressTool: View {
             Dispatcher.job("Zipping…", subtitle: "\(files.count) files") { _ in [try await ZipEngine.make(files)] }
             return
         }
-        Dispatcher.job("Compressing…", subtitle: files.count == 1 ? files[0].lastPathComponent : "\(files.count) files", count: files.count) { progress in
+        Dispatcher.job("Compressing…", subtitle: files.count == 1 ? files[0].lastPathComponent : "\(files.count) files", count: files.count, replaces: files) { progress in
             var outs: [URL] = []
             for (i, f) in files.enumerated() {
                 let o = try await Compressor.run(f, options: o) { p in progress((Double(i) + p) / Double(files.count)) }

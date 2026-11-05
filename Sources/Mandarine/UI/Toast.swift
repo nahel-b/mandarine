@@ -24,9 +24,58 @@ final class ToastCenter: ObservableObject {
     @Published var items: [ToastItem] = []
 }
 
+/// Petits éléments communs aux deux styles de notification.
+private enum ToastInk {
+    static let text = Color(red: 0.11, green: 0.11, blue: 0.12)
+    static let muted = Color(red: 0.55, green: 0.55, blue: 0.57)
+    static let eta = Color(red: 0.30, green: 0.30, blue: 0.33)        // « About 40 s left » : un peu plus foncé que le reste du texte
+    static let sage = Color(red: 0.34, green: 0.62, blue: 0.47)
+    static let danger = Color(red: 0.76, green: 0.31, blue: 0.28)
+}
+
+private struct ToastPill: View {
+    let text: String
+    var symbol: String? = nil
+    var fill: Color = Color(white: 0.17)    // bouton principal : graphite, sans couleur (le vert de l'état est déjà à gauche)
+    var ink: Color = .white
+    var height: CGFloat = 26
+    var body: some View {
+        HStack(spacing: 4) {
+            if let s = symbol { Image(systemName: s).font(.system(size: 10.5, weight: .semibold)) }
+            Text(text).font(.system(size: 11.5, weight: .semibold)).lineLimit(1)
+        }
+        .foregroundStyle(ink).padding(.horizontal, 11).frame(height: height)
+        .background(Capsule().fill(fill)).shadow(color: fill.opacity(0.28), radius: 4, y: 2)
+    }
+}
+
+private struct ToastRound: View {
+    let symbol: String
+    var size: CGFloat = 28
+    var fill: Color = .white
+    var ink: Color = ToastInk.muted
+    var rim: Bool = false
+    var body: some View {
+        Image(systemName: symbol).font(.system(size: size * 0.4, weight: .heavy)).foregroundStyle(ink)
+            .frame(width: size, height: size).background(Circle().fill(fill))
+            .overlay(Circle().strokeBorder(rim ? Color.white : .clear, lineWidth: 3.5)).shadow(color: .black.opacity(0.10), radius: 3, y: 1)
+    }
+}
+
+/// Arc qui tourne : travail dont on ne connaît pas l'avancement.
+private struct SpinningArc: View {
+    var body: some View {
+        TimelineView(.animation) { ctx in
+            Circle().trim(from: 0, to: 0.27).stroke(ToastInk.sage, style: StrokeStyle(lineWidth: 2.2, lineCap: .round))
+                .rotationEffect(.degrees(ctx.date.timeIntervalSinceReferenceDate.truncatingRemainder(dividingBy: 1) * 360))
+        }
+    }
+}
+
 private struct ToastRow: View {
     let item: ToastItem
     let dismiss: () -> Void
+    @ObservedObject private var settings = AppSettings.shared
     /// Ce qu'on emporte en glissant : les fichiers créés, sinon les fichiers concernés, sinon le texte de la notification.
     private var dragURLs: [URL] { item.reveal.isEmpty ? item.files : item.reveal }
     private var dragText: String { [item.title, item.detail.isEmpty ? item.subtitle : item.detail].filter { !$0.isEmpty }.joined(separator: "\n") }
@@ -40,96 +89,144 @@ private struct ToastRow: View {
     }
 
     private var failed: Bool { item.phase == .failed }
-    private func pill(_ text: String) -> some View {
-        Text(text).font(.system(size: 12, weight: .medium)).foregroundStyle(.primary)
-            .padding(.horizontal, 12).padding(.vertical, 5)
-            .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(Color.primary.opacity(0.12)))
-    }
+    private var finished: Bool { item.phase == .done || item.phase == .failed }
+    private var lines: [String] { item.subtitle.split(separator: "\n", omittingEmptySubsequences: true).map(String.init) }
+    /// Message libre (erreur, astuce…) : son texte s'affiche en entier ; sinon ce sont des lignes « fichier / dossier / remarque ».
+    private var isMessage: Bool { failed || item.sticky || lines.isEmpty }
+    private var shortAction: String { item.action.map { $0.title == "Replace original" ? "Replace" : $0.title } ?? "" }
+
+    private func copyError() { NSPasteboard.general.clearContents(); NSPasteboard.general.setString(item.detail, forType: .string) }
+    private func show() { NSWorkspace.shared.activateFileViewerSelecting(item.reveal) }
 
     var body: some View {
-        HStack(spacing: 0) {
-            // tout ce qui est à gauche des boutons se saisit pour glisser les fichiers créés
-            HStack(spacing: 12) {
-                ZStack {
-                    Circle().fill(failed ? Color.red.opacity(0.22) : Theme.orange.opacity(0.22)).frame(width: 30, height: 30)
-                    switch item.phase {
-                    case .failed:
-                        Image(systemName: "exclamationmark").foregroundStyle(.red).font(.system(size: 13, weight: .bold))
-                    case .waiting:
-                        Image(systemName: "clock").foregroundStyle(Theme.orange).font(.system(size: 13, weight: .semibold))
-                    case .running:
-                        if let p = item.progress, p >= 0 {
-                            Circle().trim(from: 0, to: p).stroke(Theme.orange, style: StrokeStyle(lineWidth: 3, lineCap: .round))
-                                .rotationEffect(.degrees(-90)).frame(width: 20, height: 20)
-                        } else {
-                            ProgressView().controlSize(.small)
-                        }
-                    case .done:
-                        Image(systemName: item.dragging ? "arrow.up.forward" : "checkmark").foregroundStyle(Theme.orange).font(.system(size: 13, weight: .bold))
-                    }
+        Group { if settings.notificationStyle == .card { card } else { capsule } }
+            .environment(\.colorScheme, .light)
+            // saisie : la ligne se tasse, devient translucide, comme une place vide d'où l'on vient de sortir quelque chose
+            .shadow(color: .black.opacity(item.dragging ? 0.06 : 0.11), radius: item.dragging ? 4 : 10, y: item.dragging ? 1 : 4)
+            .scaleEffect(item.dragging ? 0.94 : 1)
+            .opacity(item.dragging ? 0.6 : 1)
+            .animation(.spring(response: 0.28, dampingFraction: 0.62), value: item.dragging)
+    }
+
+    // MARK: Style capsule (par défaut) : icône entourée d'un arc vert, texte, boutons à droite
+
+    private var capsule: some View {
+        let r: CGFloat = 27
+        return HStack(spacing: 8) {
+            HStack(spacing: 9) {
+                statusIcon
+                VStack(alignment: .leading, spacing: 0) {
+                    Text(item.title).font(.system(size: 12.5, weight: .bold)).foregroundStyle(ToastInk.text).lineLimit(1)
+                    capsuleCaption
                 }
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(item.title).font(.system(size: 13, weight: .semibold)).foregroundStyle(.primary).lineLimit(1)
-                    // plusieurs lignes (nom du fichier, puis dossier) : chacune sur une seule ligne, le nom coupé au milieu pour garder l'extension
-                    let lines = item.subtitle.split(separator: "\n", omittingEmptySubsequences: true).map(String.init)
-                    if lines.count > 1 && !failed {
-                        ForEach(Array(lines.prefix(3).enumerated()), id: \.offset) { _, line in
-                            Text(line).font(.system(size: 11)).foregroundStyle(.secondary).lineLimit(1).truncationMode(.middle)
-                        }
-                    } else if !item.subtitle.isEmpty {
-                        Text(item.subtitle).font(.system(size: 11)).foregroundStyle(.secondary).lineLimit(failed ? 5 : 2)
-                    }
-                    if item.phase == .running, !item.eta.isEmpty {
-                        Text(item.eta).font(.system(size: 11, weight: .medium).monospacedDigit()).foregroundStyle(.secondary).lineLimit(1)
-                    }
-                }
-                Spacer(minLength: 8)
+                Spacer(minLength: 0)
             }
-            .padding(.leading, 14).padding(.vertical, 10)
             .frame(maxWidth: .infinity, alignment: .leading)
             .overlay { FileDragHandle(urls: dragURLs, text: dragText, onBegin: dragBegan, onEnd: dragEnded) }
-            HStack(spacing: 12) {
-                if let a = item.action {
-                    Button(action: a.run) {
-                        Text(a.title).font(.system(size: 13, weight: .medium)).foregroundStyle(.primary)
-                            .padding(.horizontal, 14).padding(.vertical, 6)
-                            .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(Theme.orange.opacity(0.28)))
-                    }.buttonStyle(.plain)
+            HStack(spacing: 6) {
+                if let cancel = item.cancel { Button(action: cancel) { ToastRound(symbol: "xmark", size: 22, fill: Color(white: 0.9)) }.buttonStyle(.plain).help("Stop this job") }
+                if failed && !item.detail.isEmpty { Button(action: copyError) { ToastPill(text: "Copy", fill: Color(white: 0.4)) }.buttonStyle(.plain).help("Copy the full error message") }
+                if !item.reveal.isEmpty { Button(action: show) { ToastRound(symbol: "eye", size: 26) }.buttonStyle(.plain).help("Show in Finder") }
+                if let a = item.action { Button(action: a.run) { ToastPill(text: shortAction) }.buttonStyle(.plain).help(a.title) }
+            }
+        }
+        .padding(.leading, 13).padding(.trailing, 11).padding(.vertical, 7)
+        .frame(width: 340).frame(minHeight: 52)
+        .background(ZStack {
+            RoundedRectangle(cornerRadius: r, style: .continuous).fill(Color.white)
+            RoundedRectangle(cornerRadius: r - 4, style: .continuous).fill(Color(white: 0.955)).padding(4)
+        })
+        .overlay(alignment: .topTrailing) { if finished { Button(action: dismiss) { ToastRound(symbol: "xmark", size: 19, fill: Color(white: 0.6), ink: .white, rim: true) }.buttonStyle(.plain).help("Dismiss").offset(x: 3, y: -6) } }
+        .overlay(RoundedRectangle(cornerRadius: r, style: .continuous).strokeBorder(Theme.orange.opacity(0.8), style: StrokeStyle(lineWidth: 1.5, dash: [5, 4])).opacity(item.dragging ? 1 : 0))
+    }
+
+    @ViewBuilder private var capsuleCaption: some View {
+        if isMessage && !lines.isEmpty {
+            Text(item.subtitle).font(.system(size: 10.5)).foregroundStyle(ToastInk.muted).lineLimit(failed || item.sticky ? 5 : 2).fixedSize(horizontal: false, vertical: true)
+        } else {
+            let first = Array(lines.prefix(2)).joined(separator: " · ")
+            let eta = item.phase == .running ? item.eta : ""
+            if !first.isEmpty || !eta.isEmpty {
+                (Text(first).foregroundColor(ToastInk.muted) + Text((first.isEmpty || eta.isEmpty ? "" : " · ") + eta).foregroundColor(ToastInk.eta).fontWeight(.medium))
+                    .font(.system(size: 10.5)).lineLimit(1).truncationMode(.middle)
+            }
+            if lines.count > 2 { Text(lines.dropFirst(2).joined(separator: " · ")).font(.system(size: 10)).foregroundStyle(ToastInk.muted.opacity(0.85)).lineLimit(1).truncationMode(.middle) }
+        }
+    }
+
+    /// L'icône du fichier, seule (pas de pastille de couleur), avec un arc vert autour : il avance avec le travail, se ferme quand c'est fini.
+    private var statusIcon: some View {
+        let symbol = item.dragging ? "arrow.up.forward" : (failed ? "exclamationmark.triangle" : (item.phase == .waiting ? "clock" : "doc.text"))
+        return ZStack {
+            switch item.phase {
+            case .done:                                                        // fini : une coche blanche sur un rond vert
+                Circle().fill(ToastInk.sage)
+                Image(systemName: item.dragging ? "arrow.up.forward" : "checkmark").font(.system(size: 14, weight: .heavy)).foregroundStyle(.white)
+            case .running:
+                Circle().stroke(ToastInk.sage.opacity(0.18), lineWidth: 2.2)
+                if let p = item.progress, p >= 0 { Circle().trim(from: 0, to: max(0.03, p)).stroke(ToastInk.sage, style: StrokeStyle(lineWidth: 2.2, lineCap: .round)).rotationEffect(.degrees(-90)) }
+                else { SpinningArc() }
+            case .waiting: Circle().stroke(Color.black.opacity(0.12), style: StrokeStyle(lineWidth: 2.2, dash: [3, 4]))
+            case .failed: EmptyView()
+            }
+            if item.phase != .done { Image(systemName: symbol).font(.system(size: 13, weight: .regular)).foregroundStyle(failed ? ToastInk.danger : Color(white: 0.45)) }
+        }
+        .frame(width: 32, height: 32)
+    }
+
+    // MARK: Style carte : liseré blanc, légende, titre, boutons en bas
+
+    private var card: some View {
+        // « légende » au-dessus, « titre » en gros dessous : pour un travail, le type de travail puis le fichier ; pour un message, le titre puis le texte
+        let caption = isMessage ? "" : item.title
+        let headline = isMessage ? item.title : lines[0]
+        let extra = isMessage ? "" : lines.dropFirst().joined(separator: " · ")
+        let eta = !isMessage && item.phase == .running ? item.eta : ""
+        return VStack(alignment: .leading, spacing: 7) {
+            HStack(alignment: .top, spacing: 8) {
+                Group {
+                    if item.phase == .done {
+                        Image(systemName: item.dragging ? "arrow.up.forward" : "checkmark").font(.system(size: 11, weight: .heavy)).foregroundStyle(.white).frame(width: 22, height: 22).background(Circle().fill(ToastInk.sage))
+                    } else {
+                        Image(systemName: failed ? "exclamationmark.triangle" : (item.phase == .waiting ? "clock" : "doc.text")).font(.system(size: 15)).foregroundStyle(failed ? ToastInk.danger : Color(white: 0.6)).frame(width: 22)
+                    }
                 }
-                if let cancel = item.cancel {
-                    Button(action: cancel) { pill("Cancel") }.buttonStyle(.plain).help("Stop this job")
+                VStack(alignment: .leading, spacing: 1) {
+                    if !caption.isEmpty { Text(caption).font(.system(size: 10, weight: .medium)).foregroundStyle(ToastInk.muted).lineLimit(1) }
+                    Text(headline).font(.system(size: 14.5, weight: .bold)).foregroundStyle(ToastInk.text).lineLimit(1).truncationMode(.middle)
+                    if isMessage && !lines.isEmpty { Text(item.subtitle).font(.system(size: 10.5)).foregroundStyle(ToastInk.muted).lineLimit(failed || item.sticky ? 5 : 2).fixedSize(horizontal: false, vertical: true).padding(.top, 1) }
+                    else if !extra.isEmpty || !eta.isEmpty {
+                        (Text(extra).foregroundColor(ToastInk.muted) + Text((extra.isEmpty || eta.isEmpty ? "" : " · ") + eta).foregroundColor(ToastInk.eta).fontWeight(.medium))
+                            .font(.system(size: 10.5)).lineLimit(1).truncationMode(.middle)
+                    }
                 }
-                if failed && !item.detail.isEmpty {
-                    Button {
-                        NSPasteboard.general.clearContents(); NSPasteboard.general.setString(item.detail, forType: .string)
-                    } label: { pill("Copy") }.buttonStyle(.plain).help("Copy the full error message")
+                Spacer(minLength: 0)
+            }
+            .overlay { FileDragHandle(urls: dragURLs, text: dragText, onBegin: dragBegan, onEnd: dragEnded) }
+            if item.phase == .running || item.phase == .waiting {
+                HStack(spacing: 10) {
+                    if let p = item.progress, p >= 0 {
+                        ZStack(alignment: .leading) { Capsule().fill(Color.black.opacity(0.08)); GeometryReader { g in Capsule().fill(ToastInk.sage).frame(width: g.size.width * p) } }.frame(height: 5)
+                    } else { ProgressView().progressViewStyle(.linear).tint(ToastInk.sage) }
+                    if let cancel = item.cancel { Button(action: cancel) { ToastPill(text: "Cancel", fill: Color(white: 0.9), ink: ToastInk.text) }.buttonStyle(.plain).help("Stop this job") }
                 }
-                if !item.reveal.isEmpty {
-                    Button { NSWorkspace.shared.activateFileViewerSelecting(item.reveal) } label: {
-                        Text("Show").font(.system(size: 13, weight: .medium)).foregroundStyle(.primary)
-                            .padding(.horizontal, 14).padding(.vertical, 6)
-                            .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(Color.primary.opacity(0.12)))
-                    }.buttonStyle(.plain)
-                }
-                if item.phase == .done || item.phase == .failed {
-                    Button(action: dismiss) {
-                        Image(systemName: "xmark").font(.system(size: 9, weight: .bold)).foregroundStyle(.secondary)
-                            .frame(width: 18, height: 18).background(Circle().fill(Color.primary.opacity(0.08)))
-                    }.buttonStyle(.plain).help("Dismiss")
+            } else if !item.reveal.isEmpty || item.action != nil || (failed && !item.detail.isEmpty) {
+                HStack(spacing: 6) {
+                    if !item.reveal.isEmpty { Button(action: show) { ToastPill(text: "Show", symbol: "eye", fill: .white, ink: ToastInk.muted) }.buttonStyle(.plain) }
+                    Spacer(minLength: 4)
+                    if failed && !item.detail.isEmpty { Button(action: copyError) { ToastPill(text: "Copy error", symbol: "doc.on.doc", fill: Color(white: 0.4)) }.buttonStyle(.plain) }
+                    if let a = item.action { Button(action: a.run) { ToastPill(text: a.title, symbol: a.title.hasPrefix("Replace") ? "arrow.triangle.2.circlepath" : nil) }.buttonStyle(.plain) }
                 }
             }
-            .padding(.trailing, 14)
         }
-        .frame(width: 340)
-        .background(RoundedRectangle(cornerRadius: 18, style: .continuous).fill(.regularMaterial))
-        .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).stroke(Color.primary.opacity(0.12)))
-        // saisie : la ligne se tasse, devient translucide et laisse un contour pointillé, comme une place vide d'où l'on vient de sortir quelque chose
-        .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).strokeBorder(Theme.orange.opacity(0.8), style: StrokeStyle(lineWidth: 1.5, dash: [5, 4]))
-            .opacity(item.dragging ? 1 : 0))
-        .shadow(color: .black.opacity(item.dragging ? 0.08 : 0.2), radius: item.dragging ? 5 : 16, y: item.dragging ? 2 : 6)
-        .scaleEffect(item.dragging ? 0.94 : 1)
-        .opacity(item.dragging ? 0.6 : 1)
-        .animation(.spring(response: 0.28, dampingFraction: 0.62), value: item.dragging)
+        .padding(.horizontal, 14).padding(.vertical, 10)
+        .frame(width: 300)
+        .background(ZStack {
+            RoundedRectangle(cornerRadius: 22, style: .continuous).fill(Color.white)
+            RoundedRectangle(cornerRadius: 17, style: .continuous).fill(Color(white: 0.955)).padding(5)
+        })
+        .overlay(alignment: .topTrailing) { if finished { Button(action: dismiss) { ToastRound(symbol: "xmark", size: 21, fill: Color(white: 0.6), ink: .white, rim: true) }.buttonStyle(.plain).help("Dismiss").offset(x: 4, y: -7) } }
+        .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous).strokeBorder(Theme.orange.opacity(0.8), style: StrokeStyle(lineWidth: 1.5, dash: [5, 4])).opacity(item.dragging ? 1 : 0))
     }
 }
 

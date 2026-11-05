@@ -80,8 +80,8 @@ final class Feedback {
         lastBtnHover = Date(); playFirst(wiiBtnHoverP)
     }
 
-    /// Un travail s'est terminé avec succès (style Wii).
-    func done() { if isWii { playFirst(wiiDoneP) } }
+    /// Un travail s'est terminé avec succès : même son pour tous les styles de menu.
+    func done() { playFirst(wiiDoneP) }
 
     /// Appui sur un élément d'un outil (bouton, case, curseur…), relâchement, et déplacement d'un curseur ou d'une poignée.
     func wiiPress() { NSHapticFeedbackManager.defaultPerformer.perform(.alignment, performanceTime: .now); playFirst(wiiPressP) }

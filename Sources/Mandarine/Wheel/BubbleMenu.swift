@@ -270,9 +270,14 @@ struct BubbleMenuView: View {
             pile.offset(y: -D * 0.1).scaleEffect(0.92)
             VStack(spacing: 1) {
                 Spacer()
-                ForEach(Array(lines.enumerated()), id: \.offset) { i, line in
-                    Text(line).font(.system(size: i == 0 ? 11 : 8.5, weight: i == 0 ? .bold : .medium)).foregroundStyle(Theme.text.opacity(i == 0 ? 0.95 : 0.65))
-                        .lineLimit(1).minimumScaleFactor(0.6)
+                if model.replacing {                  // voyant : ce dépôt remplacera le fichier d'origine
+                    Label("Replaces the original", systemImage: "arrow.triangle.2.circlepath").font(.system(size: 9.5, weight: .heavy)).foregroundStyle(.white)
+                        .padding(.horizontal, 8).padding(.vertical, 3).background(Capsule().fill(Theme.orange))
+                } else {
+                    ForEach(Array(lines.enumerated()), id: \.offset) { i, line in
+                        Text(line).font(.system(size: i == 0 ? 11 : 8.5, weight: i == 0 ? .bold : .medium)).foregroundStyle(Theme.text.opacity(i == 0 ? 0.95 : 0.65))
+                            .lineLimit(1).minimumScaleFactor(0.6)
+                    }
                 }
             }
             .padding(.horizontal, 14).padding(.bottom, 11)
@@ -281,9 +286,11 @@ struct BubbleMenuView: View {
                     .padding(.horizontal, 6).padding(.vertical, 2.5).background(Capsule().fill(Theme.orange)).offset(x: D * 0.36, y: -D * 0.34)
             }
         }
+        .overlay(Circle().stroke(Theme.orange, lineWidth: 3.5).opacity(model.replacing ? 1 : 0))
         .frame(width: D, height: D)
         .shadow(color: .black.opacity(0.4), radius: 14, y: 6)
         .scaleEffect(pulse)
+        .animation(.easeOut(duration: 0.15), value: model.replacing)
     }
 
     /// Les aperçus empilés « en vrac » : cadres aux coins ronds, légèrement tournés et décalés ; le premier fichier est dessus.

@@ -31,7 +31,7 @@ struct RedactVideoTool: View {
                 Text("Draw boxes on the video, then drag their bars to set when each one is visible.").sectionLabel()
             }.frame(width: 420)
         } footer: {
-            Button("Save Redacted Copy") { save() }.buttonStyle(PillButtonStyle()).disabled(regions.isEmpty)
+            ReplaceButton("Save Redacted Copy") { save() }.disabled(regions.isEmpty)
         }
         .task { await player.load(urls[0]) }
     }
@@ -89,7 +89,7 @@ struct RedactVideoTool: View {
     private func save() {
         let file = urls[0], rs = regions, st = style, col = NSColor(color).usingColorSpace(.sRGB) ?? .black
         close()
-        Dispatcher.job("Redacting video…") { progress in
+        Dispatcher.job("Redacting video…", replaces: [file]) { progress in
             let info = await FFmpeg.probe(file)
             let W = Double(info.width), H = Double(info.height)
             let hex = String(format: "0x%02X%02X%02X", Int(col.redComponent * 255), Int(col.greenComponent * 255), Int(col.blueComponent * 255))

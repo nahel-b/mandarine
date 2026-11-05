@@ -153,6 +153,7 @@ final class WheelModel: ObservableObject {
     @Published var cursor: CGPoint? = nil       // position du pointeur main (repère de l'écran Wii)
     @Published var fileCount = 1
     @Published var sizeLabel = ""
+    @Published var replacing = false               // le dépôt remplacera le fichier d'origine (réglage, ou touche d'inversion maintenue) : voyant au centre
     @Published var infoLines: [String] = []       // 2-3 lignes au centre : taille, durée, dimensions…
     @Published var appear = false          // pilote l'animation d'apparition (rebond)
 }
@@ -299,8 +300,14 @@ struct WheelView: View {
         let w = inn * 2 - 14, h = inn * 1.04
         let lines = Array(model.infoLines.prefix(3))
         return ZStack {
-            Capsule().fill(Color.black.opacity(0.30))
+            Capsule().fill(model.replacing ? orangeBottom.opacity(0.85) : Color.black.opacity(0.30))
             Capsule().strokeBorder(LinearGradient(colors: [Color.white.opacity(0.28), Color.white.opacity(0.06)], startPoint: .top, endPoint: .bottom), lineWidth: 1.2)
+            if model.replacing {                      // voyant : ce dépôt remplacera le fichier d'origine
+                VStack(spacing: 2) {
+                    Image(systemName: "arrow.triangle.2.circlepath").font(.system(size: 13, weight: .bold))
+                    Text("REPLACES").font(.system(size: 9.5, weight: .heavy)); Text("THE ORIGINAL").font(.system(size: 7.5, weight: .bold)).opacity(0.85)
+                }.foregroundStyle(.white).transition(.scale.combined(with: .opacity))
+            } else {
             VStack(spacing: 1.5) {
                 ForEach(Array(lines.enumerated()), id: \.offset) { i, line in
                     Text(line)
@@ -310,7 +317,9 @@ struct WheelView: View {
                 }
             }
             .padding(.horizontal, 10)
+            }
         }
         .frame(width: w, height: h)
+        .animation(.spring(response: 0.25, dampingFraction: 0.7), value: model.replacing)
     }
 }

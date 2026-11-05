@@ -550,12 +550,22 @@ struct WiiMenuView: View {
                 Text(item.caption).font(.system(size: 12, weight: .bold, design: .rounded)).foregroundStyle(blue)
                 Text(WiiText.description(item)).font(.system(size: 9.5, weight: .medium, design: .rounded)).foregroundStyle(ink)
                     .multilineTextAlignment(.center).lineLimit(2).frame(width: 330)
+                if model.replacing { replaceChip }
             }
             .transition(.opacity)
             .id(item.id)
+        } else if model.replacing {
+            replaceChip
         } else {
             Text(Self.dateText).font(.system(size: 17, weight: .semibold, design: .rounded)).foregroundStyle(ink)
         }
+    }
+
+    /// Voyant : ce dépôt remplacera le fichier d'origine.
+    private var replaceChip: some View {
+        Label("Replaces the original", systemImage: "arrow.triangle.2.circlepath").font(.system(size: 11, weight: .heavy, design: .rounded)).foregroundStyle(.white)
+            .padding(.horizontal, 12).padding(.vertical, 4).background(Capsule().fill(LinearGradient(colors: [Color(red: 1.0, green: 0.6, blue: 0.2), Color(red: 0.95, green: 0.4, blue: 0.1)], startPoint: .top, endPoint: .bottom)))
+            .shadow(color: Color.orange.opacity(0.5), radius: 4, y: 1).transition(.scale.combined(with: .opacity))
     }
 
     static var dateText: String {

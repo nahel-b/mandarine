@@ -230,3 +230,29 @@ sous le pointeur (ressort léger), y compris ceux du contenu des outils (`WiiHov
 ## Export Video : vidéos HDR et 10 bits
 Une source HDR (HLG/PQ, films d'iPhone) exportée en H.264 8 bits donnait une image grise et délavée, et le H.264 10 bits n'est lisible ni par QuickTime ni par l'Aperçu (image grise/verte).
 Ces deux cas passent maintenant en HEVC 10 bits (couleurs et étiquettes HDR conservées) ; une note l'indique dans l'outil. Code : `VideoEncoder.effective`.
+
+## Garder ou remplacer l'original
+- Réglages → General → « Original file » : **Keep it** (défaut) ou **Replace it**. La touche **⌥** inverse le réglage : maintenue au moment où l'on clique sur le bouton d'un outil, ou où l'on dépose sur un pétale
+  (si une roue utilise déjà ⌥, c'est la première touche libre parmi ⌃ ⇧ ⌘). Code : `Core/ReplaceMode.swift`, `Core/Replacer.swift`.
+- Le bouton principal des outils qui modifient un fichier (Compress, Metadata, Edit, Annotate, Add BG, Crop, Redact, Resize/Upscale, Rotate, Remove Background, Trim/Crop/Speed/Redact vidéo, Export,
+  Normalize, Trim Audio, Channels, Bleep) devient **« Replace original »** (et orange) tant que le remplacement est actif (`ReplaceButton`). Même chose pour les conversions de la roue, Mute et Remove BG directs.
+- Pendant un glisser, avec ⌥ maintenue : voyant « Replaces the original » au centre de la roue, des bulles, et dans la barre de l'écran Wii.
+- L'original va à la **Corbeille** (jamais supprimé) ; le résultat prend son nom (avec sa nouvelle extension si le format change). Remplacement seulement si chaque original a exactement un résultat
+  (donc pas pour les découpes, fusions ou tailles multiples ; pas pour Trim Audio en mode « Keep trimming »).
+- Notification : sans remplacement, un bouton **« Replace original »** ; après remplacement, **« Undo »** qui remet tout. Le bouton d'action des notifications a maintenant sa propre ligne.
+- Astuce unique à la première ouverture d'un outil concerné (`ReplaceTip`). Essai : `--replacetest`.
+
+## What's New
+Fenêtre « What's New » affichée une fois après une mise à jour (les versions plus récentes que la dernière vue, trois au plus ; pas à la première installation), et depuis le menu de la barre de menus.
+Les notes sont dans `App/WhatsNew.swift` (`WhatsNew.releases`) : **à compléter à chaque version**.
+
+## Notifications : deux styles
+Réglages → General → Notifications : **Capsule** (défaut, « B1 » : une ligne, liseré blanc épais, l'icône du fichier seule entourée d'un arc vert qui avance avec le travail ; une fois fini, une coche blanche sur rond vert ; œil = Show, pastille graphite = action,
+✕ rond au coin) ou **Card** (« A1 » : carte avec légende, titre, barre de progression et boutons en bas). Le glisser des fichiers, le temps restant, « Replace original » / « Undo », Copy et Cancel marchent dans les deux.
+Le son de fin de travail joue dans tous les styles de menu. Les maquettes sont dans `UI/ToastLab.swift` (`--snapshot toaststyles:1…5`) ; `MANDARINE_NOTIFSTYLE=card` force un style pour les essais.
+
+## ⌥ au dépôt, Entrée dans les fenêtres
+- Déposer sur un outil à fenêtre **en tenant ⌥** : la fenêtre s'ouvre en mode « remplacer » (bouton « Replace original ») ; **⌥ au clic** y repasse à « garder » (le réglage est inversé par rapport à la fenêtre,
+  pas par rapport aux Réglages). Sans ⌥ au dépôt, la base est le réglage. Code : `ReplaceMode.baseForNewWindow`, environnement `replaceBase`, `ReplaceButton`. Essai : `--entertest image.png [optdrop]`.
+- **Entrée** lance l'outil dans toutes les fenêtres (bouton principal en `keyboardShortcut(.defaultAction)`), classiques ou dans l'écran Wii. Exceptions : outils à zone de texte (Extract Text, Translate, Summarize),
+  Quick Sort, Quick Look. Dans Metadata, Entrée = « Save » (pas « Remove All »).

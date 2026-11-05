@@ -137,7 +137,7 @@ struct FrameImageTool: View {
             }.frame(width: 400)
         } footer: {
             Button("Reset") { p = FrameParams(); ratioChoice = 0; bgImage = nil; cutEnabled = false }.buttonStyle(PillButtonStyle())
-            Button("Save with Background") { save() }.buttonStyle(PillButtonStyle())
+            ReplaceButton("Save with Background") { save() }
         }
     }
 
@@ -181,7 +181,7 @@ struct FrameImageTool: View {
     @MainActor private func save() {
         let params = p, files = urls, bg = bgImage, cut = cutEnabled
         close()
-        Dispatcher.job("Adding background…", light: true) { _ in
+        Dispatcher.job("Adding background…", light: true, replaces: files) { _ in
             try await MainActor.run {
                 try files.map { url in
                     var (cg, _) = try ImageEngine.load(url)
@@ -306,7 +306,7 @@ struct CollageTool: View {
             }.frame(width: 380).font(.system(size: 12))
         } footer: {
             Button("Reset Layout") { style = .grid; columns = 2; spacing = 0; corners = 0; urls.sort { $0.path < $1.path } }.buttonStyle(PillButtonStyle())
-            Button("Create Collage") { save() }.buttonStyle(PillButtonStyle())
+            Button("Create Collage") { save() }.buttonStyle(PillButtonStyle()).keyboardShortcut(.defaultAction)
         }
         .task(id: urls) {
             for u in urls where images[u] == nil {

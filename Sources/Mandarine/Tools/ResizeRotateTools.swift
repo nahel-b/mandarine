@@ -107,7 +107,7 @@ struct ResizeImageTool: View {
         } footer: {
             Button { let f = urls; close(); ToolWindowController.present(.editImage, urls: f) } label: { Label("Edit…", systemImage: "slider.horizontal.3") }
                 .buttonStyle(PillButtonStyle()).help("Open Edit Photo for the same image")
-            Button(mode == .upscale ? "Upscale" : "Resize") { mode == .upscale ? upscale() : apply() }.buttonStyle(PillButtonStyle()).disabled(mode == .multiple && sizes.isEmpty)
+            ReplaceButton(mode == .upscale ? "Upscale" : "Resize") { mode == .upscale ? upscale() : apply() }.disabled(mode == .multiple && sizes.isEmpty)
         }
         .onAppear { w = Int(src.pixelSize.width); h = Int(src.pixelSize.height) }
         .task(id: key) {
@@ -186,7 +186,7 @@ struct ResizeImageTool: View {
     private func upscale() {
         let (factor, ai, files) = (upFactor, useAI, urls)
         close()
-        Dispatcher.job(ai ? "Upscaling with AI…" : "Upscaling…", count: files.count) { progress in
+        Dispatcher.job(ai ? "Upscaling with AI…" : "Upscaling…", count: files.count, replaces: files) { progress in
             var outs: [URL] = []
             for (i, url) in files.enumerated() {
                 let (img, props) = try ImageEngine.load(url)
@@ -255,7 +255,7 @@ struct ResizeImageTool: View {
         let (m, w, h, f, p, sz, ne) = (mode == .dimensions ? 0 : (mode == .percent ? 1 : 2), self.w, self.h, fit == .fit ? 0 : (fit == .fill ? 1 : 2), percent, Array(sizes), noEnlarge)
         let files = urls
         close()
-        Dispatcher.job("Resizing…", count: files.count) { progress in
+        Dispatcher.job("Resizing…", count: files.count, replaces: files) { progress in
             try await Task.detached {
                 var outs: [URL] = []
                 var folder: URL?
@@ -348,7 +348,7 @@ struct RotateImageTool: View {
             }.frame(width: 380)
         } footer: {
             Button("Reset") { turns = 0; flipH = false; flipV = false; update() }.buttonStyle(PillButtonStyle()).disabled(!changed)
-            Button(changed ? "Save Rotated Copy" : "Straighten (EXIF)") { save() }.buttonStyle(PillButtonStyle()).disabled(!changed && exif == 1)
+            ReplaceButton(changed ? "Save Rotated Copy" : "Straighten (EXIF)") { save() }.disabled(!changed && exif == 1)
         }
         .task {
             exif = ImageTransform.exifOrientation(urls[0])
@@ -373,7 +373,7 @@ struct RotateImageTool: View {
     private func save() {
         let (t, h, v, files) = (turns, flipH, flipV, urls)
         close()
-        Dispatcher.job("Rotating…", count: files.count) { progress in
+        Dispatcher.job("Rotating…", count: files.count, replaces: files) { progress in
             try await Task.detached {
                 var outs: [URL] = []
                 for (i, url) in files.enumerated() {
@@ -410,7 +410,7 @@ struct ExtractAudioTool: View {
                                           : "Re-encodes the audio track as \(choice.uppercased()).")
                     .sectionLabel().fixedSize(horizontal: false, vertical: true)
             }.frame(width: 380, alignment: .leading)
-        } footer: { Button("Extract Audio") { apply() }.buttonStyle(PillButtonStyle()) }
+        } footer: { Button("Extract Audio") { apply() }.buttonStyle(PillButtonStyle()).keyboardShortcut(.defaultAction) }
         .task { codec = await ExtractAudioTool.codecName(urls[0]) ?? "" }
     }
 

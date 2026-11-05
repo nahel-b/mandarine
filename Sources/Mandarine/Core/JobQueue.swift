@@ -22,6 +22,8 @@ final class JobQueue {
         var startedAt = Date()
         var samples: [(t: Double, p: Double)] = []      // progression relevée au fil du temps, pour estimer ce qui reste
         var eta = ""
+        var replaces: [URL] = []                 // fichiers d'origine que ce travail peut remplacer (un résultat par original, dans le même ordre)
+        var replaceNow = false                   // le remplacement a été demandé (réglage inversé par la touche) au moment de lancer le travail
         var etaLeft: Double?, etaAt = 0.0          // secondes restantes lissées, et l'instant (depuis le début) où elles ont été calculées
         init(title: String, subtitle: String, heavy: Bool, count: Int, work: @escaping StatusWork) {
             self.title = title; self.subtitle = subtitle; self.heavy = heavy; self.count = count; self.work = work
@@ -69,16 +71,19 @@ final class JobQueue {
     private var entries: [Entry] = []
     var isIdle: Bool { entries.isEmpty }      // en attente et en cours, dans l'ordre d'arrivée
 
+    /// `replaces` : les fichiers d'origine, si ce travail en fait de nouvelles versions. `replace` : nil = d'après le réglage et la touche d'inversion.
     @discardableResult
-    func add(_ title: String, subtitle: String = "", light: Bool = false, count: Int = 1, work: @escaping Work) -> UUID {
-        add(title, subtitle: subtitle, light: light, count: count, statusWork: { progress, _ in try await work(progress) })
+    func add(_ title: String, subtitle: String = "", light: Bool = false, count: Int = 1, replaces: [URL] = [], replace: Bool? = nil, work: @escaping Work) -> UUID {
+        add(title, subtitle: subtitle, light: light, count: count, replaces: replaces, replace: replace, statusWork: { progress, _ in try await work(progress) })
     }
 
     @discardableResult
     /// `count` : nombre de fichiers du lot. Au-dessus de 1, la ligne affiche « x of n done » d'après la progression globale
     /// (le travail doit la calculer comme (fichiers faits + part du fichier en cours) / n).
-    func add(_ title: String, subtitle: String = "", light: Bool = false, count: Int = 1, statusWork work: @escaping StatusWork) -> UUID {
+    func add(_ title: String, subtitle: String = "", light: Bool = false, count: Int = 1, replaces: [URL] = [], replace: Bool? = nil, statusWork work: @escaping StatusWork) -> UUID {
         let e = Entry(title: title, subtitle: subtitle, heavy: !light, count: count, work: work)
+        e.replaces = replaces
+        e.replaceNow = !replaces.isEmpty && (replace ?? ReplaceMode.shared.effectiveNow())
         entries.append(e)
         Toast.shared.add(ToastItem(id: e.id, phase: .waiting, title: title, subtitle: "Waiting…", progress: nil, cancel: { [weak self] in self?.cancel(e.id) }))
         pump()
@@ -143,7 +148,7 @@ final class JobQueue {
     }
 
     /// Description d'un travail terminé : le nom du fichier (ou « et 2 autres »), puis le dossier.
-    private static func savedDetail(_ outs: [URL]) -> String {
+    static func savedDetail(_ outs: [URL]) -> String {
         guard let first = outs.first else { return "" }
         let folder = "in " + first.deletingLastPathComponent().lastPathComponent
         return (outs.count == 1 ? first.lastPathComponent : "\(first.lastPathComponent) and \(outs.count - 1) more") + "\n" + folder
@@ -155,14 +160,28 @@ final class JobQueue {
         if e.cancelled { Toast.shared.remove(e.id); return }
         switch result {
         case .success(let outs):
-            guard let first = outs.first else { Toast.shared.remove(e.id); return }
-            let title = outs.count == 1 ? "Saved" : "Saved \(outs.count) items"
+            guard !outs.isEmpty else { Toast.shared.remove(e.id); return }
+            // remplacement de l'original : seulement si chaque original a exactement un résultat
+            let pairable = !e.replaces.isEmpty && e.replaces.count == outs.count
+            var replacements: [Replacement] = []
+            var note = ""
+            if pairable && e.replaceNow {
+                do { replacements = try Replacer.replace(originals: e.replaces, outputs: outs) }
+                catch { note = "Couldn't replace the original: \(error.localizedDescription)" }
+            }
+            let shown = replacements.isEmpty ? outs : replacements.map(\.final)
+            let replaced = !replacements.isEmpty
+            let title = replaced ? (outs.count == 1 ? "Replaced" : "Replaced \(outs.count) items") : (outs.count == 1 ? "Saved" : "Saved \(outs.count) items")
+            let id = e.id, originals = e.replaces
             Toast.shared.update(e.id) {
-                $0.phase = .done; $0.title = title; $0.subtitle = Self.savedDetail(outs)
-                $0.progress = nil; $0.reveal = outs; $0.cancel = nil; $0.eta = ""
+                $0.phase = .done; $0.title = title
+                $0.subtitle = Self.savedDetail(shown) + (replaced ? "\nThe original is in the Trash" : "") + (note.isEmpty ? "" : "\n" + note)
+                $0.progress = nil; $0.reveal = shown; $0.cancel = nil; $0.eta = ""
+                if replaced { $0.action = ("Undo", { ReplaceFlow.undo(id: id, replacements, originals: originals, outputs: outs) }) }
+                else if pairable { $0.action = ("Replace original", { ReplaceFlow.apply(id: id, originals: originals, outputs: outs) }) }
             }
             Feedback.shared.done()
-            if AppSettings.shared.revealAfterSave { NSWorkspace.shared.activateFileViewerSelecting(outs) }
+            if AppSettings.shared.revealAfterSave { NSWorkspace.shared.activateFileViewerSelecting(shown) }
         case .failure(let error):
             if error is CancellationError { Toast.shared.remove(e.id); return }
             if let part = error as? Partial, let first = part.outs.first {
@@ -182,6 +201,38 @@ final class JobQueue {
                 $0.phase = .failed; $0.title = short ? task + " failed" : "Failed"
                 $0.subtitle = short ? msg : task + "\n" + msg; $0.detail = msg; $0.progress = nil; $0.cancel = nil; $0.eta = ""
             }
+        }
+    }
+}
+
+/// Remplacement des originaux à la demande depuis la notification (« Replace original »), et retour en arrière (« Undo »).
+enum ReplaceFlow {
+    static func apply(id: UUID, originals: [URL], outputs: [URL]) {
+        do {
+            let done = try Replacer.replace(originals: originals, outputs: outputs)
+            let finals = done.map(\.final)
+            Toast.shared.update(id) {
+                $0.title = done.count == 1 ? "Replaced" : "Replaced \(done.count) items"
+                $0.subtitle = JobQueue.savedDetail(finals) + "\nThe original is in the Trash"
+                $0.reveal = finals
+                $0.action = ("Undo", { undo(id: id, done, originals: originals, outputs: outputs) })
+            }
+        } catch {
+            Toast.shared.update(id) { $0.subtitle = "Couldn't replace the original: \(error.localizedDescription)"; $0.action = nil }
+        }
+    }
+
+    static func undo(id: UUID, _ done: [Replacement], originals: [URL], outputs: [URL]) {
+        do {
+            try Replacer.undo(done)
+            Toast.shared.update(id) {
+                $0.title = outputs.count == 1 ? "Saved" : "Saved \(outputs.count) items"
+                $0.subtitle = JobQueue.savedDetail(outputs)
+                $0.reveal = outputs
+                $0.action = ("Replace original", { apply(id: id, originals: originals, outputs: outputs) })
+            }
+        } catch {
+            Toast.shared.update(id) { $0.subtitle = error.localizedDescription; $0.action = nil }
         }
     }
 }

@@ -153,7 +153,7 @@ struct AnnotateTool: View {
             }.frame(width: 420)
         } footer: {
             Button("Reset") { anns = []; nextNumber = 1; selected = nil }.buttonStyle(PillButtonStyle())
-            Button("Save Annotated Copy") { save() }.buttonStyle(PillButtonStyle())
+            ReplaceButton("Save Annotated Copy") { save() }
         }
     }
 
@@ -229,7 +229,7 @@ struct AnnotateTool: View {
     @MainActor private func save() {
         let list = anns, file = urls[0]
         close()
-        Dispatcher.job("Saving annotated copy…", light: true) { _ in
+        Dispatcher.job("Saving annotated copy…", light: true, replaces: [file]) { _ in
             try await MainActor.run {
                 let (cg, props) = try ImageEngine.load(file)
                 let size = CGSize(width: cg.width, height: cg.height)

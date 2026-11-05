@@ -410,6 +410,7 @@ final class WheelController {
     /// Retourne true si le dépôt a été accepté.
     func drop() -> Bool {
         guard let item = targetItem, item.enabled else { dismiss(); return false }
+        ReplaceMode.shared.capture()          // la touche d'inversion est lue maintenant : le travail démarre un peu plus tard
         let files = urls
         // Style Wii, outil à fenêtre : l'écran Wii reste, zoome sur la case et devient la fenêtre de l'outil
         if AppSettings.shared.appearance == .wii, case .tool(let id) = item.payload, !ToolRegistry.isDirect(id) {
@@ -432,6 +433,7 @@ final class WheelController {
 
     /// Masque la roue sans mettre fin au suivi du glisser (le drag continue).
     func hide() {
+        model.replacing = false
         panel?.orderOut(nil)
         wiiPanel?.orderOut(nil); bubblePanel?.orderOut(nil); wiiNavTimer?.invalidate(); wiiNavTimer = nil; model.cursor = nil; model.wiiNav = false
         model.appear = false
@@ -441,6 +443,7 @@ final class WheelController {
     }
 
     func dismiss() {
+        model.replacing = false
         panel?.orderOut(nil)
         wiiPanel?.orderOut(nil); bubblePanel?.orderOut(nil); wiiNavTimer?.invalidate(); wiiNavTimer = nil; model.cursor = nil; model.wiiNav = false
         model.appear = false

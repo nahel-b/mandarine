@@ -88,7 +88,7 @@ struct DaVinciTreeTool: View {
                 }
             }.frame(width: 470, alignment: .leading)
         } footer: {
-            Button("Create Folders") { run() }.buttonStyle(PillButtonStyle(prominent: true)).disabled(!groups.contains { $0.on })
+            Button("Create Folders") { run() }.buttonStyle(PillButtonStyle(prominent: true)).disabled(!groups.contains { $0.on }).keyboardShortcut(.defaultAction)
         }
         .onAppear { name = urls.count == 1 ? urls[0].deletingPathExtension().lastPathComponent : "DaVinci Project" }
     }

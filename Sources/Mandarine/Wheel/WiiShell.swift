@@ -312,6 +312,7 @@ final class WiiShell: NSObject, ObservableObject, NSWindowDelegate {
     private var window: ToolWindow?
     private var pointerTimer: Timer?
     private var cursorHidden = false
+    private var watchingReplace = false
     private var wasDown = false
     private var lastSoundPoint = CGPoint.zero
     private var center = NSPoint.zero
@@ -358,6 +359,7 @@ final class WiiShell: NSObject, ObservableObject, NSWindowDelegate {
         m.wiiAnchor = UnitPoint(x: tile.midX / WiiLayout.size.width, y: tile.midY / WiiLayout.size.height)
         m.wiiZoom = 0; m.wiiDim = 0; m.wiiInteractive = false; m.cursor = nil
         ensureWindow(center: center)
+        ReplaceTip.maybeShow(for: id)
         enter(ToolRegistry.view(for: id, urls: urls, close: { [weak self] in self?.finish() }))
         // l'app passe au premier plan tout de suite : la main reste le pointeur dès que le fichier est lâché
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) { [weak self] in
@@ -380,11 +382,13 @@ final class WiiShell: NSObject, ObservableObject, NSWindowDelegate {
         enter(view)
     }
 
-    private func wrapped(_ v: AnyView) -> AnyView { AnyView(v.environment(\.wiiHost, host).environment(\.colorScheme, .light)) }
+    private var sessionBase: Bool?          // mode de remplacement par défaut de l'outil ouvert (déposé avec la touche d'inversion : l'inverse du réglage)
+    private func wrapped(_ v: AnyView) -> AnyView { AnyView(v.environment(\.wiiHost, host).environment(\.replaceBase, sessionBase).environment(\.colorScheme, .light)) }
 
     private func enter(_ view: AnyView) {
         host.back = { [weak self] in self?.backToMenu() }
         if tool != nil { switchTool(wrapped(view)); return }
+        sessionBase = ReplaceMode.shared.baseForNewWindow()
         token += 1
         exiting = false; interactive = false
         host.content = 0; host.tab = 0; panel = 0; panelShown = 0
@@ -457,6 +461,7 @@ final class WiiShell: NSObject, ObservableObject, NSWindowDelegate {
     func chooseHovered() {
         let wc = WheelController.shared
         guard let item = wc.targetItem, item.enabled else { return }
+        ReplaceMode.shared.capture()
         let files = wc.urls
         if case .tool(let id) = item.payload, !ToolRegistry.isDirect(id) {
             let m = menuModel
@@ -465,6 +470,7 @@ final class WiiShell: NSObject, ObservableObject, NSWindowDelegate {
             m.wiiAnchor = UnitPoint(x: rect.midX / WiiLayout.size.width, y: rect.midY / WiiLayout.size.height)
             m.wiiInteractive = false
             Feedback.shared.toolOpen()
+            ReplaceTip.maybeShow(for: id)
             enter(ToolRegistry.view(for: id, urls: files, close: { [weak self] in self?.finish() }))
         } else {
             Feedback.shared.drop()
@@ -515,6 +521,7 @@ final class WiiShell: NSObject, ObservableObject, NSWindowDelegate {
         window = w
         w.orderFrontRegardless()
         startPointer()
+        if !watchingReplace { watchingReplace = true; ReplaceMode.shared.begin() }
     }
 
     // MARK: Main, curseur système et sons d'appui
@@ -582,6 +589,7 @@ final class WiiShell: NSObject, ObservableObject, NSWindowDelegate {
 
     private func reset() {
         stopPointer()
+        if watchingReplace { watchingReplace = false; ReplaceMode.shared.end() }
         windowStage = .zero
         token += 1
         tool = nil; panel = 0; panelShown = 0; interactive = false; exiting = false; hasMenu = false

@@ -116,7 +116,7 @@ struct TypeSelectTool: View {
             Button("Clear") { chosen = []; chosenTags = []; sizeMode = 0; dateChoice = 0 }.buttonStyle(PillButtonStyle()).disabled(!filtering)
             Button(matches.count == 1 ? "Select 1 item" : "Select \(matches.count) items") {
                 let f = matches, n = urls.count; close(); TagSelect.select(f, of: n)
-            }.buttonStyle(PillButtonStyle()).disabled(matches.isEmpty)
+            }.buttonStyle(PillButtonStyle()).disabled(matches.isEmpty).keyboardShortcut(.defaultAction)
         }
         .task { await load() }
     }

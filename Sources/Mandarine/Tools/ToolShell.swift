@@ -581,6 +581,7 @@ final class ToolWindowController: NSObject, NSWindowDelegate {
         let key = id.rawValue + "|" + urls.map(\.absoluteString).joined(separator: "|")
         if let last = lastOpened, last.key == key, Date().timeIntervalSince(last.date) < 1.5 { return }
         lastOpened = (key, Date())
+        ReplaceTip.maybeShow(for: id)
         // Style Wii : les outils à fenêtre s'ouvrent dans l'écran Wii ; ceux qui travaillent aussitôt gardent leur mécanisme
         if AppSettings.shared.appearance == .wii && !ToolRegistry.isDirect(id) { WiiShell.shared.present { close in ToolRegistry.view(for: id, urls: urls, close: close) }; return }
         presentWindow { close in ToolRegistry.view(for: id, urls: urls, close: close) }
@@ -596,7 +597,7 @@ final class ToolWindowController: NSObject, NSWindowDelegate {
         let c = ToolWindowController()
         let close: () -> Void = { [weak c] in c?.close() }
         let root = make(close)
-        let host = FirstMouseHostingView(rootView: root.environment(\.colorScheme, .light))
+        let host = FirstMouseHostingView(rootView: root.environment(\.replaceBase, ReplaceMode.shared.baseForNewWindow()).environment(\.colorScheme, .light))
         let size = host.fittingSize
         let w = ToolWindow(contentRect: NSRect(origin: .zero, size: NSSize(width: max(size.width, 380), height: max(size.height, 200))),
                            styleMask: [.borderless, .fullSizeContentView], backing: .buffered, defer: false)
@@ -612,6 +613,7 @@ final class ToolWindowController: NSObject, NSWindowDelegate {
         c.window = w
         w.center()
         open.append(c)
+        ReplaceMode.shared.begin()
         NSApp.activate(ignoringOtherApps: true)
         w.makeKeyAndOrderFront(nil)
     }
@@ -620,6 +622,7 @@ final class ToolWindowController: NSObject, NSWindowDelegate {
     func windowWillClose(_ notification: Notification) {
         window.contentView = nil
         ToolWindowController.open.removeAll { $0 === self }
+        ReplaceMode.shared.end()
     }
 }
 

@@ -53,7 +53,7 @@ struct ScanTool: View {
             }.frame(width: 520)
         } footer: {
             Button("Save as Images") { save(pdf: false) }.buttonStyle(PillButtonStyle()).disabled(loading || pages.isEmpty)
-            Button(pages.count > 1 ? "Save PDF (\(pages.count) pages)" : "Save PDF") { save(pdf: true) }.buttonStyle(PillButtonStyle()).disabled(loading || pages.isEmpty)
+            Button(pages.count > 1 ? "Save PDF (\(pages.count) pages)" : "Save PDF") { save(pdf: true) }.buttonStyle(PillButtonStyle()).disabled(loading || pages.isEmpty).keyboardShortcut(.defaultAction)
         }
         .task { await load() }
         .task(id: renderKey) { await renderPreview() }

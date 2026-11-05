@@ -74,7 +74,7 @@ struct NormalizeTool: View {
                 Text("−16 LUFS is a balanced default for spoken audio and music. The true peak limit helps prevent clipping after encoding.")
                     .sectionLabel().fixedSize(horizontal: false, vertical: true)
             }.frame(width: 440)
-        } footer: { Button("Normalize Audio") { apply() }.buttonStyle(PillButtonStyle()) }
+        } footer: { ReplaceButton("Normalize Audio") { apply() } }
         .task {
             await player.load(urls[0])
             peaks = await WaveformLoader.peaks(urls[0], count: 140).peaks
@@ -90,7 +90,7 @@ struct NormalizeTool: View {
     private func apply() {
         let (I, L, T, files) = (target, range, peak, urls)
         close()
-        Dispatcher.job("Normalizing…", count: files.count) { progress in
+        Dispatcher.job("Normalizing…", count: files.count, replaces: files) { progress in
             var outs: [URL] = []
             for (i, f) in files.enumerated() {
                 let m = await AudioExport.loudness(f, I: I, LRA: L, TP: T)
@@ -135,7 +135,7 @@ struct VisualizerTool: View {
                 HStack { Text("Shape").sectionLabel(); Spacer()
                     Picker("", selection: $shape) { ForEach(Array(shapes.enumerated()), id: \.offset) { Text($1.0).tag($0) } }.labelsHidden().frame(width: 170) }
             }.frame(width: 400)
-        } footer: { Button("Create Visualization") { apply() }.buttonStyle(PillButtonStyle()) }
+        } footer: { Button("Create Visualization") { apply() }.buttonStyle(PillButtonStyle()).keyboardShortcut(.defaultAction) }
         .task { peaks = await WaveformLoader.peaks(urls[0], count: 60).peaks }
     }
 
@@ -200,7 +200,7 @@ struct TrimAudioTool: View {
                     Label(player.isPlaying ? "Pause" : "Play Selected Range", systemImage: player.isPlaying ? "pause.fill" : "play.fill")
                 }.buttonStyle(PillButtonStyle()).frame(maxWidth: .infinity, alignment: .trailing)
             }.frame(width: 420)
-        } footer: { Button(keepGoing ? "Apply & Keep Going" : "Apply") { apply() }.buttonStyle(PillButtonStyle()) }
+        } footer: { ReplaceButton(keepGoing ? "Apply & Keep Going" : "Apply") { apply() } }
         .task {
             let w = await WaveformLoader.peaks(urls[0], count: 90)
             peaks = w.peaks
@@ -226,7 +226,7 @@ struct TrimAudioTool: View {
             player.pause(); cursorSet = false
             if e < dur - 0.05 { start = e; end = dur; player.seek(e) } else { start = 0; end = dur; player.seek(0) }
         } else { close() }
-        Dispatcher.job("Trimming audio…") { progress in
+        Dispatcher.job("Trimming audio…", replaces: files, replace: keepGoing ? false : nil) { progress in
             var outs: [URL] = []
             for f in files {
                 let ext = AudioExport.ext(for: f)
@@ -264,7 +264,7 @@ struct ChannelsTool: View {
                 HStack { Text("Preview").sectionLabel(); Spacer()
                     Button { Task { await preview() } } label: { Label(rendering ? "Rendering…" : "Play Output", systemImage: "play.fill") }.buttonStyle(PillButtonStyle()).disabled(rendering) }
             }.frame(width: 440)
-        } footer: { Button("Apply") { apply() }.buttonStyle(PillButtonStyle()) }
+        } footer: { ReplaceButton("Apply") { apply() } }
         .task {
             let p = await WaveformLoader.peaks(urls[0], count: 70)
             left = p.left; right = p.right
@@ -303,7 +303,7 @@ struct ChannelsTool: View {
     private func apply() {
         let (f, flt) = (urls[0], filter())
         close()
-        Dispatcher.job("Converting channels…") { progress in
+        Dispatcher.job("Converting channels…", replaces: [f]) { progress in
             let info = await FFmpeg.probe(f)
             let ext = AudioExport.ext(for: f)
             let out = OutputNaming.sibling(of: f, suffix: stereo ? " stereo" : " mono", ext: ext)
@@ -360,7 +360,7 @@ struct BleepTool: View {
                     Button("Original") { Task { await player.load(urls[0]); await MainActor.run { player.loopRange = nil; player.seek(0); player.play() } } }.buttonStyle(PillButtonStyle())
                     Button { Task { await previewBleeps() } } label: { Label(rendering ? "Rendering…" : "With Bleeps", systemImage: "play.fill") }.buttonStyle(PillButtonStyle()).disabled(rendering || bleeps.isEmpty) }
             }.frame(width: 460)
-        } footer: { Button("Save Bleeped Copy") { apply() }.buttonStyle(PillButtonStyle()).disabled(bleeps.isEmpty) }
+        } footer: { ReplaceButton("Save Bleeped Copy") { apply() }.disabled(bleeps.isEmpty) }
         .task {
             await player.load(urls[0])
             peaks = await WaveformLoader.peaks(urls[0], count: 120).peaks
@@ -418,7 +418,7 @@ struct BleepTool: View {
     private func apply() {
         let (f, rs) = (urls[0], bleeps)
         close()
-        Dispatcher.job("Saving bleeped copy…") { progress in
+        Dispatcher.job("Saving bleeped copy…", replaces: [f]) { progress in
             let info = await FFmpeg.probe(f)
             let ext = AudioExport.ext(for: f)
             let out = OutputNaming.sibling(of: f, suffix: " bleeped", ext: ext)

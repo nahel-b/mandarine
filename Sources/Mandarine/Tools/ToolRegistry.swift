@@ -102,7 +102,7 @@ struct DirectToolView: View {
                     return outs
                 }
             case .removeBackground:
-                Dispatcher.job("Removing background…", count: files.count) { progress in
+                Dispatcher.job("Removing background…", count: files.count, replaces: files) { progress in
                     var outs: [URL] = []
                     for (i, f) in files.enumerated() {
                         outs.append(try await Task.detached { try BackgroundRemover.run(f) }.value)
@@ -111,7 +111,7 @@ struct DirectToolView: View {
                     return outs
                 }
             case .muteVideo:
-                Dispatcher.job("Removing audio…", count: files.count) { progress in
+                Dispatcher.job("Removing audio…", count: files.count, replaces: files) { progress in
                     var outs: [URL] = []
                     for (i, f) in files.enumerated() {
                         let out = OutputNaming.sibling(of: f, suffix: " muted")

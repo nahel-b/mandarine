@@ -18,9 +18,11 @@ enum Dispatcher {
             }
             return
         }
+        // seuls de vrais fichiers peuvent être remplacés (pas un lien, pas un texte glissé)
+        let replaceable = urls.allSatisfy(\.isFileURL) && FileKind.common(of: urls) != .snippet
         if urls.count == 1 {
             let u = urls[0]
-            JobQueue.shared.add(title, subtitle: u.lastPathComponent) { progress in
+            JobQueue.shared.add(title, subtitle: u.lastPathComponent, replaces: replaceable ? [u] : []) { progress in
                 try await Converter.run(urls: [u], to: ext, progress: progress)
             }
             return
@@ -28,9 +30,10 @@ enum Dispatcher {
         // Plusieurs fichiers : UNE seule ligne de notification pour tout le lot (« 3 of 10 done »), avec une progression globale.
         // Deux conversions tournent en même temps (comme avant) ; une conversion qui échoue n'arrête pas les autres.
         let total = urls.count
-        JobQueue.shared.add(title, subtitle: "0 of \(total) done", statusWork: { progress, status in
+        JobQueue.shared.add(title, subtitle: "0 of \(total) done", replaces: replaceable ? urls : [], statusWork: { progress, status in
             let tally = BatchTally(total: total)
             var outs: [URL] = []
+            var byIndex: [Int: [URL]] = [:]          // résultats rangés dans l'ordre des fichiers (pour associer chacun à son original)
             var failures: [String] = []
             try await withThrowingTaskGroup(of: (Int, [URL], String?).self) { group in
                 var next = 0
@@ -50,13 +53,14 @@ enum Dispatcher {
                 }
                 for _ in 0..<min(JobQueue.maxHeavy, total) { launch() }
                 while let (i, o, failure) = try await group.next() {
-                    outs += o
+                    byIndex[i] = o
                     if let f = failure { failures.append(f) }
                     let (overall, done) = tally.finish(i)
                     progress(overall); status("\(done) of \(total) done")
                     launch()
                 }
             }
+            outs = byIndex.keys.sorted().flatMap { byIndex[$0] ?? [] }
             if !failures.isEmpty {
                 if outs.isEmpty { throw MandarineError(failures.first ?? "Conversion failed.") }
                 throw JobQueue.Partial(outs: outs, failed: failures.count, total: total, message: failures.joined(separator: "\n"))
@@ -67,8 +71,9 @@ enum Dispatcher {
 
     /// Met un travail dans la file (voir JobQueue). `light` : travail court, qui ne compte pas dans la limite de travaux lourds.
     /// `count` : nombre de fichiers du lot ; la ligne indique alors « x of n done » (voir JobQueue.add).
-    static func job(_ title: String, subtitle: String = "", light: Bool = false, count: Int = 1, _ work: @escaping JobQueue.Work) {
-        JobQueue.shared.add(title, subtitle: subtitle, light: light, count: count, work: work)
+    /// `replaces` : les fichiers d'origine que le travail peut remplacer (voir ReplaceMode) ; `replace` : forcer le choix (nil = réglage + touche).
+    static func job(_ title: String, subtitle: String = "", light: Bool = false, count: Int = 1, replaces: [URL] = [], replace: Bool? = nil, _ work: @escaping JobQueue.Work) {
+        JobQueue.shared.add(title, subtitle: subtitle, light: light, count: count, replaces: replaces, replace: replace, work: work)
     }
 }
 

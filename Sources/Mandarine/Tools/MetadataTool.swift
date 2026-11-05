@@ -173,8 +173,8 @@ struct MetadataTool: View {
                     .sectionLabel().fixedSize(horizontal: false, vertical: true)
             }.frame(width: 520)
         } footer: {
-            Button("Remove All") { run(removeAll: true) }.buttonStyle(PillButtonStyle())
-            Button("Save") { run(removeAll: false) }.buttonStyle(PillButtonStyle(prominent: false)).disabled(!rows.contains { $0.removed || $0.value != $0.original })
+            ReplaceButton("Remove All", isDefault: false) { run(removeAll: true) }
+            ReplaceButton("Save") { run(removeAll: false) }.disabled(!rows.contains { $0.removed || $0.value != $0.original })
         }
         .task { rows = await MetadataIO.read(urls[0]); loading = false }
     }
@@ -186,7 +186,7 @@ struct MetadataTool: View {
     private func run(removeAll: Bool) {
         let files = urls, rs = rows
         close()
-        Dispatcher.job(removeAll ? "Removing metadata…" : "Saving metadata…", light: true) { _ in
+        Dispatcher.job(removeAll ? "Removing metadata…" : "Saving metadata…", light: true, replaces: files) { _ in
             var outs: [URL] = []
             for (i, f) in files.enumerated() { outs.append(try await MetadataIO.write(url: f, rows: i == 0 ? rs : [], removeAll: removeAll || i > 0)) }
             return outs

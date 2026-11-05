@@ -56,7 +56,7 @@ struct TrimVideoTool: View {
                 }
             }.frame(width: 400)
         } footer: {
-            Button("Apply") { apply() }.buttonStyle(PillButtonStyle())
+            ReplaceButton("Apply") { apply() }
         }
         .task {
             await player.load(urls[0]); end = player.duration; ready = true
@@ -74,7 +74,7 @@ struct TrimVideoTool: View {
     private func apply() {
         let s = start, e = end, files = urls
         close()
-        Dispatcher.job("Trimming…") { progress in
+        Dispatcher.job("Trimming…", replaces: files) { progress in
             var outs: [URL] = []
             for f in files {
                 let out = OutputNaming.sibling(of: f, suffix: " trimmed", ext: VideoExport.ext(for: f))
@@ -108,7 +108,7 @@ struct CropVideoTool: View {
             }.frame(width: 400)
         } footer: {
             Button("Reset") { regions[0].rect = CGRect(x: 0, y: 0, width: 1, height: 1); ratio = AspectRatioChoice.all[0] }.buttonStyle(PillButtonStyle())
-            Button("Apply") { apply() }.buttonStyle(PillButtonStyle())
+            ReplaceButton("Apply") { apply() }
         }
         .task { await player.load(urls[0]) }
         .onReceive(player.$time) { pos = $0 }
@@ -117,7 +117,7 @@ struct CropVideoTool: View {
     private func apply() {
         let r = regions[0].rect, files = urls
         close()
-        Dispatcher.job("Cropping video…") { progress in
+        Dispatcher.job("Cropping video…", replaces: files) { progress in
             var outs: [URL] = []
             for f in files {
                 let info = await FFmpeg.probe(f)
@@ -156,7 +156,7 @@ struct SpeedVideoTool: View {
                     Text("\(timecode(player.time)) / \(timecode(player.duration))").font(.system(size: 11).monospacedDigit()).foregroundStyle(Theme.muted)
                 }
             }.frame(width: 400)
-        } footer: { Button("Apply") { apply() }.buttonStyle(PillButtonStyle()) }
+        } footer: { ReplaceButton("Apply") { apply() } }
         .task { await player.load(urls[0]) }
         .onChange(of: speedIdx) { _ in player.rate = Float(speed); if player.isPlaying { player.player.rate = Float(speed) } }
     }
@@ -166,7 +166,7 @@ struct SpeedVideoTool: View {
     private func apply() {
         let s = speed, files = urls
         close()
-        Dispatcher.job("Changing speed…") { progress in
+        Dispatcher.job("Changing speed…", replaces: files) { progress in
             var outs: [URL] = []
             for f in files {
                 let info = await FFmpeg.probe(f)
@@ -200,7 +200,7 @@ struct JoinVideosTool: View {
     var body: some View {
         ToolShell(title: "Join Videos", close: close) {
             OrderEditor(urls: $urls, thumbs: thumbs, accepts: FileKind.videoExts, noun: "video", types: [.movie])
-        } footer: { Button("Join Videos") { apply() }.buttonStyle(PillButtonStyle()).disabled(urls.count < 2) }
+        } footer: { Button("Join Videos") { apply() }.buttonStyle(PillButtonStyle()).disabled(urls.count < 2).keyboardShortcut(.defaultAction) }
         .task(id: urls) {
             for u in urls where thumbs[u] == nil {
                 let g = AVAssetImageGenerator(asset: AVURLAsset(url: u)); g.appliesPreferredTrackTransform = true; g.maximumSize = CGSize(width: 120, height: 120)
@@ -275,7 +275,7 @@ struct SnapshotsTool: View {
                 }.frame(height: 60)
             }.frame(width: 400)
         } footer: {
-            Button(frames.count == 1 ? "Save 1 Frame" : "Save \(frames.count) Frames") { save() }.buttonStyle(PillButtonStyle()).disabled(frames.isEmpty)
+            Button(frames.count == 1 ? "Save 1 Frame" : "Save \(frames.count) Frames") { save() }.buttonStyle(PillButtonStyle()).disabled(frames.isEmpty).keyboardShortcut(.defaultAction)
         }
         .task { await player.load(urls[0]) }          // aucune image n'est choisie d'avance : on les ajoute soi-même
         .onReceive(player.$time) { pos = $0 }
@@ -358,7 +358,7 @@ struct SplitVideoTool: View {
                 }
             }.frame(width: 400)
         } footer: {
-            Button("Split Video") { apply() }.buttonStyle(PillButtonStyle()).disabled(points.isEmpty)
+            Button("Split Video") { apply() }.buttonStyle(PillButtonStyle()).disabled(points.isEmpty).keyboardShortcut(.defaultAction)
         }
         .task { await player.load(urls[0]) }
     }

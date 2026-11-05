@@ -25,7 +25,7 @@ struct FaceSelectTool: View {
             if case .ready = phase {
                 Button(files.count == 1 ? "Select 1 file" : "Select \(files.count) files") {
                     let f = files, n = urls.count; close(); TagSelect.select(f, of: n)
-                }.buttonStyle(PillButtonStyle()).disabled(files.isEmpty)
+                }.buttonStyle(PillButtonStyle()).disabled(files.isEmpty).keyboardShortcut(.defaultAction)
             }
         }
         .task { await begin() }

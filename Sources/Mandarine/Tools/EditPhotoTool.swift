@@ -154,7 +154,7 @@ struct EditPhotoTool: View {
             Button("Reset") { values = [:]; refresh() }.buttonStyle(PillButtonStyle())
             Button { let f = urls; close(); ToolWindowController.present(.resizeImage, urls: f) } label: { Label("Resize…", systemImage: "arrow.up.left.and.arrow.down.right") }
                 .buttonStyle(PillButtonStyle()).help("Open Resize for the same image")
-            Button("Save Edited Copy") { save() }.buttonStyle(PillButtonStyle())
+            ReplaceButton("Save Edited Copy") { save() }
         }
         .onAppear(perform: load)
     }
@@ -192,7 +192,7 @@ struct EditPhotoTool: View {
     private func save() {
         let vals = values, files = urls
         close()
-        Dispatcher.job("Saving edited copy…", light: true) { _ in
+        Dispatcher.job("Saving edited copy…", light: true, replaces: files) { _ in
             try await Task.detached {
                 try files.map { url in
                     let (cg, props) = try ImageEngine.load(url)

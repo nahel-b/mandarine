@@ -98,7 +98,7 @@ struct RemoveBGTool: View {
             }.frame(width: 380, alignment: .leading)
         } footer: {
             Button("Reset") { o = BGOptions(); chosen = Set(ids); edits = []; touch = .off }.buttonStyle(PillButtonStyle())
-            Button("Remove Background") { save() }.buttonStyle(PillButtonStyle()).disabled(failed || busy)
+            ReplaceButton("Remove Background") { save() }.disabled(failed || busy)
         }
         .task { await start() }
         .task(id: renderKey) { await rerender() }
@@ -195,7 +195,7 @@ struct RemoveBGTool: View {
         opts.edits = urls.count == 1 ? edits : []
         let (files, fmt, final) = (urls, format, opts)
         close()
-        Dispatcher.job("Removing background…", count: files.count) { progress in
+        Dispatcher.job("Removing background…", count: files.count, replaces: files) { progress in
             guard #available(macOS 14.0, *) else { throw MandarineError("Remove Background nécessite macOS 14 ou plus récent.") }
             var outs: [URL] = []
             for (i, f) in files.enumerated() {
