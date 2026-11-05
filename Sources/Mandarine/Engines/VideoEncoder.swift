@@ -84,9 +84,23 @@ enum VideoEncoder {
         return ColorTags(space: space, primaries: primaries, transfer: transfer, range: range, matrix: matrix)
     }
 
+    // MARK: HDR et 10 bits
+    /// Vidéo HDR (HLG ou PQ, typiquement un film d'iPhone).
+    static func isHDR(_ i: MediaInfo) -> Bool { ["arib-std-b67", "smpte2084"].contains(i.colorTransfer) }
+
+    /// Réglages réellement appliqués. Une source HDR exportée en 8 bits H.264 donne une image grise et délavée ; et le H.264 en 10 bits n'est lisible
+    /// ni par QuickTime ni par l'Aperçu (image grise ou verte). Dans ces deux cas on passe donc en HEVC 10 bits, qui garde les couleurs.
+    static func effective(_ o: EncodeOptions, info: MediaInfo) -> EncodeOptions {
+        var e = o
+        if isHDR(info) && o.preserveColor { e.tenBit = true }
+        if e.tenBit && e.encoder != .x265 { e.encoder = .x265 }
+        return e
+    }
+
     // MARK: Arguments ffmpeg
     /// `pass` : nil = une seule passe ; 1 ou 2 pour le mode débit moyen en deux passes.
-    static func arguments(_ o: EncodeOptions, info: MediaInfo, input: URL, output: URL, pass: Int? = nil, passLog: String = "", clip: (start: Double, length: Double)? = nil) -> [String] {
+    static func arguments(_ requested: EncodeOptions, info: MediaInfo, input: URL, output: URL, pass: Int? = nil, passLog: String = "", clip: (start: Double, length: Double)? = nil) -> [String] {
+        let o = effective(requested, info: info)
         var a: [String] = []
         if let c = clip { a += ["-ss", String(c.start)] }
         a += ["-i", input.path]
@@ -121,7 +135,7 @@ enum VideoEncoder {
                 let profile = o.profile == "auto" ? (o.tenBit ? "high10" : "high") : o.profile
                 a += ["-profile:v", profile]
                 if o.tune != "none" { a += ["-tune", o.tune] }
-            } else {
+            } else if o.container != "mkv" {
                 a += ["-tag:v", "hvc1"]
             }
         case .hardware264:
@@ -154,6 +168,7 @@ enum VideoEncoder {
     // MARK: Exécution
     static func encode(_ o: EncodeOptions, input: URL, output: URL, progress: @escaping (Double) -> Void) async throws {
         let info = await FFmpeg.probe(input)
+        let o = effective(o, info: info)
         if o.mode == .bitrate && o.twoPass && o.encoder != .hardware264 {
             let log = OutputNaming.tempURL(ext: "").path
             defer { for ext in ["-0.log", "-0.log.mbtree", ".log", ".log.mbtree"] { try? FileManager.default.removeItem(atPath: log + ext) } }

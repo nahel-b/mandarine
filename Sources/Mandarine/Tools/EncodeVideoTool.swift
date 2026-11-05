@@ -22,6 +22,10 @@ struct EncodeVideoTool: View {
         ToolShell(title: "Export Video", close: close) {
             VStack(alignment: .leading, spacing: 11) {
                 sourceCard
+                if VideoEncoder.isHDR(info) && o.preserveColor {
+                    Label("HDR video: it is exported as 10-bit HEVC so the colors stay right (8-bit H.264 would look gray and washed out).", systemImage: "sun.max")
+                        .font(.system(size: 11)).foregroundStyle(Theme.muted).fixedSize(horizontal: false, vertical: true)
+                }
                 row("Preset") {
                     Picker("", selection: $presetID) {
                         ForEach(VideoEncoder.presets) { Text($0.title).tag($0.id) }
@@ -94,7 +98,7 @@ struct EncodeVideoTool: View {
                 }
                 DisclosureGroup("Advanced", isExpanded: $showAdvanced) {
                     VStack(spacing: 8) {
-                        row("Bit depth") { PillPicker(options: [(false, "8-bit (compatible)"), (true, "10-bit")], selection: $o.tenBit) }
+                        row("Bit depth") { PillPicker(options: [(false, "8-bit (compatible)"), (true, "10-bit (HEVC)")], selection: $o.tenBit) }
                         row("Profile") { Picker("", selection: $o.profile) { ForEach(["auto", "baseline", "main", "high"], id: \.self) { Text($0.capitalized).tag($0) } }.labelsHidden().frame(width: 120) }
                         row("Tune") { Picker("", selection: $o.tune) { ForEach(["none", "film", "animation", "grain"], id: \.self) { Text($0.capitalized).tag($0) } }.labelsHidden().frame(width: 120) }
                         Toggle("Allow upscaling", isOn: $o.allowUpscale).font(.system(size: 12))

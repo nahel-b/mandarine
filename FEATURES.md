@@ -226,3 +226,7 @@ Quand une autre fenêtre de l'app passe au-dessus de l'écran Wii (sélecteur «
 ## Wii : sons de survol / retour, boutons qui grossissent
 `WiiButtonHover.mp3` quand le pointeur arrive sur un bouton ou un choix d'un outil, `WiiClose.mp3` au retour à l'accueil (« Wii Menu ») et à la fermeture de l'écran. Les boutons grossissent un peu
 sous le pointeur (ressort léger), y compris ceux du contenu des outils (`WiiHoverGrow`).
+
+## Export Video : vidéos HDR et 10 bits
+Une source HDR (HLG/PQ, films d'iPhone) exportée en H.264 8 bits donnait une image grise et délavée, et le H.264 10 bits n'est lisible ni par QuickTime ni par l'Aperçu (image grise/verte).
+Ces deux cas passent maintenant en HEVC 10 bits (couleurs et étiquettes HDR conservées) ; une note l'indique dans l'outil. Code : `VideoEncoder.effective`.
