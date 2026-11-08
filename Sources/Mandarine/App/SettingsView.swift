@@ -9,13 +9,13 @@ struct SettingsView: View {
     @State private var tab: Tab
 
     enum Tab: String, CaseIterable, Identifiable {
-        case general, appearance, wheel, petals, engines, updates, download
+        case general, appearance, wheel, petals, davinci, engines, updates, download
         var id: String { rawValue }
         var title: String {
-            switch self { case .general: return L("General"); case .appearance: return L("Appearance"); case .wheel: return L("Wheel keys"); case .petals: return L("Petals"); case .engines: return L("Engines"); case .updates: return L("Updates"); case .download: return L("Download") }
+            switch self { case .general: return L("General"); case .appearance: return L("Appearance"); case .wheel: return L("Wheel keys"); case .petals: return L("Petals"); case .davinci: return L("DaVinci"); case .engines: return L("Engines"); case .updates: return L("Updates"); case .download: return L("Download") }
         }
         var symbol: String {
-            switch self { case .general: return "gearshape"; case .appearance: return "paintpalette"; case .wheel: return "circle.hexagongrid"; case .petals: return "leaf"; case .engines: return "wrench.and.screwdriver"; case .updates: return "arrow.triangle.2.circlepath"; case .download: return "arrow.down.circle" }
+            switch self { case .general: return "gearshape"; case .appearance: return "paintpalette"; case .wheel: return "circle.hexagongrid"; case .petals: return "leaf"; case .davinci: return "folder.badge.gearshape"; case .engines: return "wrench.and.screwdriver"; case .updates: return "arrow.triangle.2.circlepath"; case .download: return "arrow.down.circle" }
         }
     }
 
@@ -165,6 +165,30 @@ struct SettingsView: View {
                 Toggle(L("Code"), isOn: $s.enableCode)
                 Toggle(L("DaVinci project"), isOn: $s.enableDavinci)
             }
+        case .davinci:
+            Section(L("Project")) {
+                Toggle(L("DaVinci project"), isOn: $s.enableDavinci)
+                HStack { Text(L("Default project name")); TextField("", text: $s.davinciProjectName, prompt: Text(verbatim: "DaVinci Project")).labelsHidden().textFieldStyle(.roundedBorder).multilineTextAlignment(.leading) }
+                Toggle(L("Name the project after the dropped file when there is just one"), isOn: $s.davinciNameFromFile)
+                Toggle(L("Move the dropped files into the right folder by default"), isOn: $s.davinciMoveFiles)
+            }
+            Section(L("Folder tree")) {
+                Text(L("Ticked folders are created by default. Rename them, add subfolders, reorder them, and choose which folder receives the dropped videos, sounds or images.")).font(.caption).foregroundStyle(.secondary)
+                ForEach($s.davinciFolders) { $f in
+                    DaVinciFolderRow(folder: $f, depth: 0,
+                                     remove: { s.davinciFolders.removeAll { $0.id == f.id } },
+                                     move: { DaVinciLayout.move(&s.davinciFolders, id: f.id, by: $0) })
+                }
+                HStack {
+                    Button { s.davinciFolders.append(DaVinciFolder(name: L("New folder"))) } label: { Label(L("Add a folder"), systemImage: "plus") }
+                    Spacer()
+                    Button(L("Restore the default folders")) { s.davinciFolders = DaVinciLayout.defaults }.controlSize(.small)
+                }
+            }
+            Section(L("Preview")) {
+                Text(verbatim: "\(s.davinciProjectName)/\n" + DaVinciLayout.treeText(s.davinciFolders)).font(.system(size: 11).monospaced())
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
         case .engines:
             Section(L("Engines")) {
                 engine(L("ffmpeg (video, audio)"), FFmpeg.ffmpeg?.path, install: .ffmpeg)
@@ -269,6 +293,49 @@ struct SettingsView: View {
             }
             if let e = e, case .failed(let m) = installer.state(e), path == nil {
                 Text(L(m)).font(.caption).foregroundStyle(.red).fixedSize(horizontal: false, vertical: true)
+            }
+        }
+    }
+}
+
+/// Une ligne de l'éditeur d'arborescence DaVinci : case « coché par défaut », nom, type reçu, ordre, sous-dossier, suppression.
+struct DaVinciFolderRow: View {
+    @Binding var folder: DaVinciFolder
+    let depth: Int
+    let remove: () -> Void
+    let move: (Int) -> Void
+
+    private var receivesSymbol: String {
+        switch folder.receives { case "video": return "film"; case "audio": return "waveform"; case "image": return "photo"; default: return "tray" }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(spacing: 6) {
+                Toggle("", isOn: $folder.on).labelsHidden().toggleStyle(.checkbox).help(L("Created by default"))
+                TextField("", text: $folder.name, prompt: Text(L("Folder name"))).labelsHidden().textFieldStyle(.roundedBorder).multilineTextAlignment(.leading).font(.system(size: 12).monospaced())
+                Menu {
+                    Picker(L("Dropped files go here"), selection: $folder.receives) {
+                        Text(L("Receives nothing")).tag(String?.none)
+                        Text(L("Receives videos")).tag(String?.some("video"))
+                        Text(L("Receives sounds")).tag(String?.some("audio"))
+                        Text(L("Receives images")).tag(String?.some("image"))
+                    }.pickerStyle(.inline).labelsHidden()
+                } label: { Image(systemName: receivesSymbol) }
+                    .menuStyle(.borderlessButton).frame(width: 34).help(L("Dropped files go here"))
+                Button { move(-1) } label: { Image(systemName: "chevron.up") }.buttonStyle(.borderless).help(L("Move up"))
+                Button { move(1) } label: { Image(systemName: "chevron.down") }.buttonStyle(.borderless).help(L("Move down"))
+                if depth + 1 < DaVinciLayout.maxDepth {
+                    Button { folder.children.append(DaVinciFolder(name: L("New folder"))) } label: { Image(systemName: "plus") }
+                        .buttonStyle(.borderless).help(L("Add a subfolder"))
+                }
+                Button(role: .destructive, action: remove) { Image(systemName: "trash") }.buttonStyle(.borderless).help(L("Remove"))
+            }
+            .padding(.leading, CGFloat(depth) * 20)
+            ForEach($folder.children) { $c in
+                DaVinciFolderRow(folder: $c, depth: depth + 1,
+                                 remove: { folder.children.removeAll { $0.id == c.id } },
+                                 move: { DaVinciLayout.move(&folder.children, id: c.id, by: $0) })
             }
         }
     }

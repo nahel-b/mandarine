@@ -274,3 +274,6 @@ Roue ⇧ d'une vidéo : pétale PRORES (ProRes 422 HQ dans un .mov « nom ProRes
 
 ## Lots
 Un fichier en échec n'arrête plus le lot (outils Compress, Export Video, Redimensionner, Pivoter, Agrandir, Extraire l'audio, Normaliser, Supprimer l'arrière-plan, Couper le son : classe `Batch` de JobQueue.swift) : la notification dit « Saved 8 of 10 — 2 failed ». Le Mac ne se met plus en veille et App Nap est désactivé tant qu'un travail tourne.
+
+## Arborescence DaVinci personnalisable
+Réglages → DaVinci : nom du projet par défaut (ou nom du fichier déposé s'il est seul), rangement automatique des fichiers déposés activé ou non, et éditeur d'arborescence (3 niveaux) : case « créé par défaut », renommer, ajouter un dossier / sous-dossier, monter / descendre, supprimer, choisir quel dossier reçoit les vidéos, sons ou images déposés, rétablir les dossiers par défaut. Enregistré en JSON (`davinciFolders`). La fenêtre de l'outil reprend ces cases (dossiers et sous-dossiers) comme point de départ.

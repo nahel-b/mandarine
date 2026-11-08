@@ -8,6 +8,10 @@ struct WhatsNewRelease { let version: String; let headline: String; let items: [
 enum WhatsNew {
     /// À compléter à chaque version (la plus récente d'abord) : c'est ce que voit l'utilisateur après la mise à jour.
     static var releases: [WhatsNewRelease] { [
+        WhatsNewRelease(version: "1.8.0", headline: L("Your own DaVinci folders"), items: [
+            WhatsNewItem(symbol: "folder.badge.gearshape", title: L("Customize the DaVinci tree"),
+                         text: L("Settings → DaVinci: rename every folder and subfolder, add or remove some, reorder them, and tick the ones created by default. You can also choose which folder receives dropped videos, sounds or images, and the default project name.")),
+        ]),
         WhatsNewRelease(version: "1.7.0", headline: L("Apple ProRes and big batches"), items: [
             WhatsNewItem(symbol: "film.stack", title: L("Apple ProRes"),
                          text: L("A PRORES petal on the video wheel makes a ProRes 422 HQ .mov, ready for editing. Export Video also has an Apple ProRes codec with its profiles (Proxy, LT, 422, 422 HQ, 4444). Interlaced MPEG from camcorders and PowerShots is deinterlaced.")),

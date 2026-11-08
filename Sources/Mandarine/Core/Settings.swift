@@ -94,6 +94,11 @@ final class AppSettings: ObservableObject {
     @Published var enableTextDrag: Bool { didSet { d.set(enableTextDrag, forKey: "enableTextDrag") } }
     @Published var enableCode: Bool { didSet { d.set(enableCode, forKey: "enableCode") } }
     @Published var enableDavinci: Bool { didSet { d.set(enableDavinci, forKey: "enableDavinci") } }
+    // Arborescence DaVinci personnalisable (onglet DaVinci des Réglages)
+    @Published var davinciFolders: [DaVinciFolder] { didSet { DaVinciLayout.save(davinciFolders) } }
+    @Published var davinciProjectName: String { didSet { d.set(davinciProjectName, forKey: "davinciProjectName") } }
+    @Published var davinciNameFromFile: Bool { didSet { d.set(davinciNameFromFile, forKey: "davinciNameFromFile") } }
+    @Published var davinciMoveFiles: Bool { didSet { d.set(davinciMoveFiles, forKey: "davinciMoveFiles") } }
     @Published var launchAtLogin: Bool {
         didSet {
             d.set(launchAtLogin, forKey: "launchAtLogin")
@@ -134,6 +139,10 @@ final class AppSettings: ObservableObject {
         enableTextDrag = d.object(forKey: "enableTextDrag") as? Bool ?? true
         enableCode = d.object(forKey: "enableCode") as? Bool ?? true
         enableDavinci = d.object(forKey: "enableDavinci") as? Bool ?? true
+        davinciFolders = DaVinciLayout.load()
+        davinciProjectName = d.string(forKey: "davinciProjectName") ?? "DaVinci Project"
+        davinciNameFromFile = d.object(forKey: "davinciNameFromFile") as? Bool ?? true
+        davinciMoveFiles = d.object(forKey: "davinciMoveFiles") as? Bool ?? true
         launchAtLogin = d.bool(forKey: "launchAtLogin")
     }
 
