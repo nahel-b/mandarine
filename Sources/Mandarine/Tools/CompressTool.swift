@@ -86,12 +86,11 @@ struct CompressTool: View {
             return
         }
         Dispatcher.job(L("Compressing…"), subtitle: files.count == 1 ? files[0].lastPathComponent : L("\(files.count) files"), count: files.count, replaces: files) { progress in
-            var outs: [URL] = []
+            let batch = Batch(total: files.count)
             for (i, f) in files.enumerated() {
-                let o = try await Compressor.run(f, options: o) { p in progress((Double(i) + p) / Double(files.count)) }
-                outs.append(o)
+                try await batch.run(f) { [try await Compressor.run(f, options: o) { p in progress((Double(i) + p) / Double(files.count)) }] }
             }
-            return outs
+            return try batch.finish()
         }
     }
 }

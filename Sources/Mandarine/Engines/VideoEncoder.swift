@@ -1,13 +1,14 @@
 import Foundation
 
 enum EncoderKind: String, CaseIterable, Identifiable {
-    case x264, x265, hardware264
+    case x264, x265, hardware264, proRes
     var id: String { rawValue }
     var title: String {
         switch self {
         case .x264: return "H.264 (x264)"
         case .x265: return "H.265 (x265)"
         case .hardware264: return L("H.264 (VideoToolbox, fast)")
+        case .proRes: return L("Apple ProRes")
         }
     }
 }
@@ -32,6 +33,12 @@ struct EncodeOptions: Equatable {
     var preserveColor = true
     var audio = "aac"                     // aac | copy | none
     var audioKbps = 256
+    var proResProfile = 3                 // ProRes : 0 Proxy | 1 LT | 2 422 | 3 422 HQ | 4 4444
+}
+
+/// Profils Apple ProRes (numéro du profil prores_ks, nom affiché, débit approximatif en 1080p25 / 30).
+enum ProResProfile {
+    static let all: [(id: Int, name: String, mbps: Int)] = [(0, "Proxy", 45), (1, "LT", 102), (2, "422", 147), (3, "422 HQ", 220), (4, "4444", 330)]
 }
 
 struct EncodePreset: Identifiable {
@@ -55,7 +62,11 @@ enum VideoEncoder {
         .init(id: "keep-4k", title: L("4K H.264, keep frame rate")) { o in
             o.container = "mp4"; o.encoder = .x264; o.longSide = 0; o.fps = 0; o.mode = .quality; o.crf = 19; o.preset = "medium"; o.audioKbps = 256 },
         .init(id: "web-bitrate", title: L("1080p30 at 8 Mb/s (2-pass)")) { o in
-            o.container = "mp4"; o.encoder = .x264; o.longSide = 1920; o.fps = 30; o.mode = .bitrate; o.bitrateKbps = 8000; o.twoPass = true; o.preset = "slow"; o.audioKbps = 192 }
+            o.container = "mp4"; o.encoder = .x264; o.longSide = 1920; o.fps = 30; o.mode = .bitrate; o.bitrateKbps = 8000; o.twoPass = true; o.preset = "slow"; o.audioKbps = 192 },
+        .init(id: "apple-prores-hq", title: L("Apple ProRes 422 HQ (editing)")) { o in
+            o.container = "mov"; o.encoder = .proRes; o.proResProfile = 3; o.longSide = 0; o.fps = 0 },
+        .init(id: "apple-prores-422", title: L("Apple ProRes 422 (lighter)")) { o in
+            o.container = "mov"; o.encoder = .proRes; o.proResProfile = 2; o.longSide = 0; o.fps = 0 }
     ] }
 
     static let x264Presets = ["ultrafast", "superfast", "veryfast", "faster", "fast", "medium", "slow", "slower", "veryslow"]
@@ -93,6 +104,7 @@ enum VideoEncoder {
     static func effective(_ o: EncodeOptions, info: MediaInfo) -> EncodeOptions {
         var e = o
         if isHDR(info) && o.preserveColor { e.tenBit = true }
+        if e.encoder == .proRes { e.container = e.container == "mkv" ? "mkv" : "mov"; return e }
         if e.tenBit && e.encoder != .x265 { e.encoder = .x265 }
         return e
     }
@@ -110,6 +122,8 @@ enum VideoEncoder {
 
         let tags = colorTags(info)
         var vf: [String] = []
+        // MPEG-1/2 (.mpg, caméscopes, PowerShot) : souvent entrelacé → yadif ne touche que les images marquées entrelacées
+        if ["mpg", "mpeg"].contains(input.pathExtension.lowercased()) { vf.append("yadif=deint=interlaced") }
         // 1) redimensionnement : Lanczos, matrices explicites (aucun décalage de teinte lors du passage 4:2:2 10 bits → 4:2:0)
         var scale = "scale="
         if o.longSide > 0 {
@@ -124,7 +138,7 @@ enum VideoEncoder {
         // 2) cadence
         if o.fps > 0 { vf.append("fps=\(o.fps == 29.97 ? "30000/1001" : (o.fps == 23.976 ? "24000/1001" : String(o.fps)))") }
         // 3) format de pixels
-        vf.append("format=\(o.tenBit ? "yuv420p10le" : "yuv420p")")
+        vf.append("format=\(o.encoder == .proRes ? (o.proResProfile == 4 ? "yuv444p10le" : "yuv422p10le") : (o.tenBit ? "yuv420p10le" : "yuv420p"))")
         a += ["-vf", vf.joined(separator: ",")]
 
         // encodeur
@@ -140,26 +154,30 @@ enum VideoEncoder {
             }
         case .hardware264:
             a += ["-c:v", "h264_videotoolbox", "-allow_sw", "1", "-profile:v", o.profile == "auto" ? "high" : o.profile]
+        case .proRes:
+            a += ["-c:v", "prores_ks", "-profile:v", String(o.proResProfile), "-vendor", "apl0"]
         }
         // débit / qualité
-        switch o.mode {
+        if o.encoder == .proRes {}      // ProRes : le profil fixe le débit
+        else { switch o.mode {
         case .quality:
             if o.encoder == .hardware264 { a += ["-q:v", String(max(1, min(100, 100 - o.crf * 2)))] }   // approximation : RF bas → q élevé
             else { a += ["-crf", String(o.crf)] }
         case .bitrate:
             a += ["-b:v", "\(o.bitrateKbps)k", "-maxrate", "\(Int(Double(o.bitrateKbps) * 1.5))k", "-bufsize", "\(o.bitrateKbps * 2)k"]
             if let p = pass, o.encoder != .hardware264 { a += ["-pass", String(p), "-passlogfile", passLog] }
-        }
+        } }
         // étiquettes couleur de la sortie (identiques à la source)
         if o.preserveColor {
             a += ["-colorspace", tags.space, "-color_primaries", tags.primaries, "-color_trc", tags.transfer, "-color_range", tags.range]
         }
         // audio
         if pass == 1 || o.audio == "none" || !info.hasAudio { a += ["-an"] }
+        else if o.encoder == .proRes { a += ["-c:a", "pcm_s16le"] }       // ProRes : son PCM, comme dans les logiciels de montage
         else if o.audio == "copy" { a += ["-c:a", "copy"] }
         else { a += ["-c:a", "aac", "-b:a", "\(o.audioKbps)k"] }
 
-        if o.container != "mkv" { a += ["-movflags", "+faststart"] }
+        if o.container != "mkv" && o.encoder != .proRes { a += ["-movflags", "+faststart"] }
         a += ["-map_metadata", "0"]
         if pass == 1 { a += ["-f", "null", "/dev/null"] } else { a += [output.path] }
         return a
@@ -169,7 +187,7 @@ enum VideoEncoder {
     static func encode(_ o: EncodeOptions, input: URL, output: URL, progress: @escaping (Double) -> Void) async throws {
         let info = await FFmpeg.probe(input)
         let o = effective(o, info: info)
-        if o.mode == .bitrate && o.twoPass && o.encoder != .hardware264 {
+        if o.mode == .bitrate && o.twoPass && o.encoder != .hardware264 && o.encoder != .proRes {
             let log = OutputNaming.tempURL(ext: "").path
             defer { for ext in ["-0.log", "-0.log.mbtree", ".log", ".log.mbtree"] { try? FileManager.default.removeItem(atPath: log + ext) } }
             try await FFmpeg.run(arguments(o, info: info, input: input, output: output, pass: 1, passLog: log), duration: info.duration) { progress($0 * 0.45) }

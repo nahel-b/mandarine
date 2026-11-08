@@ -187,18 +187,20 @@ struct ResizeImageTool: View {
         let (factor, ai, files) = (upFactor, useAI, urls)
         close()
         Dispatcher.job(ai ? L("Upscaling with AI…") : L("Upscaling…"), count: files.count, replaces: files) { progress in
-            var outs: [URL] = []
+            let batch = Batch(total: files.count)
             for (i, url) in files.enumerated() {
+                try await batch.run(url) {
                 let (img, props) = try ImageEngine.load(url)
                 let (out, usedAI) = try await Upscaler.upscale(img, factor: factor, preferAI: ai)
                 var ext = url.pathExtension.lowercased()
                 if !ImageEngine.canWrite(Catalog.normalized(ext)) || ext == "svg" || ext == "gif" { ext = "png" }
                 let dest = OutputNaming.sibling(of: url, suffix: " x\(factor)\(usedAI ? " ai" : "")", ext: ext)
                 try ImageEngine.write(out, properties: props, to: dest, ext: ext, quality: 0.95)
-                outs.append(dest)
+                return [dest]
+                }
                 progress(Double(i + 1) / Double(files.count))
             }
-            return outs
+            return try batch.finish()
         }
     }
 
@@ -257,10 +259,12 @@ struct ResizeImageTool: View {
         close()
         Dispatcher.job(L("Resizing…"), count: files.count, replaces: files) { progress in
             try await Task.detached {
-                var outs: [URL] = []
+                let batch = Batch(total: files.count)
                 var folder: URL?
                 if m == 2 && (sz.count > 1 || files.count > 1) { folder = OutputNaming.folder(of: files[0], suffix: "resized") }
                 for (i, url) in files.enumerated() {
+                    try batch.runSync(url) {
+                    var outs: [URL] = []
                     let (img, props) = try ImageEngine.load(url)
                     let size = CGSize(width: img.width, height: img.height)
                     var ext = url.pathExtension.lowercased()
@@ -279,9 +283,12 @@ struct ResizeImageTool: View {
                         try ImageEngine.write(out, properties: props, to: dest, ext: ext, quality: 0.92)
                         outs.append(dest)
                     }
+                    return outs
+                    }
                     progress(Double(i + 1) / Double(files.count))
                 }
-                return folder.map { [$0] } ?? outs
+                let all = try batch.finish()
+                return folder.map { [$0] } ?? all
             }.value
         }
     }
@@ -375,8 +382,9 @@ struct RotateImageTool: View {
         close()
         Dispatcher.job(L("Rotating…"), count: files.count, replaces: files) { progress in
             try await Task.detached {
-                var outs: [URL] = []
+                let batch = Batch(total: files.count)
                 for (i, url) in files.enumerated() {
+                    try batch.runSync(url) {
                     let (img, props) = try ImageEngine.load(url)          // l'orientation EXIF est déjà appliquée aux pixels
                     var p = props; p[kCGImagePropertyOrientation as String] = 1
                     let out = ImageTransform.apply(img, turns: t, flipH: h, flipV: v)
@@ -384,10 +392,11 @@ struct RotateImageTool: View {
                     if !ImageEngine.canWrite(Catalog.normalized(ext)) || ext == "svg" { ext = "png" }
                     let dest = OutputNaming.sibling(of: url, suffix: " rotated", ext: ext)
                     try ImageEngine.write(out, properties: p, to: dest, ext: ext, quality: 0.95)
-                    outs.append(dest)
+                    return [dest]
+                    }
                     progress(Double(i + 1) / Double(files.count))
                 }
-                return outs
+                return try batch.finish()
             }.value
         }
     }
@@ -444,8 +453,9 @@ struct ExtractAudioTool: View {
         let (c, files) = (choice, urls)
         close()
         Dispatcher.job(L("Extracting audio…"), count: files.count) { progress in
-            var outs: [URL] = []
+            let batch = Batch(total: files.count)
             for (i, f) in files.enumerated() {
+                try await batch.run(f) {
                 let info = await FFmpeg.probe(f)
                 guard info.hasAudio else { throw MandarineError(L("\(f.lastPathComponent) n'a pas de piste audio.")) }
                 var args = ["-i", f.path, "-vn"]
@@ -456,9 +466,10 @@ struct ExtractAudioTool: View {
                 } else { args += FFmpeg.audioArgs(for: c) }
                 let out = OutputNaming.sibling(of: f, ext: ext)
                 try await FFmpeg.run(args + [out.path], duration: info.duration) { p in progress((Double(i) + p) / Double(files.count)) }
-                outs.append(out)
+                return [out]
+                }
             }
-            return outs
+            return try batch.finish()
         }
     }
 }

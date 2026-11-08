@@ -34,10 +34,17 @@ struct EncodeVideoTool: View {
                 }
                 Divider()
                 row(L("Format")) {
-                    PillPicker(options: [("mp4", "MP4"), ("mov", "MOV"), ("mkv", "MKV")], selection: $o.container)
+                    PillPicker(options: o.encoder == .proRes ? [("mov", "MOV"), ("mkv", "MKV")] : [("mp4", "MP4"), ("mov", "MOV"), ("mkv", "MKV")], selection: $o.container)
                 }
                 row(L("Video codec")) {
                     Picker("", selection: $o.encoder) { ForEach(EncoderKind.allCases) { Text(L($0.title)).tag($0) } }.labelsHidden().frame(width: 220)
+                        .onChange(of: o.encoder) { e in if e == .proRes { o.container = "mov" } }
+                }
+                if o.encoder == .proRes {
+                    row(L("ProRes profile")) {
+                        Picker("", selection: $o.proResProfile) { ForEach(ProResProfile.all, id: \.id) { Text($0.name).tag($0.id) } }.labelsHidden().frame(width: 120)
+                    }
+                    Text(L("Editing codec: large files (about \(ProResProfile.all.first { $0.id == o.proResProfile }?.mbps ?? 0) Mb/s in 1080p), smooth to edit. Audio is saved as uncompressed PCM.")).sectionLabel().fixedSize(horizontal: false, vertical: true)
                 }
                 row(L("Resolution")) {
                     HStack(spacing: 8) {
@@ -53,6 +60,7 @@ struct EncodeVideoTool: View {
                 row(L("Frame rate")) {
                     Picker("", selection: $o.fps) { ForEach(rates, id: \.1) { Text(L($0.0)).tag($0.1) } }.labelsHidden().frame(width: 170)
                 }
+                if o.encoder != .proRes {
                 row(L("Rate control")) {
                     PillPicker(options: [(RateMode.quality, "Constant quality"), (.bitrate, "Average bitrate")], selection: $o.mode)
                 }
@@ -82,12 +90,14 @@ struct EncodeVideoTool: View {
                         Text(L(o.preset)).font(.system(size: 11, weight: .medium)).frame(width: 62, alignment: .trailing)
                     }.disabled(o.encoder == .hardware264)
                 }
+                }
                 Divider()
                 HStack {
                     Toggle(isOn: $o.preserveColor) { Label(L("Keep original colors"), systemImage: "paintpalette").font(.system(size: 12, weight: .medium)) }
                     Spacer()
                     Text(L(colorSummary)).font(.system(size: 11)).foregroundStyle(Theme.muted)
                 }
+                if o.encoder != .proRes {
                 row(L("Audio")) {
                     HStack {
                         Picker("", selection: $o.audio) { Text(L("AAC")).tag("aac"); Text(L("Keep original")).tag("copy"); Text(L("None")).tag("none") }.labelsHidden().frame(width: 130)
@@ -96,6 +106,8 @@ struct EncodeVideoTool: View {
                         }
                     }
                 }
+                }
+                if o.encoder != .proRes {
                 DisclosureGroup(L("Advanced"), isExpanded: $showAdvanced) {
                     VStack(spacing: 8) {
                         row(L("Bit depth")) { PillPicker(options: [(false, "8-bit (compatible)"), (true, "10-bit (HEVC)")], selection: $o.tenBit) }
@@ -104,6 +116,7 @@ struct EncodeVideoTool: View {
                         Toggle(L("Allow upscaling"), isOn: $o.allowUpscale).font(.system(size: 12))
                     }.padding(.top, 8)
                 }.font(.system(size: 12))
+                }
                 HStack {
                     Button { Task { await test() } } label: { Label(estimating ? L("Testing…") : L("Test 10 s"), systemImage: L("timer")) }
                         .buttonStyle(PillButtonStyle()).disabled(estimating)
@@ -174,15 +187,17 @@ struct EncodeVideoTool: View {
         let (opts, files) = (o, urls)
         close()
         Dispatcher.job(L("Encoding…"), subtitle: files.count == 1 ? files[0].lastPathComponent : L("\(files.count) videos"), count: files.count, replaces: files) { progress in
-            var outs: [URL] = []
+            let batch = Batch(total: files.count)
             for (i, f) in files.enumerated() {
+                try await batch.run(f) {
                 let names = [3840: "4K", 2560: "1440p", 1920: "1080p", 1280: "720p", 854: "480p"]
                 let suffix = opts.longSide > 0 ? " " + (names[opts.longSide] ?? "\(opts.longSide)px") : " encoded"
                 let out = OutputNaming.sibling(of: f, suffix: suffix, ext: opts.container)
                 try await VideoEncoder.encode(opts, input: f, output: out) { p in progress((Double(i) + p) / Double(files.count)) }
-                outs.append(out)
+                return [out]
+                }
             }
-            return outs
+            return try batch.finish()
         }
     }
 }

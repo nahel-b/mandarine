@@ -8,6 +8,14 @@ struct WhatsNewRelease { let version: String; let headline: String; let items: [
 enum WhatsNew {
     /// À compléter à chaque version (la plus récente d'abord) : c'est ce que voit l'utilisateur après la mise à jour.
     static var releases: [WhatsNewRelease] { [
+        WhatsNewRelease(version: "1.7.0", headline: L("Apple ProRes and big batches"), items: [
+            WhatsNewItem(symbol: "film.stack", title: L("Apple ProRes"),
+                         text: L("A PRORES petal on the video wheel makes a ProRes 422 HQ .mov, ready for editing. Export Video also has an Apple ProRes codec with its profiles (Proxy, LT, 422, 422 HQ, 4444). Interlaced MPEG from camcorders and PowerShots is deinterlaced.")),
+            WhatsNewItem(symbol: "square.stack.3d.up", title: L("Batches keep going"),
+                         text: L("In a batch, a file that fails no longer stops the others: you get “Saved 8 of 10 — 2 failed”. The Mac also stays awake while Mandarine is working.")),
+            WhatsNewItem(symbol: "cursorarrow.rays", title: L("All your files on the wheel"),
+                         text: L("When you drag a large selection from Finder, Mandarine now picks up every file, not just the first few.")),
+        ]),
         WhatsNewRelease(version: "1.6.0", headline: L("Mandarine in French"), items: [
             WhatsNewItem(symbol: "globe", title: L("Choose your language"),
                          text: L("Settings → General → Language: English, Français, or follow your Mac. Menus, tools, notifications and guides all switch.")),

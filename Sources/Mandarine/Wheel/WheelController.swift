@@ -411,7 +411,7 @@ final class WheelController {
     func drop() -> Bool {
         guard let item = targetItem, item.enabled else { dismiss(); return false }
         ReplaceMode.shared.capture()          // la touche d'inversion est lue maintenant : le travail démarre un peu plus tard
-        let files = urls
+        let files = DragMonitor.shared.latestURLs(fallback: urls)
         // Style Wii, outil à fenêtre : l'écran Wii reste, zoome sur la case et devient la fenêtre de l'outil
         if AppSettings.shared.appearance == .wii, case .tool(let id) = item.payload, !ToolRegistry.isDirect(id) {
             if Date().timeIntervalSince(dropSoundFired) > 1.5 { Feedback.shared.toolOpen() }

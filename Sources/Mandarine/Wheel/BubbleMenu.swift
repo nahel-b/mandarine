@@ -102,7 +102,7 @@ enum BubblePalette {
     /// Couleur d'une extension, comme les icônes de formats (PDF rouge, tableurs verts, images bleues…).
     static func ext(_ e: String) -> NSColor {
         let m: [String: String] = ["pdf": "E5333A", "png": "2B7FFF", "heic": "2B7FFF", "jpg": "F2790F", "jpeg": "F2790F", "webp": "14A39A", "avif": "8C52FF", "tiff": "0A8FD6", "tif": "0A8FD6", "bmp": "4F5BD5",
-                                   "mp4": "8C52FF", "mov": "8C52FF", "mkv": "4F5BD5", "webm": "14A39A", "avi": "0A8FD6", "wmv": "2B7FFF", "gif": "E8488B", "mp3": "00B87A", "m4a": "00B87A", "wav": "14A39A",
+                                   "mp4": "8C52FF", "mov": "8C52FF", "prores": "D8467A", "mkv": "4F5BD5", "webm": "14A39A", "avi": "0A8FD6", "wmv": "2B7FFF", "gif": "E8488B", "mp3": "00B87A", "m4a": "00B87A", "wav": "14A39A",
                                    "flac": "0A8FD6", "ogg": "F2790F", "opus": "8C52FF", "aiff": "4F5BD5", "wma": "2B7FFF", "m4r": "E8488B", "docx": "0A8FD6", "pages": "F2790F", "txt": "E0A800", "md": "E0A800",
                                    "html": "F34E0B", "xlsx": "00B87A", "csv": "14A39A", "tsv": "14A39A", "ods": "00B87A", "pptx": "F2790F", "epub": "E5333A", "zip": "8C52FF", "tar": "8C52FF", "gzip": "8C52FF",
                                    "srt": "E0A800", "vtt": "E0A800", "qr": "4F5BD5", "dir": "0A8FD6"]

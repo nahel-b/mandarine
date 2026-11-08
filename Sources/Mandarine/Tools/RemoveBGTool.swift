@@ -197,8 +197,9 @@ struct RemoveBGTool: View {
         close()
         Dispatcher.job(L("Removing background…"), count: files.count, replaces: files) { progress in
             guard #available(macOS 14.0, *) else { throw MandarineError(L("Remove Background nécessite macOS 14 ou plus récent.")) }
-            var outs: [URL] = []
+            let batch = Batch(total: files.count)
             for (i, f) in files.enumerated() {
+                try await batch.run(f) {
                 let out = try await Task.detached { () -> URL in
                     let (cg, props) = try ImageEngine.load(f)
                     let img = try BGSession(cg).render(final)
@@ -208,10 +209,11 @@ struct RemoveBGTool: View {
                     _ = p
                     return dest
                 }.value
-                outs.append(out)
+                return [out]
+                }
                 progress(Double(i + 1) / Double(files.count))
             }
-            return outs
+            return try batch.finish()
         }
     }
 }

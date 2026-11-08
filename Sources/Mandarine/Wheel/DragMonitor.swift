@@ -11,6 +11,7 @@ final class DragMonitor {
     private var dragging = false
     private var internalDrag = false          // le glisser vient d'une notification de Mandarine
     private var draggedURLs: [URL] = []
+    private var lastRead = Date.distantPast
     private var seenCount = 0                 // état du presse-papiers de glissement lors de la dernière lecture
     private var dragText: String?             // texte déjà converti en petit fichier (évite d'en refaire un à chaque lecture)
     private var lastFlags: NSEvent.ModifierFlags = []
@@ -92,6 +93,12 @@ final class DragMonitor {
         released()
     }
 
+    /// Au dépôt : une dernière lecture du presse-papiers de glissement, la plus complète. Rend `fallback` si elle n'apporte rien de plus.
+    func latestURLs(fallback: [URL]) -> [URL] {
+        guard !internalDrag, let fresh = readDraggedURLs(NSPasteboard(name: .drag)), fresh.count > fallback.count else { return fallback }
+        return fresh
+    }
+
     /// Ce qui est en train d'être glissé : fichiers, sinon liens, sinon texte (petit fichier). nil si rien d'exploitable.
     private func readDraggedURLs(_ pb: NSPasteboard) -> [URL]? {
         let all = (pb.readObjects(forClasses: [NSURL.self], options: nil) as? [URL]) ?? []
@@ -111,8 +118,12 @@ final class DragMonitor {
     /// et la roue (déjà ouverte ou non) repart de la sélection à jour.
     private func refreshFromPasteboard() {
         let pb = NSPasteboard(name: .drag)
-        guard pb.changeCount != seenCount else { return }
+        // Une grosse sélection (dizaines de fichiers) peut s'allonger sans que le compteur du presse-papiers bouge :
+        // on relit donc aussi à intervalle régulier, et on ne garde que ce qui a changé.
+        let now = Date()
+        guard pb.changeCount != seenCount || now.timeIntervalSince(lastRead) > 0.25 else { return }
         seenCount = pb.changeCount
+        lastRead = now
         guard let urls = readDraggedURLs(pb), !urls.isEmpty, urls != draggedURLs else { return }
         draggedURLs = urls
         if wheel.isVisible { wheel.show(mode: wheel.model.mode, urls: urls) }          // roue ouverte : même place, contenu mis à jour

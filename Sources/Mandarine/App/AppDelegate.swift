@@ -800,6 +800,7 @@ extension AppDelegate {
         guard a.count >= 3 else { return }
         let urls = a.dropFirst(2).map { URL(fileURLWithPath: $0) }
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            if a[0] == "--batch" { Dispatcher.convert(Array(urls), to: a[1]); return }      // test : --batch ext fichiers… (lot comme un dépôt sur la roue)
             if a[0] == "--wheel", let m = WheelMode(rawValue: a[1]) {
                 let s = NSScreen.main?.frame ?? .zero
                 WheelController.shared.show(mode: m, urls: urls, at: NSPoint(x: s.midX, y: s.midY))
@@ -876,7 +877,7 @@ extension AppDelegate {
         } else if target[0] == "toaststyles" {
             view = AnyView(ToastLab(page: Int(target.count > 1 ? target[1] : "1") ?? 1))
         } else if target[0] == "whatsnew" {
-            view = AnyView(WhatsNewView(releases: WhatsNew.releases, highlighted: ["1.6.0", "1.5.1"], close: {}))
+            view = AnyView(WhatsNewView(releases: WhatsNew.releases, highlighted: ["1.7.0", "1.6.0"], close: {}))
         } else if target[0] == "features" {
             view = AnyView(FeaturesView(startTab: target.count > 1 ? target[1] : "image", startQuery: target.count > 2 ? target[2] : "", close: {}))
         } else if target[0] == "help" {

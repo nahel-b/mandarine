@@ -185,8 +185,12 @@ enum Converter {
 enum MediaEngine {
     static func convertVideo(_ url: URL, to e: String, progress: @escaping (Double) -> Void) async throws -> URL {
         let info = await FFmpeg.probe(url)
-        let out = OutputNaming.sibling(of: url, ext: e)
+        let out = e == "prores" ? OutputNaming.sibling(of: url, suffix: " ProRes", ext: "mov") : OutputNaming.sibling(of: url, ext: e)
         switch e {
+        case "prores":
+            var o = EncodeOptions()
+            o.container = "mov"; o.encoder = .proRes; o.proResProfile = 3; o.longSide = 0; o.fps = 0
+            try await VideoEncoder.encode(o, input: url, output: out, progress: progress)
         case "mp3":
             try await FFmpeg.run(["-i", url.path, "-vn"] + FFmpeg.audioArgs(for: "mp3") + [out.path], duration: info.duration, progress: progress)
         case "m4r":

@@ -4,7 +4,7 @@ import Foundation
 enum Catalog {
     // MARK: Conversions
     private static let imageTargets = ["png", "webp", "heic", "tiff", "avif", "bmp", "pdf", "jpg"]
-    private static let videoTargets = ["mp4", "mkv", "webm", "avi", "wmv", "gif", "mp3"]
+    private static let videoTargets = ["mp4", "prores", "mkv", "webm", "avi", "wmv", "gif", "mp3"]
     private static let audioTargets = ["m4a", "wav", "flac", "ogg", "opus", "aiff", "wma", "mp3"]
     private static let pdfTargets = ["docx", "pages", "pptx", "xlsx", "jpg", "png", "epub", "txt", "md"]
     private static let docTargets = ["docx", "pages", "pdf", "txt", "md", "html", "epub", "png", "jpg"]
@@ -41,19 +41,19 @@ enum Catalog {
 
     static func normalized(_ ext: String) -> String {
         switch ext.lowercased() {
-        case "jpeg": return L("jpg")
-        case "tif": return L("tiff")
-        case "gz": return L("gzip")
-        case "markdown": return L("md")
-        case "htm": return L("html")
-        case "aif": return L("aiff")
+        case "jpeg": return "jpg"
+        case "tif": return "tiff"
+        case "gz": return "gzip"
+        case "markdown": return "md"
+        case "htm": return "html"
+        case "aif": return "aiff"
         case "m4v": return L("mp4")
-        case "mpeg": return L("mpg")
+        case "mpeg": return "mpg"
         case let x: return x
         }
     }
 
-    static func displayName(_ ext: String) -> String { ext == "m4r" ? "RINGTONE" : ext.uppercased() }
+    static func displayName(_ ext: String) -> String { ext == "m4r" ? "RINGTONE" : (ext == "prores" ? "ProRes" : ext.uppercased()) }
 
     // MARK: Outils
     /// Sélection par visage (photos et vidéos, plusieurs fichiers), selon les Réglages. Les étiquettes Finder se choisissent dans Type Select.
@@ -181,7 +181,7 @@ enum Catalog {
                 let combine = urls.count > 1 && kind == .image && ext == "pdf"
                 let label = kind == .snippet ? (ext == "m4a" ? "SPEECH" : ext == "qr" ? "QR CODE" : displayName(ext)) : displayName(ext)
                 return WheelItem(id: combine ? "multi-pdf" : ext, label: L(label),
-                                 caption: kind == .snippet ? (ext == "qr" ? L("Make a QR code") : ext == "m4a" ? L("Read it into an audio file") : L("Save as \(displayName(ext))")) : ext == "m4r" ? L("Save as a \(AppSettings.shared.ringtoneSeconds) s ringtone") : combine ? L("Combine into one PDF") : (urls.count > 1 ? L("Convert \(urls.count) files to \(displayName(ext))") : L("Convert to \(displayName(ext))")),
+                                 caption: kind == .snippet ? (ext == "qr" ? L("Make a QR code") : ext == "m4a" ? L("Read it into an audio file") : L("Save as \(displayName(ext))")) : ext == "m4r" ? L("Save as a \(AppSettings.shared.ringtoneSeconds) s ringtone") : ext == "prores" ? L("Convert to Apple ProRes 422 HQ (.mov)") : combine ? L("Combine into one PDF") : (urls.count > 1 ? L("Convert \(urls.count) files to \(displayName(ext))") : L("Convert to \(displayName(ext))")),
                                  symbol: nil, payload: .convert(ext),
                                  enabled: Converter.supports(kind: kind, from: first.pathExtension, to: ext))
             }

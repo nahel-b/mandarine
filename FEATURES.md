@@ -268,3 +268,9 @@ pour les appareils en mode « Tout le monde »), ou un pétale « Partage » via
 
 ## Langue (Réglages → General → Language)
 System / English / Français. Tous les textes passent par `L("…")` (Core/L10n.swift) ; le français vient de `Resources/Localization/fr.json` (clé = texte anglais, `%@` = partie variable), copié dans l'app par `build_app.sh`. Les menus se reconstruisent au changement, les nouvelles fenêtres suivent tout de suite. Pour voir les textes oubliés : `MANDARINE_LANG=fr MANDARINE_L10NLOG=1` affiche `L10N-MISS …` sur stderr.
+
+## Apple ProRes
+Roue ⇧ d'une vidéo : pétale PRORES (ProRes 422 HQ dans un .mov « nom ProRes.mov », son PCM, MPEG entrelacé désentrelacé). Export Video : codec « Apple ProRes » avec profil Proxy / LT / 422 / 422 HQ / 4444 et deux préréglages. Test sans interface : `--convert prores fichier`, ou `--batch prores fichiers…` (lot).
+
+## Lots
+Un fichier en échec n'arrête plus le lot (outils Compress, Export Video, Redimensionner, Pivoter, Agrandir, Extraire l'audio, Normaliser, Supprimer l'arrière-plan, Couper le son : classe `Batch` de JobQueue.swift) : la notification dit « Saved 8 of 10 — 2 failed ». Le Mac ne se met plus en veille et App Nap est désactivé tant qu'un travail tourne.

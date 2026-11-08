@@ -103,23 +103,25 @@ struct DirectToolView: View {
                 }
             case .removeBackground:
                 Dispatcher.job(L("Removing background…"), count: files.count, replaces: files) { progress in
-                    var outs: [URL] = []
+                    let batch = Batch(total: files.count)
                     for (i, f) in files.enumerated() {
-                        outs.append(try await Task.detached { try BackgroundRemover.run(f) }.value)
+                        try await batch.run(f) { [try await Task.detached { try BackgroundRemover.run(f) }.value] }
                         progress(Double(i + 1) / Double(files.count))
                     }
-                    return outs
+                    return try batch.finish()
                 }
             case .muteVideo:
                 Dispatcher.job(L("Removing audio…"), count: files.count, replaces: files) { progress in
-                    var outs: [URL] = []
+                    let batch = Batch(total: files.count)
                     for (i, f) in files.enumerated() {
+                        try await batch.run(f) {
                         let out = OutputNaming.sibling(of: f, suffix: " muted")
                         let info = await FFmpeg.probe(f)
                         try await FFmpeg.run(["-i", f.path, "-c:v", "copy", "-an", out.path], duration: info.duration) { p in progress((Double(i) + p) / Double(files.count)) }
-                        outs.append(out)
+                        return [out]
+                        }
                     }
-                    return outs
+                    return try batch.finish()
                 }
             default: break
             }

@@ -99,7 +99,18 @@ final class JobQueue {
         pump()
     }
 
+    /// Tant que des travaux tournent, le Mac ne se met pas en veille et macOS ne ralentit pas l'app (App Nap) :
+    /// un gros lot (dizaines de vidéos) s'arrête sinon dès que l'écran se verrouille.
+    private var activity: NSObjectProtocol?
+    private func updateActivity() {
+        if entries.isEmpty, let a = activity { ProcessInfo.processInfo.endActivity(a); activity = nil }
+        else if !entries.isEmpty, activity == nil {
+            activity = ProcessInfo.processInfo.beginActivity(options: [.userInitiated, .idleSystemSleepDisabled], reason: "Mandarine travaille sur vos fichiers")
+        }
+    }
+
     private func pump() {
+        updateActivity()
         var heavyRunning = entries.filter { $0.started && $0.heavy }.count
         var ahead = 0
         for e in entries where !e.started {
@@ -234,5 +245,38 @@ enum ReplaceFlow {
         } catch {
             Toast.shared.update(id) { $0.subtitle = error.localizedDescription; $0.action = nil }
         }
+    }
+}
+
+/// Traitement d'un lot fichier par fichier : un fichier en échec n'arrête pas les autres.
+/// À la fin, `finish()` rend tous les résultats, ou lève `JobQueue.Partial` (« Saved 8 of 10 — 2 failed ») si une partie seulement a réussi.
+final class Batch {
+    let total: Int
+    private(set) var outs: [URL] = []
+    private var failures: [String] = []
+    init(total: Int) { self.total = total }
+
+    func run(_ file: URL, _ body: () async throws -> [URL]) async throws {
+        do { outs += try await body() }
+        catch is CancellationError { throw CancellationError() }
+        catch {
+            if total == 1 { throw error }
+            failures.append("\(file.lastPathComponent): \(error.localizedDescription)")
+        }
+    }
+
+    /// Version pour du code synchrone (dans un `Task.detached`).
+    func runSync(_ file: URL, _ body: () throws -> [URL]) throws {
+        do { outs += try body() }
+        catch {
+            if total == 1 { throw error }
+            failures.append("\(file.lastPathComponent): \(error.localizedDescription)")
+        }
+    }
+
+    func finish() throws -> [URL] {
+        if failures.isEmpty { return outs }
+        if outs.isEmpty { throw MandarineError(failures[0]) }
+        throw JobQueue.Partial(outs: outs, failed: failures.count, total: total, message: failures.joined(separator: "\n"))
     }
 }

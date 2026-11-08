@@ -45,7 +45,7 @@ enum WiiLayout {
 enum WiiText {
     static func description(_ item: WheelItem) -> String {
         if case .convert(let ext) = item.payload {
-            return item.id == "multi-pdf" ? "Combine the selected images into one PDF, one page per image." : item.id == "m4r" ? "Save the start of the sound as an iPhone ringtone (.m4r), with a short fade out." : "Convert to \(ext.uppercased()). A new copy is saved next to the original."
+            return item.id == "multi-pdf" ? "Combine the selected images into one PDF, one page per image." : item.id == "prores" ? "Convert to Apple ProRes 422 HQ in a .mov, ready for editing. A new copy is saved next to the original." : item.id == "m4r" ? "Save the start of the sound as an iPhone ringtone (.m4r), with a short fade out." : "Convert to \(ext.uppercased()). A new copy is saved next to the original."
         }
         let d: [String: String] = [
             "compress": L("Reduce file size locally. The original stays untouched."),

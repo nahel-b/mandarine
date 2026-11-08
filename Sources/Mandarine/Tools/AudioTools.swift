@@ -91,8 +91,9 @@ struct NormalizeTool: View {
         let (I, LRA, T, files) = (target, range, peak, urls)
         close()
         Dispatcher.job(L("Normalizing…"), count: files.count, replaces: files) { progress in
-            var outs: [URL] = []
+            let batch = Batch(total: files.count)
             for (i, f) in files.enumerated() {
+                try await batch.run(f) {
                 let m = await AudioExport.loudness(f, I: I, LRA: LRA, TP: T)
                 let info = await FFmpeg.probe(f)
                 var filter = "loudnorm=I=\(I):LRA=\(LRA):TP=\(T)"
@@ -102,9 +103,10 @@ struct NormalizeTool: View {
                 let ext = AudioExport.ext(for: f)
                 let out = OutputNaming.sibling(of: f, suffix: " normalized", ext: ext)
                 try await FFmpeg.run(["-i", f.path, "-vn", "-af", filter, "-ar", "48000"] + FFmpeg.audioArgs(for: ext) + [out.path], duration: info.duration) { p in progress((Double(i) + p) / Double(files.count)) }
-                outs.append(out)
+                return [out]
+                }
             }
-            return outs
+            return try batch.finish()
         }
     }
 }
