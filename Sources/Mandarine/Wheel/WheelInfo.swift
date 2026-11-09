@@ -51,7 +51,7 @@ enum WheelInfo {
                 // plusieurs vidéos / audios : durée totale
                 if kinds.count == 1, [.video, .audio].contains(kinds.first!) {
                     var sum = 0.0
-                    for u in urls { sum += (try? await AVURLAsset(url: u).load(.duration).seconds) ?? 0 }
+                    for u in urls { sum += (try? await AVURLAsset(url: await HLS.playable(u)).load(.duration).seconds) ?? 0 }
                     if sum > 0 { lines = ["\(urls.count) items", duration(sum), total.humanSize] }
                 }
                 return lines
@@ -72,7 +72,7 @@ enum WheelInfo {
             }
             return [size, ext]
         case .video:
-            let a = AVURLAsset(url: u)
+            let a = AVURLAsset(url: await HLS.playable(u))
             let d = (try? await a.load(.duration).seconds) ?? 0
             var res = "", fps = ""
             if let t = try? await a.loadTracks(withMediaType: .video).first {
@@ -84,7 +84,7 @@ enum WheelInfo {
             if d <= 0 && res.isEmpty { return [size, ext] }
             return [d > 0 ? duration(d) : size, res.isEmpty ? ext : res, [fps, size].filter { !$0.isEmpty }.joined(separator: " · ")].filter { !$0.isEmpty }
         case .audio:
-            let d = (try? await AVURLAsset(url: u).load(.duration).seconds) ?? 0
+            let d = (try? await AVURLAsset(url: await HLS.playable(u)).load(.duration).seconds) ?? 0
             return d > 0 ? [duration(d), size, ext] : [size, ext]
         case .pdf:
             if let doc = PDFDocument(url: u) { return ["\(doc.pageCount) page\(doc.pageCount == 1 ? "" : "s")", size] }

@@ -201,7 +201,7 @@ enum FaceScanner {
 
     /// Une image toutes les ~2 s (40 au plus). Un même visage revu dans la vidéo n'est gardé qu'une fois.
     private static func videoFaces(_ url: URL, minRelativeWidth: Double) async throws -> [FaceHit] {
-        let duration = (try? await AVURLAsset(url: url).load(.duration).seconds) ?? 0
+        let duration = (try? await AVURLAsset(url: await HLS.playable(url)).load(.duration).seconds) ?? 0
         let count = duration > 0 ? min(40, max(1, Int(duration / 2))) : 1
         var kept: [FaceHit] = []
         for k in 0..<count {

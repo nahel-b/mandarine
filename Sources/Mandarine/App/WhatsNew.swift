@@ -8,6 +8,10 @@ struct WhatsNewRelease { let version: String; let headline: String; let items: [
 enum WhatsNew {
     /// À compléter à chaque version (la plus récente d'abord) : c'est ce que voit l'utilisateur après la mise à jour.
     static var releases: [WhatsNewRelease] { [
+        WhatsNewRelease(version: "1.8.1", headline: L("Streams (.m3u8) as videos"), items: [
+            WhatsNewItem(symbol: "play.rectangle.on.rectangle", title: L("Open .m3u8 videos"),
+                         text: L("A local HLS playlist (.m3u8 with its segments) is now a video for Mandarine: convert it to MP4, GIF, MP3… and use the video tools such as frame capture. Results are regular files, never .m3u8. If a segment is missing or on the web, you get a clear message.")),
+        ]),
         WhatsNewRelease(version: "1.8.0", headline: L("Your own DaVinci folders"), items: [
             WhatsNewItem(symbol: "folder.badge.gearshape", title: L("Customize the DaVinci tree"),
                          text: L("Settings → DaVinci: rename every folder and subfolder, add or remove some, reorder them, and tick the ones created by default. You can also choose which folder receives dropped videos, sounds or images, and the default project name.")),

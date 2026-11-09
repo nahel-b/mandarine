@@ -203,7 +203,7 @@ struct JoinVideosTool: View {
         } footer: { Button(L("Join Videos")) { apply() }.buttonStyle(PillButtonStyle()).disabled(urls.count < 2).keyboardShortcut(.defaultAction) }
         .task(id: urls) {
             for u in urls where thumbs[u] == nil {
-                let g = AVAssetImageGenerator(asset: AVURLAsset(url: u)); g.appliesPreferredTrackTransform = true; g.maximumSize = CGSize(width: 120, height: 120)
+                let g = AVAssetImageGenerator(asset: AVURLAsset(url: await HLS.playable(u))); g.appliesPreferredTrackTransform = true; g.maximumSize = CGSize(width: 120, height: 120)
                 if let cg = try? await g.image(at: .zero).image { thumbs[u] = NSImage(cgImage: cg, size: .zero) }
             }
         }
@@ -284,10 +284,11 @@ struct SnapshotsTool: View {
     private func add() {
         let t = player.time
         guard !frames.contains(where: { abs($0.t - t) < 0.001 }) else { return }
-        let gen = AVAssetImageGenerator(asset: AVURLAsset(url: urls[0]))
-        gen.appliesPreferredTrackTransform = true; gen.maximumSize = CGSize(width: 240, height: 240)
-        gen.requestedTimeToleranceBefore = .zero; gen.requestedTimeToleranceAfter = .zero
+        let source = urls[0]
         Task {
+            let gen = AVAssetImageGenerator(asset: AVURLAsset(url: await HLS.playable(source)))
+            gen.appliesPreferredTrackTransform = true; gen.maximumSize = CGSize(width: 240, height: 240)
+            gen.requestedTimeToleranceBefore = .zero; gen.requestedTimeToleranceAfter = .zero
             if let cg = try? await gen.image(at: CMTime(seconds: t, preferredTimescale: 600)).image {
                 await MainActor.run { frames.append((t, NSImage(cgImage: cg, size: .zero))); frames.sort { $0.t < $1.t } }
             }

@@ -27,6 +27,7 @@ enum FileKind: String, CaseIterable {
         if e == "gif" { return .image }      // un GIF est traité comme une image ; la roue vidéo propose GIF en sortie
         if imageExts.contains(e) { return .image }
         if videoExts.contains(e) { return .video }
+        if e == "m3u8" { return HLS.isStream(url) ? .video : .other }       // flux HLS local ; une liste de lecture musicale reste « autre »
         if audioExts.contains(e) { return .audio }
         if slideExts.contains(e) { return .slides }
         if sheetExts.contains(e) { return .spreadsheet }

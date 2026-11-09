@@ -277,3 +277,6 @@ Un fichier en échec n'arrête plus le lot (outils Compress, Export Video, Redim
 
 ## Arborescence DaVinci personnalisable
 Réglages → DaVinci : nom du projet par défaut (ou nom du fichier déposé s'il est seul), rangement automatique des fichiers déposés activé ou non, et éditeur d'arborescence (3 niveaux) : case « créé par défaut », renommer, ajouter un dossier / sous-dossier, monter / descendre, supprimer, choisir quel dossier reçoit les vidéos, sons ou images déposés, rétablir les dossiers par défaut. Enregistré en JSON (`davinciFolders`). La fenêtre de l'outil reprend ces cases (dossiers et sous-dossiers) comme point de départ.
+
+## Vidéos HLS locales (.m3u8)
+Un `.m3u8` local qui est un vrai flux HLS (balises `#EXT-X-TARGETDURATION` / `#EXT-X-STREAM-INF`) est traité comme une vidéo : roue de conversion, outils, captures. Une liste de lecture musicale en .m3u8 reste « autre ». Taille affichée = playlist + segments locaux. Les sorties sont des MP4 (jamais .m3u8). AVFoundation lit une copie MP4 sans réencodage (`HLS.playable`, en cache). Si la lecture échoue : message clair pour les segments distants (web) ou manquants. Pas de conversion vers m3u8.

@@ -4,7 +4,7 @@ enum OutputNaming {
     /// URL libre à côté de l'original : « photo.png », puis « photo 2.png »…  Ne remplace jamais un fichier existant.
     static func sibling(of source: URL, suffix: String = "", ext: String? = nil, in dir: URL? = nil) -> URL {
         let base = source.deletingPathExtension().lastPathComponent + suffix
-        let e = ext ?? source.pathExtension
+        let e = ext ?? (source.pathExtension.lowercased() == "m3u8" ? "mp4" : source.pathExtension)      // un flux HLS ressort en MP4
         let folder = dir ?? source.deletingLastPathComponent()
         return unique(folder: folder, base: base, ext: e)
     }
@@ -45,6 +45,7 @@ extension Int64 {
 
 extension URL {
     var fileSize: Int64 {
+        if pathExtension.lowercased() == "m3u8", HLS.isStream(self) { return HLS.totalSize(self) }      // playlist + segments
         let v = try? resourceValues(forKeys: [.fileSizeKey, .isDirectoryKey])
         if v?.isDirectory == true {
             let en = FileManager.default.enumerator(at: self, includingPropertiesForKeys: [.fileSizeKey])

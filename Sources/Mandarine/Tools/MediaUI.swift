@@ -44,8 +44,8 @@ final class PlayerController: ObservableObject {
     /// `exact` : transcode en WAV pour que la position de lecture suive la même échelle de temps que ffmpeg (durées AVFoundation parfois fausses sur MP3/VBR).
     func load(_ url: URL, exact: Bool = false) async {
         self.url = url
-        var playable = url
-        let asset = AVURLAsset(url: url)
+        var playable = await HLS.playable(url)
+        let asset = AVURLAsset(url: playable)
         if exact, FFmpeg.isAvailable, !["wav", "aiff", "aif", "flac"].contains(url.pathExtension.lowercased()) {
             let tmp = OutputNaming.tempURL(ext: "wav")
             if (try? await FFmpeg.run(["-i", url.path, "-vn", "-c:a", "pcm_s16le", tmp.path])) != nil { playable = tmp }
@@ -118,7 +118,7 @@ struct FilmStrip: View {
         .background(Color.black.opacity(0.85))
         .task(id: duration) {
             guard duration > 0 else { return }
-            let gen = AVAssetImageGenerator(asset: AVURLAsset(url: url))
+            let gen = AVAssetImageGenerator(asset: AVURLAsset(url: await HLS.playable(url)))
             gen.appliesPreferredTrackTransform = true
             gen.maximumSize = CGSize(width: 200, height: 200)
             var out: [NSImage] = []

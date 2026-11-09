@@ -161,7 +161,7 @@ enum FFmpeg {
                 if p.terminationStatus == 0 { cont.resume(returning: msg) }
                 else {
                     let cmd = "ffmpeg " + args.map { $0.contains(" ") ? "\"\($0)\"" : $0 }.joined(separator: " ")
-                    let body = msg.isEmpty ? "ffmpeg a échoué (code \(p.terminationStatus))." : String(msg.suffix(900))
+                    let body = HLS.explainFailure(args: args, message: msg) ?? (msg.isEmpty ? "ffmpeg a échoué (code \(p.terminationStatus))." : String(msg.suffix(900)))
                     cont.resume(throwing: MandarineError(body + "\n› " + String(cmd.suffix(500))))
                 }
             }
