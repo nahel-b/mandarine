@@ -280,3 +280,4 @@ Réglages → DaVinci : nom du projet par défaut (ou nom du fichier déposé s'
 
 ## Vidéos HLS locales (.m3u8)
 Un `.m3u8` local qui est un vrai flux HLS (balises `#EXT-X-TARGETDURATION` / `#EXT-X-STREAM-INF`) est traité comme une vidéo : roue de conversion, outils, captures. Une liste de lecture musicale en .m3u8 reste « autre ». Taille affichée = playlist + segments locaux. Les sorties sont des MP4 (jamais .m3u8). AVFoundation lit une copie MP4 sans réencodage (`HLS.playable`, en cache). Si la lecture échoue : message clair pour les segments distants (web) ou manquants. Pas de conversion vers m3u8.
+Playlist HLS téléchargée sans ses fichiers (ex. playlist maîtresse seule, relative) : Mandarine lit l'adresse de téléchargement enregistrée par macOS (métadonnée « Provenance », `kMDItemWhereFroms`) et lit le flux à cette adresse (`HLS.origin`, remplacement dans les arguments de ffmpeg / ffprobe). Si ça échoue (lien expiré, connexion demandée) : message clair.

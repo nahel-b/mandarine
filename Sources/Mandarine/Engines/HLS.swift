@@ -84,16 +84,48 @@ enum HLS {
         return await proxyTask(url).value
     }
 
+    /// Adresse d'où le fichier a été téléchargé (métadonnée « Provenance » de macOS, posée par Safari, Chrome…), si c'est une adresse web.
+    static func downloadURL(of url: URL) -> URL? {
+        let name = "com.apple.metadata:kMDItemWhereFroms"
+        let size = getxattr(url.path, name, nil, 0, 0, 0)
+        guard size > 0 else { return nil }
+        var data = Data(count: size)
+        let n = data.withUnsafeMutableBytes { getxattr(url.path, name, $0.baseAddress, size, 0, 0) }
+        guard n > 0, let list = try? PropertyListSerialization.propertyList(from: data, options: [], format: nil) as? [String] else { return nil }
+        return list.compactMap { URL(string: $0) }.first { ["http", "https"].contains($0.scheme?.lowercased() ?? "") }
+    }
+
+    /// Une playlist locale dont les fichiers cités (qualités, segments) ne sont pas à côté d'elle, mais dont on connaît la provenance web :
+    /// on lit alors le flux à son adresse d'origine.
+    static func origin(for url: URL) -> URL? {
+        guard isStream(url) else { return nil }
+        let dir = url.deletingLastPathComponent()
+        let refs = references(url).filter { !isRemote($0) }
+        guard !refs.isEmpty, refs.contains(where: { !FileManager.default.fileExists(atPath: URL(string: $0, relativeTo: dir)?.path ?? dir.appendingPathComponent($0).path) }) else { return nil }
+        return downloadURL(of: url)
+    }
+
+    /// Remplace, dans les arguments de ffmpeg / ffprobe, une playlist locale incomplète par son adresse d'origine.
+    static func resolveInputs(_ args: [String]) -> [String] {
+        args.map { a in
+            guard a.hasPrefix("/"), a.lowercased().hasSuffix(".m3u8"), let o = origin(for: URL(fileURLWithPath: a)) else { return a }
+            return o.absoluteString
+        }
+    }
+
     /// Message plus clair quand ffmpeg échoue sur une playlist qui pointe vers le web.
     static func explainFailure(args: [String], message: String) -> String? {
         guard let input = args.first(where: { $0.lowercased().hasSuffix(".m3u8") && $0.hasPrefix("/") }) else { return nil }
         let url = URL(fileURLWithPath: input)
+        if let o = origin(for: url) {
+            return L("Mandarine read this playlist from where it was downloaded (\(o.host ?? o.absoluteString)), but that failed. The link may have expired or need a login, or you may be offline.")
+        }
         if hasRemoteSegments(url) {
             return L("This playlist points to video segments on the web. They must be reachable (internet connection, no special access needed) for Mandarine to read them.")
         }
         let dir = url.deletingLastPathComponent()
-        let missing = references(url).first { !isRemote($0) && !$0.lowercased().hasSuffix(".m3u8") && !FileManager.default.fileExists(atPath: (URL(string: $0, relativeTo: dir)?.path ?? dir.appendingPathComponent($0).path)) }
-        if let m = missing { return L("A segment of this playlist is missing: \(m). Keep the .m3u8 file next to its video segments.") }
+        let missing = references(url).first { !isRemote($0) && !FileManager.default.fileExists(atPath: (URL(string: $0, relativeTo: dir)?.path ?? dir.appendingPathComponent($0).path)) }
+        if let m = missing { return L("A file of this playlist is missing: \(m). Keep the .m3u8 file next to the files it lists (other playlists and video segments).") }
         return nil
     }
 }

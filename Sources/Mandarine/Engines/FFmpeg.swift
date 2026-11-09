@@ -60,7 +60,7 @@ enum FFmpeg {
         // Résultat rapide via AVFoundation, complété par ffprobe si disponible.
         if let ffprobe = ffprobe {
             let p = Process(); p.executableURL = ffprobe
-            p.arguments = ["-v", "error", "-print_format", "json", "-show_format", "-show_streams", url.path]
+            p.arguments = ["-v", "error", "-print_format", "json", "-show_format", "-show_streams", HLS.resolveInputs([url.path])[0]]
             let pipe = Pipe(); p.standardOutput = pipe; p.standardError = Pipe()
             do {
                 try p.run()
@@ -124,7 +124,8 @@ enum FFmpeg {
 
     /// Lance ffmpeg. `duration` (en secondes) sert à calculer la progression.
     @discardableResult
-    static func run(_ args: [String], duration: Double? = nil, progress: ((Double) -> Void)? = nil) async throws -> String {
+    static func run(_ originalArgs: [String], duration: Double? = nil, progress: ((Double) -> Void)? = nil) async throws -> String {
+        let args = HLS.resolveInputs(originalArgs)
         guard let ff = ffmpeg else {
             throw MandarineError(L("ffmpeg est introuvable. Téléchargez-le dans Réglages → Engines (ou brew install ffmpeg)."))
         }
@@ -161,7 +162,7 @@ enum FFmpeg {
                 if p.terminationStatus == 0 { cont.resume(returning: msg) }
                 else {
                     let cmd = "ffmpeg " + args.map { $0.contains(" ") ? "\"\($0)\"" : $0 }.joined(separator: " ")
-                    let body = HLS.explainFailure(args: args, message: msg) ?? (msg.isEmpty ? "ffmpeg a échoué (code \(p.terminationStatus))." : String(msg.suffix(900)))
+                    let body = HLS.explainFailure(args: originalArgs, message: msg) ?? (msg.isEmpty ? "ffmpeg a échoué (code \(p.terminationStatus))." : String(msg.suffix(900)))
                     cont.resume(throwing: MandarineError(body + "\n› " + String(cmd.suffix(500))))
                 }
             }
