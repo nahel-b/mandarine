@@ -648,7 +648,7 @@ enum ToolAvailability {
              .mergePDF, .organizePDF, .splitPDF, .extractArchive, .ocr, .faceSelect, .scanDocument, .zipFiles, .quickSort, .typeSelect:
             return true
         case .trimVideo, .cropVideo, .changeVideoSpeed, .joinVideos, .splitVideo, .redactVideo, .muteVideo,
-             .normalizeAudio, .audioToVideo, .trimAudio, .audioChannels, .redactAudio:
+             .normalizeAudio, .audioToVideo, .trimAudio, .audioChannels, .redactAudio, .transcribe:
             return FFmpeg.isAvailable
         }
     }

@@ -74,6 +74,7 @@ enum WiiText {
             "trimAudio": L("Keep one section of a recording, with waveform control."),
             "audioChannels": L("Convert to mono or stereo and set each channel's volume."),
             "redactAudio": L("Replace sensitive parts of a recording with a bleep."),
+            "transcribe": L("Turn speech into a text file and subtitles (.srt), with Apple speech recognition."),
             "mergePDF": L("Combine several PDFs into one document."),
             "organizePDF": L("Reorder, rotate, duplicate or remove pages visually."),
             "splitPDF": L("Save every page as its own PDF."),

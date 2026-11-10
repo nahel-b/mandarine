@@ -29,6 +29,7 @@ enum ToolRegistry {
         case .trimAudio: return AnyView(TrimAudioTool(urls: urls, close: close))
         case .audioChannels: return AnyView(ChannelsTool(urls: urls, close: close))
         case .redactAudio: return AnyView(BleepTool(urls: urls, close: close))
+        case .transcribe: return AnyView(TranscribeTool(urls: urls, close: close))
         case .removeBackground: return AnyView(RemoveBGTool(urls: urls, close: close))
         case .resizeImage: return AnyView(ResizeImageTool(urls: urls, close: close))
         case .rotateImage: return AnyView(RotateImageTool(urls: urls, close: close))

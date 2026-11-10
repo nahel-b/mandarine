@@ -788,6 +788,18 @@ extension AppDelegate {
             do { print("OK", try BackgroundRemover.run(URL(fileURLWithPath: a[1])).path) } catch { print("ERR", error.localizedDescription) }
             exit(0)
         }
+        if a.count >= 3, a[0] == "--transcribe" {      // test sans interface : --transcribe langue fichier
+            let url = URL(fileURLWithPath: a[2]), loc = Locale(identifier: a[1])
+            Task {
+                do {
+                    let info = await FFmpeg.probe(url)
+                    let words = try await Transcriber.transcribe(url, locale: loc, duration: info.duration) { _ in }
+                    print("ONDEVICE", Transcriber.isOnDevice(loc)); print(Transcriber.plainText(words, locale: loc)); print(Transcriber.srt(Transcriber.cues(words, locale: loc), locale: loc))
+                } catch { print("ERR", error.localizedDescription) }
+                exit(0)
+            }
+            return
+        }
         if a.count >= 3, a[0] == "--convert" {      // test sans interface : --convert ext fichier
             let url = URL(fileURLWithPath: a[2])
             Task {
@@ -852,6 +864,8 @@ extension AppDelegate {
             Toast.shared.fail("Conversion failed", subtitle: "ffmpeg a échoué (code 1).")
             Toast.shared.add(ToastItem(id: UUID(), phase: .done, title: "Saved", subtitle: "photo compressed.png\nin Downloads", reveal: [URL(fileURLWithPath: "/tmp")], action: ("Replace original", {})))
             Toast.shared.add(ToastItem(id: UUID(), phase: .done, title: "Tip: keep or replace", subtitle: "Hold ⌥ while you click the button to replace the original instead of keeping both — the old file goes to the Trash. The default is in Settings → General.", action: ("Got it", {}), sticky: true))
+            let extended = Toast.shared.add(ToastItem(id: UUID(), phase: .done, title: "Saved", subtitle: "talk.txt\nin Desktop", reveal: [URL(fileURLWithPath: "/tmp")]))
+            Toast.shared.extend(extended); Toast.shared.extend(extended)          // deux clics : « +1 min » et le décompte
             view = AnyView(ToastStack(center: Toast.shared.center).background(Color(white: 0.55)))
         } else if target[0] == "settings" {
             view = AnyView(SettingsView(tab: SettingsView.Tab(rawValue: target.count > 1 ? target[1] : "") ?? .general).background(Color(white: 0.55)))
@@ -877,7 +891,7 @@ extension AppDelegate {
         } else if target[0] == "toaststyles" {
             view = AnyView(ToastLab(page: Int(target.count > 1 ? target[1] : "1") ?? 1))
         } else if target[0] == "whatsnew" {
-            view = AnyView(WhatsNewView(releases: WhatsNew.releases, highlighted: ["1.8.2", "1.8.1"], close: {}))
+            view = AnyView(WhatsNewView(releases: WhatsNew.releases, highlighted: ["1.9.0", "1.8.2"], close: {}))
         } else if target[0] == "features" {
             view = AnyView(FeaturesView(startTab: target.count > 1 ? target[1] : "image", startQuery: target.count > 2 ? target[2] : "", close: {}))
         } else if target[0] == "help" {

@@ -18,6 +18,9 @@ struct ToastItem: Identifiable {
     var eta = ""                          // « About 2 min left » : estimation du temps restant d'un travail long
     var files: [URL] = []                // fichiers que la ligne concerne sans les avoir créés (sélection, copie…) : glissables eux aussi
     var dragging = false                 // ses fichiers sont en train d'être glissés ailleurs : la ligne change d'apparence
+    var bonus: Double = 0                // secondes ajoutées à l'écran par des clics sur la ligne (30 s par clic)
+    var deadline: Date? = nil            // quand elle disparaîtra (nil : en pause tant que la souris est sur la pile)
+    var pausedLeft: Double? = nil        // temps restant au moment où la pause a commencé
 }
 
 final class ToastCenter: ObservableObject {
@@ -126,6 +129,23 @@ private struct ToastRow: View {
         Toast.shared.setHovering(false)
     }
 
+    private func clicked() { Toast.shared.extend(item.id) }
+
+    /// « +30 s · 0:42 » : le temps ajouté par les clics et ce qu'il reste avant que la ligne disparaisse.
+    private var extendBadge: some View {
+        let n = Int(item.bonus)
+        let added = n < 60 ? "+\(n) s" : (n % 60 == 0 ? "+\(n / 60) min" : "+\(n / 60) min \(n % 60) s")
+        return TimelineView(.periodic(from: .now, by: 1)) { ctx in
+            let left = Int((item.deadline.map { max(0, $0.timeIntervalSince(ctx.date)) } ?? item.pausedLeft ?? 0).rounded(.up))
+            Text("\(added) · \(left / 60):\(String(format: "%02d", left % 60))")
+                .font(.system(size: 10, weight: .semibold).monospacedDigit()).foregroundStyle(.white)
+                .padding(.horizontal, 8).padding(.vertical, 2.5)
+                .background(Capsule().fill(Theme.orange))
+                .overlay(Capsule().strokeBorder(Color.white, lineWidth: 1.5))
+        }
+        .help(L("Time left on screen. Click the notification again to add 30 s."))
+    }
+
     private var failed: Bool { item.phase == .failed }
     private var finished: Bool { item.phase == .done || item.phase == .failed }
     private var lines: [String] { item.subtitle.split(separator: "\n", omittingEmptySubsequences: true).map { L(String($0)) } }
@@ -141,6 +161,8 @@ private struct ToastRow: View {
 
     var body: some View {
         content
+            .overlay(alignment: .bottomTrailing) { if finished && item.bonus > 0 && !item.sticky { extendBadge.offset(x: -16, y: 9).transition(.scale.combined(with: .opacity)) } }
+            .animation(.spring(response: 0.3, dampingFraction: 0.7), value: item.bonus)
             .environment(\.colorScheme, .light)
             // saisie : la ligne se tasse, devient translucide, comme une place vide d'où l'on vient de sortir quelque chose
             .shadow(color: .black.opacity(lift), radius: item.dragging ? 4 : 10, y: item.dragging ? 1 : 4)
@@ -169,7 +191,7 @@ private struct ToastRow: View {
                 Spacer(minLength: 0)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            .overlay { FileDragHandle(urls: dragURLs, text: dragText, onBegin: dragBegan, onEnd: dragEnded) }
+            .overlay { FileDragHandle(urls: dragURLs, text: dragText, canExtend: finished && !item.sticky, onBegin: dragBegan, onEnd: dragEnded, onClick: clicked) }
             HStack(spacing: 6) {
                 if let cancel = item.cancel { Button(action: cancel) { ToastRound(symbol: "xmark", size: 22, fill: Color(white: 0.9)) }.buttonStyle(.plain).help(L("Stop this job")) }
                 if failed && !item.detail.isEmpty { Button(action: copyError) { ToastPill(text: L("Copy"), fill: Color(white: 0.4)) }.buttonStyle(.plain).help(L("Copy the full error message")) }
@@ -249,7 +271,7 @@ private struct ToastRow: View {
                 }
                 Spacer(minLength: 0)
             }
-            .overlay { FileDragHandle(urls: dragURLs, text: dragText, onBegin: dragBegan, onEnd: dragEnded) }
+            .overlay { FileDragHandle(urls: dragURLs, text: dragText, canExtend: finished && !item.sticky, onBegin: dragBegan, onEnd: dragEnded, onClick: clicked) }
             if item.phase == .running || item.phase == .waiting {
                 HStack(spacing: 10) {
                     if let p = item.progress, p >= 0 {
@@ -361,21 +383,50 @@ final class Toast {
     private func arm(_ item: ToastItem) {
         timers[item.id]?.cancel(); timers[item.id] = nil
         guard item.phase == .done || item.phase == .failed, !hovering, !item.sticky else { return }
-        schedule(item, after: item.phase == .failed ? 45 : (item.reveal.isEmpty ? 12 : 60))
+        schedule(item, after: baseDelay(item) + item.bonus)
     }
+
+    private func baseDelay(_ item: ToastItem) -> Double { item.phase == .failed ? 45 : (item.reveal.isEmpty ? 12 : 60) }
 
     private func schedule(_ item: ToastItem, after s: Double) {
         let id = item.id
         let w = DispatchWorkItem { [weak self] in self?.remove(id) }
         timers[id] = w
         DispatchQueue.main.asyncAfter(deadline: .now() + s, execute: w)
+        if let i = center.items.firstIndex(where: { $0.id == id }) { center.items[i].deadline = Date().addingTimeInterval(s); center.items[i].pausedLeft = nil }
     }
 
-    /// Rien ne disparaît tant que la souris est sur la pile.
+    private func isFinished(_ item: ToastItem) -> Bool { (item.phase == .done || item.phase == .failed) && !item.sticky }
+
+    /// Un clic sur le corps d'une notification terminée lui ajoute 30 s à l'écran (chaque clic en ajoute 30 de plus).
+    func extend(_ id: UUID, by s: Double = 30) {
+        guard let i = center.items.firstIndex(where: { $0.id == id }), isFinished(center.items[i]) else { return }
+        var it = center.items[i]
+        it.bonus += s
+        if hovering || it.deadline == nil {
+            it.pausedLeft = (it.pausedLeft ?? baseDelay(it)) + s       // la minuterie est en pause : le temps s'ajoute au reste, elle repart quand la souris quitte la pile
+            it.deadline = nil
+            center.items[i] = it
+        } else {
+            let left = max(0, it.deadline?.timeIntervalSinceNow ?? 0)
+            timers[id]?.cancel()
+            center.items[i] = it
+            schedule(it, after: left + s)
+        }
+    }
+
+    /// Rien ne disparaît tant que la souris est sur la pile ; le temps restant est mis de côté, et la ligne repart ensuite (6 s au moins).
     func setHovering(_ on: Bool) {
         hovering = on
-        if on { timers.values.forEach { $0.cancel() }; timers.removeAll() }
-        else { for item in center.items where (item.phase == .done || item.phase == .failed) && !item.sticky { schedule(item, after: 6) } }
+        if on {
+            timers.values.forEach { $0.cancel() }; timers.removeAll()
+            for i in center.items.indices where isFinished(center.items[i]) {
+                if let d = center.items[i].deadline { center.items[i].pausedLeft = max(0, d.timeIntervalSinceNow) }
+                center.items[i].deadline = nil
+            }
+        } else {
+            for item in center.items where isFinished(item) { schedule(item, after: item.bonus > 0 ? max(6, item.pausedLeft ?? 6) : 6) }
+        }
     }
 
     // MARK: Messages simples

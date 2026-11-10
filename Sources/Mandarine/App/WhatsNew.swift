@@ -8,6 +8,12 @@ struct WhatsNewRelease { let version: String; let headline: String; let items: [
 enum WhatsNew {
     /// À compléter à chaque version (la plus récente d'abord) : c'est ce que voit l'utilisateur après la mise à jour.
     static var releases: [WhatsNewRelease] { [
+        WhatsNewRelease(version: "1.9.0", headline: L("Transcribe speech"), items: [
+            WhatsNewItem(symbol: "text.bubble", title: L("Transcribe"),
+                         text: L("A TRANSCRIBE petal on the audio and video wheels turns speech into a text file (.txt) and subtitles (.srt) with the time of each line, using Apple speech recognition. Pick the spoken language; on-device recognition keeps the audio on your Mac.")),
+            WhatsNewItem(symbol: "plus.circle", title: L("Keep a notification longer"),
+                         text: L("Click a finished notification (not its buttons) to keep it on screen 30 s longer; click again for more. A small “+1 min · 1:58” tag shows the time left.")),
+        ]),
         WhatsNewRelease(version: "1.8.2", headline: L("Playlists downloaded from the web"), items: [
             WhatsNewItem(symbol: "arrow.down.circle", title: L("Incomplete .m3u8 files work"),
                          text: L("A .m3u8 file saved on its own (without its video files) is now read from the web address it was downloaded from, so you can convert it and use the video tools. If a file is missing or the link no longer works, a clear message tells you.")),

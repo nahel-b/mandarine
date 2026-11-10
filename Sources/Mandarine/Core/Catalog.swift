@@ -110,6 +110,7 @@ enum Catalog {
                 (.splitVideo, "SPLIT", "rectangle.split.2x1"),
                 (.redactVideo, "REDACT", "eye.slash.circle"),
                 (.extractAudio, "EXTRACT", "waveform"),
+                (.transcribe, "TRANSCRIBE", "text.bubble"),
                 (.encodeVideo, "EXPORT", "film.stack")
             ]
             if multi { t.append((.joinVideos, "JOIN", "rectangle.stack")) }
@@ -123,7 +124,8 @@ enum Catalog {
                 (.audioToVideo, "VISUALIZE", "waveform"),
                 (.trimAudio, "TRIM", "scissors"),
                 (.audioChannels, "CHANNELS", "speaker.wave.2"),
-                (.redactAudio, "BLEEP", "speaker.slash.circle")
+                (.redactAudio, "BLEEP", "speaker.slash.circle"),
+                (.transcribe, "TRANSCRIBE", "text.bubble")
             ]
         case .pdf:
             var t: [(ToolID, String, String)] = [

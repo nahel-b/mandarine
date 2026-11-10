@@ -6,13 +6,16 @@ import SwiftUI
 struct FileDragHandle: NSViewRepresentable {
     let urls: [URL]
     let text: String          // sans fichier à emporter, la ligne emporte son texte
+    var canExtend = false     // un simple clic ajoute du temps à l'écran (notification terminée)
     let onBegin: () -> Void
     let onEnd: () -> Void
+    var onClick: () -> Void = {}
 
     func makeNSView(context: Context) -> FileDragView { FileDragView() }
     func updateNSView(_ v: FileDragView, context: Context) {
-        v.urls = urls; v.text = text; v.onBegin = onBegin; v.onEnd = onEnd
-        v.toolTip = urls.isEmpty ? L("Drag this message anywhere") : (urls.count == 1 ? L("Drag this file anywhere") : L("Drag these \(urls.count) files anywhere"))
+        v.urls = urls; v.text = text; v.onBegin = onBegin; v.onEnd = onEnd; v.onClick = onClick
+        let drag = urls.isEmpty ? L("Drag this message anywhere") : (urls.count == 1 ? L("Drag this file anywhere") : L("Drag these \(urls.count) files anywhere"))
+        v.toolTip = canExtend ? drag + "\n" + L("Click to keep it on screen 30 s longer.") : drag
     }
 }
 
@@ -46,6 +49,7 @@ final class FileDragView: NSView, NSDraggingSource {
     var text = ""
     var onBegin: () -> Void = {}
     var onEnd: () -> Void = {}
+    var onClick: () -> Void = {}
     private var downAt: NSPoint?
 
     override var mouseDownCanMoveWindow: Bool { false }
@@ -80,7 +84,11 @@ final class FileDragView: NSView, NSDraggingSource {
         session.animatesToStartingPositionsOnCancelOrFail = true
     }
 
-    override func mouseUp(with event: NSEvent) { downAt = nil }
+    override func mouseUp(with event: NSEvent) {
+        let wasClick = downAt != nil            // pas de glissement entre l'appui et le relâchement : c'est un clic
+        downAt = nil
+        if wasClick { onClick() }
+    }
 
     func draggingSession(_ session: NSDraggingSession, sourceOperationMaskFor context: NSDraggingContext) -> NSDragOperation { .copy }
     func ignoreModifierKeys(for session: NSDraggingSession) -> Bool { true }          // ⇧ ⌘ ⌥ ⌃ servent à ouvrir la roue, pas à changer l'opération

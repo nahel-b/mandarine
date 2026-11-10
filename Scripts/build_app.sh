@@ -38,6 +38,7 @@ cat > "$APP/Contents/Info.plist" <<PLIST
   <key>LSMinimumSystemVersion</key><string>13.0</string>
   <key>LSUIElement</key><true/>
   <key>NSHighResolutionCapable</key><true/>
+  <key>NSSpeechRecognitionUsageDescription</key><string>Mandarine transcrit vos sons et vidéos en texte et en sous-titres avec la reconnaissance vocale d’Apple.</string>
   <key>NSAppleEventsUsageDescription</key><string>Mandarine pilote Pages, Keynote et Numbers pour convertir leurs formats.</string>
 </dict></plist>
 PLIST

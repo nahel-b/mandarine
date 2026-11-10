@@ -59,7 +59,7 @@ enum WheelMode: String, CaseIterable, Identifiable {
 enum ToolID: String {
     case compress, metadata, editImage, annotateImage, frameImage, cropImage, redactImage, createCollage, removeBackground, resizeImage, rotateImage, extractAudio, extractImages, quickLook, encodeVideo, openInCode, davinciTree, downloadMP3, downloadMP4, downloadWAV, savePagePDF, savePageMarkdown, savePageScreenshot, faceSelect, scanDocument, translateText, summarizeText, speakText, zipFiles, quickSort, typeSelect
     case trimVideo, cropVideo, changeVideoSpeed, joinVideos, videoSnapshots, splitVideo, redactVideo, muteVideo
-    case normalizeAudio, audioToVideo, trimAudio, audioChannels, redactAudio
+    case normalizeAudio, audioToVideo, trimAudio, audioChannels, redactAudio, transcribe
     case mergePDF, organizePDF, splitPDF, extractArchive, ocr
 
     /// Outils qui font une nouvelle version d'un fichier : leur résultat peut remplacer l'original (voir ReplaceMode).
@@ -117,6 +117,7 @@ enum ToolID: String {
         case .trimAudio: return L("Trim Audio")
         case .audioChannels: return L("Convert Audio Channels")
         case .redactAudio: return L("Bleep Audio")
+        case .transcribe: return L("Transcribe")
         case .mergePDF: return L("Merge PDFs")
         case .organizePDF: return L("Organize PDF")
         case .splitPDF: return L("Split PDF")
