@@ -61,10 +61,22 @@ enum Transcriber {
 
     // MARK: Transcription
 
+    private static let debugLog = ProcessInfo.processInfo.environment["MANDARINE_STTLOG"] != nil
+
     private final class Gate: @unchecked Sendable {
         private let lock = NSLock()
         private var done = false
         var task: SFSpeechRecognitionTask?
+        var committed: [SpokenWord] = []       // phrases dont l'horodatage est définitif
+        var pending: [String] = []             // dernier résultat provisoire (texte sans horodatage) de la phrase en cours
+
+        /// Phrase provisoire jamais « confirmée » : on la garde avec un horodatage estimé plutôt que de la perdre.
+        func flushPending() {
+            guard !pending.isEmpty else { return }
+            var t = committed.last?.end ?? 0
+            for w in pending { committed.append(SpokenWord(start: t, end: t + 0.4, text: w)); t += 0.4 }
+            pending = []
+        }
         /// Vrai une seule fois : le premier qui conclut.
         func claim() -> Bool { lock.lock(); defer { lock.unlock() }; if done { return false }; done = true; return true }
     }
@@ -81,16 +93,28 @@ enum Transcriber {
             try await withCheckedThrowingContinuation { (cont: CheckedContinuation<[SpokenWord], Error>) in
                 gate.task = recognizer.recognitionTask(with: request) { result, error in
                     if let result = result {
+                        // Après un silence, la reconnaissance repart d'une phrase neuve : le résultat ne contient plus que cette phrase.
+                        // Les résultats provisoires n'ont pas d'horodatage (0) ; celui qui clôt la phrase en a un. On garde chaque phrase clôturée.
                         let segs = result.bestTranscription.segments
-                        if let last = segs.last { progress(last.timestamp + last.duration) }
-                        if result.isFinal, gate.claim() {
-                            cont.resume(returning: segs.map { SpokenWord(start: offset + $0.timestamp, end: offset + $0.timestamp + $0.duration, text: $0.substring) })
+                        if debugLog { FileHandle.standardError.write(Data("STT final=\(result.isFinal) n=\(segs.count) t=\(segs.first?.timestamp ?? -1)…\(segs.last.map { $0.timestamp + $0.duration } ?? -1) «\(result.bestTranscription.formattedString.prefix(70))»\n".utf8)) }
+                        if let first = segs.first, let last = segs.last {
+                            let words = segs.map { SpokenWord(start: offset + $0.timestamp, end: offset + $0.timestamp + $0.duration, text: $0.substring) }
+                            if last.timestamp + last.duration > 0 {
+                                gate.committed = gate.committed.filter { $0.start < offset + first.timestamp - 0.05 } + words
+                                gate.pending = []
+                            } else {
+                                // Une phrase neuve commence alors que l'ancienne n'a jamais été clôturée : on la garde (début différent, très courte).
+                                if gate.pending.count >= 3, segs.count <= 2, segs[0].substring != gate.pending[0] { gate.flushPending() }
+                                gate.pending = segs.map(\.substring)
+                            }
+                            progress(last.timestamp + last.duration)
                         }
+                        if result.isFinal, gate.claim() { gate.flushPending(); cont.resume(returning: gate.committed) }
                     }
                     if let error = error, gate.claim() {
                         let ns = error as NSError
                         // « Aucune parole détectée » : un morceau silencieux n'est pas une erreur.
-                        if ns.domain == "kAFAssistantErrorDomain", ns.code == 1110 || ns.code == 203 { cont.resume(returning: []) }
+                        if ns.domain == "kAFAssistantErrorDomain", ns.code == 1110 || ns.code == 203 { gate.flushPending(); cont.resume(returning: gate.committed) }
                         else { cont.resume(throwing: error) }
                     }
                 }
@@ -144,7 +168,16 @@ enum Transcriber {
     private static func spaceless(_ l: Locale) -> Bool { ["ja", "zh", "yue", "th"].contains(l.languageCode ?? "") }
 
     private static func joined(_ words: [SpokenWord], _ l: Locale) -> String {
-        words.map(\.text).joined(separator: spaceless(l) ? "" : " ")
+        if spaceless(l) { return words.map(\.text).joined() }
+        var out = ""
+        for w in words {
+            let t = w.text
+            if out.isEmpty { out = t; continue }
+            // pas d'espace après une apostrophe (« l' année »), ni avant une virgule ou un point reconnus comme un mot à part
+            let glue = out.hasSuffix("'") || out.hasSuffix("’") || [",", ".", "…"].contains(t) || (t.count == 1 && "?!:;".contains(t) && l.languageCode != "fr")
+            out += (glue ? "" : " ") + t
+        }
+        return out
     }
 
     private static func endsSentence(_ s: String) -> Bool {
@@ -152,16 +185,21 @@ enum Transcriber {
         return ".?!…。！？".contains(c)
     }
 
-    /// Texte brut : un paragraphe à chaque silence marqué.
+    /// Texte brut : un paragraphe à chaque silence marqué (un point est ajouté si la phrase n'en a pas).
     static func plainText(_ words: [SpokenWord], locale: Locale) -> String {
         var paragraphs: [[SpokenWord]] = []
         var current: [SpokenWord] = []
         for w in words {
-            if let last = current.last, w.start - last.end >= 1.8, endsSentence(last.text) { paragraphs.append(current); current = [] }
+            if let last = current.last, w.start - last.end >= 1.8 { paragraphs.append(current); current = [] }
             current.append(w)
         }
         if !current.isEmpty { paragraphs.append(current) }
-        return paragraphs.map { joined($0, locale) }.joined(separator: "\n\n") + "\n"
+        let texts = paragraphs.map { p -> String in
+            let t = joined(p, locale)
+            guard let c = t.last, !spaceless(locale), !".?!…:;,".contains(c) else { return t }
+            return t + "."
+        }
+        return texts.joined(separator: "\n\n") + "\n"
     }
 
     /// Découpe les mots en sous-titres : au plus ~80 caractères et ~6 s, coupés aux silences et à la fin des phrases.

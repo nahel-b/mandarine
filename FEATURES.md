@@ -287,3 +287,4 @@ Pétale TRANSCRIBE sur les roues ⌘ des sons et des vidéos (plusieurs fichiers
 
 ## Notifications : garder plus longtemps
 Un clic sur le corps d'une notification terminée (pas sur ses boutons) lui ajoute 30 s à l'écran ; chaque clic en ajoute 30 de plus. Une pastille « +30 s · 0:42 » (puis « +1 min », « +1 min 30 s »…) affiche le temps ajouté et le décompte. Le décompte est en pause tant que la souris est sur la pile et repart ensuite (6 s au moins).
+Transcription, phrases multiples : la reconnaissance d'Apple repart d'une phrase neuve après chaque silence (le résultat ne contient plus que la dernière phrase, sans horodatage tant qu'elle n'est pas close). `Transcriber.recognize` garde donc chaque phrase close (horodatage définitif), et une phrase jamais close avec un horodatage estimé. Journal du flux brut : variable `MANDARINE_STTLOG=1`.

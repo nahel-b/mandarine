@@ -8,6 +8,10 @@ struct WhatsNewRelease { let version: String; let headline: String; let items: [
 enum WhatsNew {
     /// À compléter à chaque version (la plus récente d'abord) : c'est ce que voit l'utilisateur après la mise à jour.
     static var releases: [WhatsNewRelease] { [
+        WhatsNewRelease(version: "1.9.1", headline: L("Full transcriptions"), items: [
+            WhatsNewItem(symbol: "text.bubble", title: L("Every sentence is kept"),
+                         text: L("Transcribe now keeps the whole recording, not just the last sentence after a pause. The text also gets paragraphs and cleaner punctuation.")),
+        ]),
         WhatsNewRelease(version: "1.9.0", headline: L("Transcribe speech"), items: [
             WhatsNewItem(symbol: "text.bubble", title: L("Transcribe"),
                          text: L("A TRANSCRIBE petal on the audio and video wheels turns speech into a text file (.txt) and subtitles (.srt) with the time of each line, using Apple speech recognition. Pick the spoken language; on-device recognition keeps the audio on your Mac.")),
