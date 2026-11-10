@@ -41,6 +41,10 @@ final class DragMonitor {
         case .leftMouseDragged:
             guard !dragging else { return }
             let pb = NSPasteboard(name: .drag)
+            if Self.debugLog, pb.changeCount != lastDragCount {
+                lastDragCount = pb.changeCount
+                Self.log("MOUSEDRAG changeCount=\(pb.changeCount) down=\(downChangeCount) types=\((pb.types ?? []).map(\.rawValue)) frontmost=\(NSWorkspace.shared.frontmostApplication?.localizedName ?? "-")")
+            }
             guard pb.changeCount != downChangeCount else { return }
             guard let urls = readDraggedURLs(pb), !urls.isEmpty else { return }
             draggedURLs = urls
@@ -99,9 +103,20 @@ final class DragMonitor {
         return fresh
     }
 
+    static let debugLog = ProcessInfo.processInfo.environment["MANDARINE_DRAGLOG"] != nil
+    private var lastLoggedCount = -1
+    private var lastDragCount = -1
+    static func log(_ s: String) { FileHandle.standardError.write(Data((s + "\n").utf8)) }
+
     /// Ce qui est en train d'être glissé : fichiers, sinon liens, sinon texte (petit fichier). nil si rien d'exploitable.
     private func readDraggedURLs(_ pb: NSPasteboard) -> [URL]? {
         let all = (pb.readObjects(forClasses: [NSURL.self], options: nil) as? [URL]) ?? []
+        if Self.debugLog, pb.changeCount != lastLoggedCount {          // MANDARINE_DRAGLOG=1 : ce que le glisser contient vraiment
+            lastLoggedCount = pb.changeCount
+            let fm = FileManager.default
+            Self.log("DRAG types=\((pb.types ?? []).map(\.rawValue)) urls=\(all.map { "\($0.path) exists=\(fm.fileExists(atPath: $0.path)) size=\((try? fm.attributesOfItem(atPath: $0.path)[.size]) ?? "-")" })")
+            Self.log("DRAG promises=\(pb.readObjects(forClasses: [NSFilePromiseReceiver.self], options: nil)?.count ?? 0)")
+        }
         let files = all.filter(\.isFileURL)
         let links = all.filter { $0.scheme == "http" || $0.scheme == "https" }
         var urls = files.isEmpty ? links : files       // un lien glissé depuis un navigateur ouvre aussi la roue

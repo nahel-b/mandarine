@@ -37,7 +37,7 @@ final class WheelDropView: NSView {
     override func prepareForDragOperation(_ sender: NSDraggingInfo) -> Bool { controller?.hoveredItemEnabled == true }
     override func performDragOperation(_ sender: NSDraggingInfo) -> Bool {
         updateHover(sender)
-        return controller?.drop() ?? false
+        return controller?.drop(from: sender) ?? false
     }
     override func concludeDragOperation(_ sender: NSDraggingInfo?) {}
 
@@ -408,10 +408,45 @@ final class WheelController {
     }
 
     /// Retourne true si le dépôt a été accepté.
-    func drop() -> Bool {
+    /// Dépôt reçu par une vue de la roue. La miniature d'une capture d'écran est une « promesse de fichier » : son fichier temporaire
+    /// n'est lisible (« Operation not permitted ») qu'une fois la promesse honorée. On la reçoit donc d'abord, puis on traite la copie.
+    func drop(from sender: NSDraggingInfo) -> Bool {
+        let receivers = (sender.draggingPasteboard.readObjects(forClasses: [NSFilePromiseReceiver.self], options: nil) as? [NSFilePromiseReceiver]) ?? []
+        let seen = DragMonitor.shared.latestURLs(fallback: urls)
+        guard !receivers.isEmpty, seen.contains(where: ScreenshotStaging.isTemporary), let item = targetItem, item.enabled else { return drop() }
+        ReplaceMode.shared.capture()
+        receivingPromise = true
+        let queue = OperationQueue(); queue.maxConcurrentOperationCount = 1          // les retours arrivent l'un après l'autre
+        let dest = ScreenshotStaging.promiseFolder()
+        var got: [URL] = []
+        let group = DispatchGroup()
+        for r in receivers {
+            group.enter()
+            r.receivePromisedFiles(atDestination: dest, options: [:], operationQueue: queue) { url, error in
+                if DragMonitor.debugLog { DragMonitor.log("PROMISE \(url.path) error=\(error.map { "\($0)" } ?? "none")") }
+                if error == nil { got.append(url) }
+                group.leave()
+            }
+        }
+        group.notify(queue: .main) { [weak self] in
+            guard let self = self else { return }
+            self.receivingPromise = false
+            _ = self.drop(overriding: got.isEmpty ? seen : got)
+        }
+        return true
+    }
+
+    private var receivingPromise = false
+
+    func drop() -> Bool { drop(overriding: nil) }
+
+    private func drop(overriding forced: [URL]?) -> Bool {
+        if receivingPromise && forced == nil { return true }          // la capture arrive : ne pas partir sur le fichier temporaire
         guard let item = targetItem, item.enabled else { dismiss(); return false }
-        ReplaceMode.shared.capture()          // la touche d'inversion est lue maintenant : le travail démarre un peu plus tard
-        let files = DragMonitor.shared.latestURLs(fallback: urls)
+        if forced == nil { ReplaceMode.shared.capture() }          // la touche d'inversion est lue maintenant : le travail démarre un peu plus tard
+        let dropped = forced ?? DragMonitor.shared.latestURLs(fallback: urls)
+        let files = ScreenshotStaging.stabilize(dropped)          // miniature de capture d'écran : fichier temporaire recopié
+        if DragMonitor.debugLog { DragMonitor.log("DROP " + ScreenshotStaging.describe(dropped, files)) }
         // Style Wii, outil à fenêtre : l'écran Wii reste, zoome sur la case et devient la fenêtre de l'outil
         if AppSettings.shared.appearance == .wii, case .tool(let id) = item.payload, !ToolRegistry.isDirect(id) {
             if Date().timeIntervalSince(dropSoundFired) > 1.5 { Feedback.shared.toolOpen() }

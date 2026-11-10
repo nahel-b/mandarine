@@ -69,6 +69,7 @@ enum Transcriber {
         var task: SFSpeechRecognitionTask?
         var committed: [SpokenWord] = []       // phrases dont l'horodatage est définitif
         var pending: [String] = []             // dernier résultat provisoire (texte sans horodatage) de la phrase en cours
+        var reached = 0.0                      // point le plus avancé du fichier atteint par la reconnaissance (ne recule jamais)
 
         /// Phrase provisoire jamais « confirmée » : on la garde avec un horodatage estimé plutôt que de la perdre.
         func flushPending() {
@@ -102,12 +103,13 @@ enum Transcriber {
                             if last.timestamp + last.duration > 0 {
                                 gate.committed = gate.committed.filter { $0.start < offset + first.timestamp - 0.05 } + words
                                 gate.pending = []
+                                gate.reached = max(gate.reached, last.timestamp + last.duration)    // seuls les résultats horodatés font avancer la barre
                             } else {
                                 // Une phrase neuve commence alors que l'ancienne n'a jamais été clôturée : on la garde (début différent, très courte).
                                 if gate.pending.count >= 3, segs.count <= 2, segs[0].substring != gate.pending[0] { gate.flushPending() }
                                 gate.pending = segs.map(\.substring)
                             }
-                            progress(last.timestamp + last.duration)
+                            progress(gate.reached)
                         }
                         if result.isFinal, gate.claim() { gate.flushPending(); cont.resume(returning: gate.committed) }
                     }

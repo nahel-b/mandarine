@@ -355,6 +355,6 @@ final class BubbleDropView: NSView {
     override func draggingUpdated(_ sender: NSDraggingInfo) -> NSDragOperation { update(sender) }
     override func draggingExited(_ sender: NSDraggingInfo?) { controller?.bubbleExited() }
     override func prepareForDragOperation(_ sender: NSDraggingInfo) -> Bool { controller?.hoveredItemEnabled == true }
-    override func performDragOperation(_ sender: NSDraggingInfo) -> Bool { _ = update(sender); return controller?.drop() ?? false }
+    override func performDragOperation(_ sender: NSDraggingInfo) -> Bool { _ = update(sender); return controller?.drop(from: sender) ?? false }
     override func mouseUp(with event: NSEvent) { controller?.dismiss() }
 }

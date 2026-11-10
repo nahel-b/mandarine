@@ -8,6 +8,12 @@ struct WhatsNewRelease { let version: String; let headline: String; let items: [
 enum WhatsNew {
     /// À compléter à chaque version (la plus récente d'abord) : c'est ce que voit l'utilisateur après la mise à jour.
     static var releases: [WhatsNewRelease] { [
+        WhatsNewRelease(version: "1.9.2", headline: L("Screenshots and progress"), items: [
+            WhatsNewItem(symbol: "camera.viewfinder", title: L("Drag a screenshot thumbnail"),
+                         text: L("The thumbnail that appears right after a screenshot can now be dragged onto the wheel. It used to give a black image or “Unable to decode”.")),
+            WhatsNewItem(symbol: "gauge.with.dots.needle.67percent", title: L("Steady transcription progress"),
+                         text: L("The Transcribe progress bar no longer goes up and down after each sentence.")),
+        ]),
         WhatsNewRelease(version: "1.9.1", headline: L("Full transcriptions"), items: [
             WhatsNewItem(symbol: "text.bubble", title: L("Every sentence is kept"),
                          text: L("Transcribe now keeps the whole recording, not just the last sentence after a pause. The text also gets paragraphs and cleaner punctuation.")),

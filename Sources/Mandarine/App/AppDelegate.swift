@@ -788,12 +788,15 @@ extension AppDelegate {
             do { print("OK", try BackgroundRemover.run(URL(fileURLWithPath: a[1])).path) } catch { print("ERR", error.localizedDescription) }
             exit(0)
         }
+        if a.count >= 3, a[0] == "--stagetest" {      // test : --stagetest fichier dossier (recopie comme pour une miniature de capture)
+            print(ScreenshotStaging.stabilize([URL(fileURLWithPath: a[1])], into: URL(fileURLWithPath: a[2])).map(\.path)); exit(0)
+        }
         if a.count >= 3, a[0] == "--transcribe" {      // test sans interface : --transcribe langue fichier
             let url = URL(fileURLWithPath: a[2]), loc = Locale(identifier: a[1])
             Task {
                 do {
                     let info = await FFmpeg.probe(url)
-                    let words = try await Transcriber.transcribe(url, locale: loc, duration: info.duration) { _ in }
+                    let words = try await Transcriber.transcribe(url, locale: loc, duration: info.duration) { p in if ProcessInfo.processInfo.environment["MANDARINE_PROGRESSLOG"] != nil { print(String(format: "PROGRESS %.3f", p)) } }
                     print("ONDEVICE", Transcriber.isOnDevice(loc)); print(Transcriber.plainText(words, locale: loc)); print(Transcriber.srt(Transcriber.cues(words, locale: loc), locale: loc))
                 } catch { print("ERR", error.localizedDescription) }
                 exit(0)
@@ -891,7 +894,7 @@ extension AppDelegate {
         } else if target[0] == "toaststyles" {
             view = AnyView(ToastLab(page: Int(target.count > 1 ? target[1] : "1") ?? 1))
         } else if target[0] == "whatsnew" {
-            view = AnyView(WhatsNewView(releases: WhatsNew.releases, highlighted: ["1.9.1", "1.9.0"], close: {}))
+            view = AnyView(WhatsNewView(releases: WhatsNew.releases, highlighted: ["1.9.2", "1.9.1"], close: {}))
         } else if target[0] == "features" {
             view = AnyView(FeaturesView(startTab: target.count > 1 ? target[1] : "image", startQuery: target.count > 2 ? target[2] : "", close: {}))
         } else if target[0] == "help" {
