@@ -7,9 +7,9 @@ import AppKit
 enum WiiTV {
     static let imageSize = CGSize(width: 1536, height: 1024)
     /// L'écran, en pixels de l'image (mesuré sur le canal alpha : la plus grande zone transparente du centre).
-    static let hole = CGRect(x: 332, y: 164, width: 869, height: 613)
+    static let hole = CGRect(x: 303, y: 111, width: 929, height: 681)
     /// Zone couverte par `WiiTVScreen.png` (le trou + 6 px de marge), en pixels de l'image.
-    static let maskRect = CGRect(x: 326, y: 158, width: 881, height: 625)
+    static let maskRect = CGRect(x: 297, y: 105, width: 941, height: 693)
 
     static var enabled: Bool { AppSettings.shared.wiiTV && body != nil && screenMask != nil }
 

@@ -126,8 +126,30 @@ enum Transcriber {
         }
     }
 
-    /// Transcrit un fichier audio ou vidéo. `progress` : 0…1.
-    static func transcribe(_ source: URL, locale: Locale, duration: Double, progress: @escaping (Double) -> Void) async throws -> [SpokenWord] {
+    /// Le moteur de reconnaissance : celui d'Apple (intégré) ou Whisper (modèle optionnel, Réglages → Engines).
+    enum Engine: String { case apple, whisper }
+    private static let engineKey = "transcribeEngine"
+    /// Dernier moteur choisi dans l'outil.
+    static var savedEngine: Engine {
+        get { Engine(rawValue: UserDefaults.standard.string(forKey: engineKey) ?? "") ?? .apple }
+        set { UserDefaults.standard.set(newValue.rawValue, forKey: engineKey) }
+    }
+    /// Identifiant de langue qui demande à Whisper de détecter la langue lui-même.
+    static let autoLanguage = "auto"
+
+    /// Transcrit un fichier audio ou vidéo. `progress` : 0…1. `locale` nil : langue détectée (Whisper seulement).
+    static func transcribe(_ source: URL, locale: Locale?, engine: Engine = .apple, duration: Double, detected: ((Locale) -> Void)? = nil, progress: @escaping (Double) -> Void) async throws -> [SpokenWord] {
+        if engine == .whisper {
+            let dir = FileManager.default.temporaryDirectory.appendingPathComponent("mandarine-stt-\(UUID().uuidString)", isDirectory: true)
+            try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+            defer { try? FileManager.default.removeItem(at: dir) }
+            let wav = dir.appendingPathComponent("audio.wav")
+            try await FFmpeg.run(["-i", source.path, "-vn", "-ac", "1", "-ar", "16000", "-c:a", "pcm_s16le", wav.path], duration: duration) { p in progress(p * 0.05) }
+            let r = try await WhisperEngine.transcribe(wav: wav, language: WhisperEngine.languageCode(locale)) { p in progress(0.05 + 0.95 * p) }
+            detected?(Locale(identifier: r.language))          // la langue trouvée par Whisper règle la mise en forme (espaces, ponctuation)
+            return r.words
+        }
+        guard let locale = locale else { throw MandarineError(L("Speech recognition is not available for this language right now.")) }
         try await authorize()
         guard let recognizer = SFSpeechRecognizer(locale: locale), recognizer.isAvailable else {
             throw MandarineError(L("Speech recognition is not available for this language right now."))

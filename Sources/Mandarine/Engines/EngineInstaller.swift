@@ -7,7 +7,7 @@ import Foundation
 final class EngineInstaller: ObservableObject {
     static let shared = EngineInstaller()
 
-    enum Engine: String { case ffmpeg, cwebp, faceModel }
+    enum Engine: String { case ffmpeg, cwebp, faceModel, whisperModel }
     enum State: Equatable { case working(Double), done, failed(String) }
     /// Dossier d'installation ; modifiable pour les tests.
     nonisolated(unsafe) static var destination = FFmpeg.enginesFolder
@@ -25,6 +25,7 @@ final class EngineInstaller: ObservableObject {
                 case .ffmpeg: try await Self.installFFmpeg { p in Task { @MainActor in self.states[e] = .working(p) } }
                 case .cwebp: try await Self.installCwebp { p in Task { @MainActor in self.states[e] = .working(p) } }
                 case .faceModel: try await FaceModel.download { p in Task { @MainActor in self.states[e] = .working(p) } }
+                case .whisperModel: try await WhisperModel.download { p in Task { @MainActor in self.states[e] = .working(p) } }
                 }
                 states[e] = .done
             } catch {

@@ -15,6 +15,11 @@ APP="build/Mandarine.app"
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources/bin"
 cp "$BIN" "$APP/Contents/MacOS/Mandarine"
+# Bibliothèque Whisper (reconnaissance vocale optionnelle) : framework universel, dans Contents/Frameworks
+FW=".build/artifacts/mandarine/whisper/whisper.xcframework/macos-arm64_x86_64/whisper.framework"
+[ -d "$FW" ] || { echo "whisper.framework introuvable (lancez swift package resolve)"; exit 1; }
+mkdir -p "$APP/Contents/Frameworks" && cp -R "$FW" "$APP/Contents/Frameworks/"
+install_name_tool -add_rpath "@executable_path/../Frameworks" "$APP/Contents/MacOS/Mandarine" 2>/dev/null || true
 # Binaires optionnels embarqués (ffmpeg / ffprobe) : placez-les dans Resources/bin avant de lancer ce script.
 if [ -d "Resources/bin" ]; then cp -R Resources/bin/. "$APP/Contents/Resources/bin/"; fi
 if [ -d "Resources/Localization" ]; then mkdir -p "$APP/Contents/Resources/Localization" && cp -R Resources/Localization/. "$APP/Contents/Resources/Localization/"; fi
@@ -35,7 +40,7 @@ cat > "$APP/Contents/Info.plist" <<PLIST
   <key>CFBundleVersion</key><string>$VERSION</string>
   <key>MandarineUpdateRepo</key><string>$GITHUB_REPO</string>
   <key>MandarineUpdatePublicKey</key><string>$PUBKEY</string>
-  <key>LSMinimumSystemVersion</key><string>13.0</string>
+  <key>LSMinimumSystemVersion</key><string>13.3</string>
   <key>LSUIElement</key><true/>
   <key>NSHighResolutionCapable</key><true/>
   <key>NSSpeechRecognitionUsageDescription</key><string>Mandarine transcrit vos sons et vidéos en texte et en sous-titres avec la reconnaissance vocale d’Apple.</string>

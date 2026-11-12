@@ -298,3 +298,11 @@ L'écran Wii (menu et outils) est montré dans un vieux téléviseur transparent
 - L'écran prend les proportions exactes de la vitre : la grille du menu est un peu plus haute (`WiiLayout.inTV`), le panneau d'un outil remplit toute la vitre (pas de cadre noir ni de bandes). Les boutons ronds du bas sont rentrés pour les coins du tube.
 - La fenêtre est centrée sur la vitre (`WiiTV.Geometry.stage`) ; la main (pointeur Wii) n'existe que sur la vitre. Si le téléviseur ne tient pas dans la zone visible (gros outil), la télé a TOUJOURS la taille du menu : le panneau d'un outil est mis en page à sa taille naturelle puis réduit pour tenir dans la vitre ; `Geometry.fit` ne réduit que si le menu lui-même ne tient pas dans la zone visible.
 - Les deux images sont copiées dans l'app par `Scripts/build_app.sh`.
+
+## Transcription avec Whisper (optionnel)
+Second moteur de « Transcrire », à côté de la reconnaissance d'Apple : Whisper large-v3-turbo quantifié q5_0 (≈ 570 Mo, `ggml-large-v3-turbo-q5_0.bin` de whisper.cpp sur Hugging Face).
+- Le modèle n'est PAS dans l'app : bouton « Télécharger » dans l'outil (choix Apple / Whisper) ou dans Réglages → Engines (`WhisperModel`, `EngineInstaller.Engine.whisperModel`, vérifié par taille + SHA-256, rangé dans `~/Library/Application Support/Mandarine/models`, bouton Remove).
+- Le moteur est la bibliothèque officielle whisper.cpp (`whisper.xcframework` précompilé, MIT, Metal + Accelerate, arm64 + Intel), ajoutée à `Package.swift` en `binaryTarget` (version b5454, checksum fixé). `Scripts/build_app.sh` copie `whisper.framework` dans `Contents/Frameworks` et ajoute le rpath. Macros : macOS 13.3 minimum (celui de la bibliothèque).
+- `WhisperEngine.transcribe` lit le WAV 16 kHz mono, lance `whisper_full` (Metal, flash attention, glouton), renvoie les segments découpés en mots (temps répartis selon la longueur) : `plainText`, `cues`, `srt` de `Transcriber` sont réutilisés tels quels. Les silences/musique annoncés (`[BLANK_AUDIO]`, `♪`) sont retirés. Annulation par `abort_callback`.
+- Langue « Détecter automatiquement » (Whisper seulement) ; la langue trouvée règle la mise en forme.
+- Test : `--transcribe <langue|auto> fichier whisper` (avec `open -n -W --stdout …`, comme pour Apple).

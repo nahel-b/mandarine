@@ -482,16 +482,24 @@ extension AppDelegate {
                 guard let v = shell.debugContentView, let rep = v.bitmapImageRepForCachingDisplay(in: v.bounds) else { print(name, "(pas de fenêtre)"); return }
                 v.cacheDisplay(in: v.bounds, to: rep)
                 try? rep.representation(using: .png, properties: [:])?.write(to: URL(fileURLWithPath: a[2] + name + ".png"))
+                // la vraie fenêtre, transparence comprise (ce que voit l'écran), posée sur un fond rose pour qu'on voie ce qui est derrière
+                if ProcessInfo.processInfo.environment["MANDARINE_WINCAP"] != nil, let w = v.window,
+                   let cg = CGWindowListCreateImage(.null, .optionIncludingWindow, CGWindowID(w.windowNumber), [.bestResolution]) {
+                    let ctx = CGContext(data: nil, width: cg.width, height: cg.height, bitsPerComponent: 8, bytesPerRow: 0, space: CGColorSpace(name: CGColorSpace.sRGB)!, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
+                    ctx.setFillColor(CGColor(red: 1, green: 0.2, blue: 0.6, alpha: 1)); ctx.fill(CGRect(x: 0, y: 0, width: cg.width, height: cg.height))
+                    ctx.draw(cg, in: CGRect(x: 0, y: 0, width: cg.width, height: cg.height))
+                    if let out = ctx.makeImage() { try? NSBitmapImageRep(cgImage: out).representation(using: .png, properties: [:])?.write(to: URL(fileURLWithPath: a[2] + name + "-win.png")) }
+                }
             }
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
                 guard let idx = wc.model.items.firstIndex(where: { $0.id == tool.rawValue || $0.children.contains { $0.id == tool.rawValue } }) else { print("outil absent"); exit(1) }
                 wc.model.hover = idx
                 if let c = wc.model.items[idx].children.firstIndex(where: { $0.id == tool.rawValue }) { wc.model.hoverChild = c }
                 print("drop →", wc.drop(), "shell ouvert :", shell.isOpen)
-                for (i, t) in [0.12, 0.3, 0.45, 0.6, 0.8, 1.0, 1.5, 2.8].enumerated() {
+                for (i, t) in [0.12, 0.3, 0.45, 0.6, 0.8, 1.0, 1.5, 2.8, 4.5, 6.0].enumerated() {
                     DispatchQueue.main.asyncAfter(deadline: .now() + t) { grab("a\(i)") }
                 }
-                DispatchQueue.main.asyncAfter(deadline: .now() + 3.2) {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 6.5) {
                     print("interactif :", shell.interactive, "taille :", shell.naturalSize)
                     shell.backToMenu()
                     for (i, t) in [0.2, 0.45, 0.7, 2.0, 2.3].enumerated() { DispatchQueue.main.asyncAfter(deadline: .now() + t) { grab("b\(i)") } }
@@ -793,11 +801,12 @@ extension AppDelegate {
             print(ScreenshotStaging.stabilize([URL(fileURLWithPath: a[1])], into: URL(fileURLWithPath: a[2])).map(\.path)); exit(0)
         }
         if a.count >= 3, a[0] == "--transcribe" {      // test sans interface : --transcribe langue fichier
-            let url = URL(fileURLWithPath: a[2]), loc = Locale(identifier: a[1])
+            let url = URL(fileURLWithPath: a[2]), loc = Locale(identifier: a[1] == "auto" ? "en" : a[1])
+            let engine: Transcriber.Engine = a.count > 3 && a[3] == "whisper" ? .whisper : .apple          // --transcribe langue fichier [whisper] ; langue « auto » : détectée (Whisper)
             Task {
                 do {
                     let info = await FFmpeg.probe(url)
-                    let words = try await Transcriber.transcribe(url, locale: loc, duration: info.duration) { p in if ProcessInfo.processInfo.environment["MANDARINE_PROGRESSLOG"] != nil { print(String(format: "PROGRESS %.3f", p)) } }
+                    let words = try await Transcriber.transcribe(url, locale: a[1] == "auto" ? nil : loc, engine: engine, duration: info.duration) { p in if ProcessInfo.processInfo.environment["MANDARINE_PROGRESSLOG"] != nil { print(String(format: "PROGRESS %.3f", p)) } }
                     print("ONDEVICE", Transcriber.isOnDevice(loc)); print(Transcriber.plainText(words, locale: loc)); print(Transcriber.srt(Transcriber.cues(words, locale: loc), locale: loc))
                 } catch { print("ERR", error.localizedDescription) }
                 exit(0)
@@ -895,7 +904,7 @@ extension AppDelegate {
         } else if target[0] == "toaststyles" {
             view = AnyView(ToastLab(page: Int(target.count > 1 ? target[1] : "1") ?? 1))
         } else if target[0] == "whatsnew" {
-            view = AnyView(WhatsNewView(releases: WhatsNew.releases, highlighted: ["1.10.0", "1.9.2"], close: {}))
+            view = AnyView(WhatsNewView(releases: WhatsNew.releases, highlighted: ["1.11.0", "1.10.0"], close: {}))
         } else if target[0] == "features" {
             view = AnyView(FeaturesView(startTab: target.count > 1 ? target[1] : "image", startQuery: target.count > 2 ? target[2] : "", close: {}))
         } else if target[0] == "help" {

@@ -200,6 +200,7 @@ struct SettingsView: View {
                 engine(L("ffprobe"), FFmpeg.ffprobe?.path, install: .ffmpeg)
                 engine(L("cwebp (WebP)"), FFmpeg.locate("cwebp")?.path, install: .cwebp)
                 engine(L("Face model (Face Select, \(FaceModel.sizeText))"), FaceModel.isInstalled ? FaceModel.file.path : nil, install: .faceModel)
+                engine(L("Whisper model (better Transcribe, \(WhisperModel.sizeText))"), WhisperModel.isInstalled ? WhisperModel.file.path : nil, install: .whisperModel)
                 engine(L("yt-dlp (video and music links)"), YtDlp.url?.path)
                 ytDlpUpdate
                 engine(L("LibreOffice (slides)"), Converter.libreOffice?.path)
@@ -293,6 +294,9 @@ struct SettingsView: View {
                 }
                 if e == .faceModel, path != nil {
                     Button(L("Remove")) { FaceModel.remove(); installer.objectWillChange.send() }.controlSize(.small)
+                }
+                if e == .whisperModel, path != nil {
+                    Button(L("Remove")) { WhisperModel.remove(); installer.objectWillChange.send() }.controlSize(.small)
                 }
                 Text(path == nil ? L("not found") : L("found")).foregroundStyle(path == nil ? .orange : .green).font(.caption)
             }

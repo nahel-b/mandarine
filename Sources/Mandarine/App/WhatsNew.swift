@@ -8,6 +8,12 @@ struct WhatsNewRelease { let version: String; let headline: String; let items: [
 enum WhatsNew {
     /// À compléter à chaque version (la plus récente d'abord) : c'est ce que voit l'utilisateur après la mise à jour.
     static var releases: [WhatsNewRelease] { [
+        WhatsNewRelease(version: "1.11.0", headline: L("Whisper and a clearer TV"), items: [
+            WhatsNewItem(symbol: "waveform.badge.mic", title: L("Transcribe with Whisper"),
+                         text: L("Transcribe can now use Whisper, a more accurate speech recognition that runs entirely on your Mac, with better punctuation and automatic language detection. It needs a one-time download of a 570 MB model: pick Whisper in the tool, or go to Settings → Engines. Apple's recognition stays the default.")),
+            WhatsNewItem(symbol: "tv", title: L("A see-through TV"),
+                         text: L("The Wii-style TV has a new transparent shell: the apps behind it show through the plastic.")),
+        ]),
         WhatsNewRelease(version: "1.10.0", headline: L("Wii in a TV"), items: [
             WhatsNewItem(symbol: "tv", title: L("The Wii screen in a TV"),
                          text: L("In the Wii style, the menu and every tool now appear inside an old see-through TV, with the screen fitted exactly to the glass. The TV keeps the same size: a big tool is scaled down to fit. Turn it off in Settings → Appearance to get the screen alone.")),
