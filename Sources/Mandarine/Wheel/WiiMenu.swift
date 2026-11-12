@@ -3,20 +3,24 @@ import AppKit
 
 // MARK: Géométrie (repère : origine en haut à gauche, 700 × 452)
 enum WiiLayout {
-    static let size = CGSize(width: 700, height: 452)              // mise en page de référence
+    /// Dans le téléviseur, l'écran prend les proportions exactes de la vitre : la grille est un peu plus haute, la barre du bas reste identique.
+    static var inTV = false
+    static var size: CGSize { CGSize(width: 700, height: inTV ? (700 * WiiTV.hole.height / WiiTV.hole.width).rounded() : 452) }              // mise en page de référence
+    private static var extra: CGFloat { size.height - 452 }
     static let scale: CGFloat = 0.78                              // taille d'affichage : 78 % de la mise en page
     static var displaySize: CGSize { CGSize(width: size.width * scale, height: size.height * scale) }
     static let tile = CGSize(width: 142, height: 96)
     static let gap: CGFloat = 14
     static let cols = 4
     static let originX: CGFloat = 45          // (700 − (4 × 142 + 3 × 14)) / 2
-    static let originY: CGFloat = 26
-    static let barTop: CGFloat = 366
+    static var originY: CGFloat { 26 + extra * 0.15 }
+    static var rowGap: CGFloat { gap + extra * 0.3 }
+    static var barTop: CGFloat { size.height - 86 }
     static let childTile = CGSize(width: 122, height: 80)
 
     static func slotRect(_ s: Int) -> CGRect {
         let c = s % cols, r = s / cols
-        return CGRect(x: originX + CGFloat(c) * (tile.width + gap), y: originY + CGFloat(r) * (tile.height + gap), width: tile.width, height: tile.height)
+        return CGRect(x: originX + CGFloat(c) * (tile.width + gap), y: originY + CGFloat(r) * (tile.height + rowGap), width: tile.width, height: tile.height)
     }
     /// Au-delà de 12 éléments, la 12ᵉ case devient la flèche « page suivante ».
     static func perPage(_ count: Int) -> Int { count > 12 ? 11 : 12 }
@@ -395,6 +399,7 @@ struct WiiMenuView: View {
     @ObservedObject var model: WheelModel
     var onChoose: (() -> Void)? = nil           // clic sur une case (écran resté ouvert après un dépôt)
     var onClose: (() -> Void)? = nil            // clic sur le bouton rond de gauche
+    var inTV = false                            // montré dans le téléviseur : ni coins arrondis, ni liseré, ni ombre (le masque de l'écran s'en charge)
     @ObservedObject private var settings = AppSettings.shared
     private let blue = Color(red: 0.17, green: 0.63, blue: 0.88)
     private let ink = Color(red: 0.56, green: 0.58, blue: 0.60)
@@ -436,11 +441,11 @@ struct WiiMenuView: View {
         .scaleEffect(1 + WiiShell.zoomAmount * model.wiiZoom, anchor: model.wiiAnchor)
         .overlay(Color.black.opacity(Double(model.wiiDim)).allowsHitTesting(false))
         .overlay(WiiCRT())                                                  // même look de téléviseur à tube que les outils
-        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 24, style: .continuous).strokeBorder(Color.white.opacity(0.85), lineWidth: 2))
+        .clipShape(RoundedRectangle(cornerRadius: inTV ? 0 : 24, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 24, style: .continuous).strokeBorder(Color.white.opacity(inTV ? 0 : 0.85), lineWidth: 2))
         .scaleEffect(WiiLayout.scale, anchor: .topLeading)
         .frame(width: WiiLayout.displaySize.width, height: WiiLayout.displaySize.height, alignment: .topLeading)
-        .shadow(color: .black.opacity(0.35), radius: 24, y: 10)
+        .shadow(color: .black.opacity(inTV ? 0 : 0.35), radius: 24, y: 10)
         .scaleEffect(model.appear ? 1 : 0.94).opacity(model.appear ? 1 : 0)
         .animation(.spring(response: 0.3, dampingFraction: 0.82), value: model.appear)
         .environment(\.colorScheme, .light)
@@ -456,7 +461,7 @@ struct WiiMenuView: View {
                 }
             }
             .gesture(SpatialTapGesture().onEnded { v in
-                let barCenter = CGPoint(x: 62, y: WiiLayout.barTop + 46)
+                let barCenter = CGPoint(x: edgeX, y: WiiLayout.barTop + edgeY)
                 if hypot(v.location.x - barCenter.x, v.location.y - barCenter.y) < 30 { onClose?(); return }
                 WheelController.shared.wiiHover(at: v.location); model.cursor = nil
                 if model.wiiNav { model.wiiPage = (model.wiiPage + 1) % WiiLayout.pageCount(model.items.count); model.hover = nil }
@@ -516,7 +521,7 @@ struct WiiMenuView: View {
             }
             descriptionArea.position(x: WiiLayout.size.width / 2, y: 62)
             // gauche : bouton de mode + carte SD (infos du fichier)
-            roundButton { Text(L(modeSymbol)).font(.system(size: 22, weight: .semibold, design: .rounded)).foregroundStyle(ink) }.position(x: 62, y: 46)
+            roundButton { Text(L(modeSymbol)).font(.system(size: 22, weight: .semibold, design: .rounded)).foregroundStyle(ink) }.position(x: edgeX, y: edgeY)
             HStack(alignment: .top, spacing: 6) {
                 Image(systemName: "sdcard.fill").font(.system(size: 20)).foregroundStyle(blue)
                 VStack(alignment: .leading, spacing: 0) {
@@ -524,18 +529,22 @@ struct WiiMenuView: View {
                         Text(L(l)).font(.system(size: i == 0 ? 10.5 : 8.5, weight: i == 0 ? .bold : .medium, design: .rounded)).foregroundStyle(ink).lineLimit(1)
                     }
                 }
-            }.frame(width: 140, alignment: .leading).position(x: 186, y: 50)
+            }.frame(width: 140, alignment: .leading).position(x: edgeX + 124, y: edgeY + 4)
             // droite : enveloppe avec le nombre de fichiers
             roundButton {
                 VStack(spacing: 0) {
                     Image(systemName: "envelope.fill").font(.system(size: 22)).foregroundStyle(Color(white: 0.62))
                     Text(L("\(model.fileCount)")).font(.system(size: 12, weight: .bold, design: .rounded)).foregroundStyle(ink)
                 }
-            }.position(x: WiiLayout.size.width - 62, y: 46)
+            }.position(x: WiiLayout.size.width - edgeX, y: edgeY)
         }
         .frame(width: WiiLayout.size.width, height: h)
         .position(x: WiiLayout.size.width / 2, y: WiiLayout.barTop + h / 2)
     }
+
+    /// Les boutons ronds du bas : plus rentrés dans le téléviseur, dont les coins du tube les rogneraient.
+    private var edgeX: CGFloat { inTV ? 90 : 62 }
+    private var edgeY: CGFloat { inTV ? 40 : 46 }
 
     private func roundButton<V: View>(@ViewBuilder _ content: () -> V) -> some View {
         ZStack {
@@ -577,6 +586,7 @@ struct WiiMenuView: View {
 // MARK: Réception du glisser-déposer
 final class WiiDropView: NSView {
     weak var controller: WheelController?
+    var unit = WiiLayout.scale                          // points d'écran par unité de mise en page (plus petit si le téléviseur est réduit)
     override var isFlipped: Bool { true }              // origine en haut à gauche, comme SwiftUI
 
     override init(frame: NSRect) { super.init(frame: frame); registerForDraggedTypes([.fileURL, .URL, .string]) }
@@ -585,7 +595,7 @@ final class WiiDropView: NSView {
 
     private func update(_ info: NSDraggingInfo) -> NSDragOperation {
         let p = convert(info.draggingLocation, from: nil)
-        controller?.wiiHover(at: CGPoint(x: p.x / WiiLayout.scale, y: p.y / WiiLayout.scale))
+        controller?.wiiHover(at: CGPoint(x: p.x / unit, y: p.y / unit))
         return controller?.hoveredItemEnabled == true ? .copy : []
     }
     override func draggingEntered(_ sender: NSDraggingInfo) -> NSDragOperation { update(sender) }

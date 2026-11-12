@@ -8,6 +8,10 @@ struct WhatsNewRelease { let version: String; let headline: String; let items: [
 enum WhatsNew {
     /// À compléter à chaque version (la plus récente d'abord) : c'est ce que voit l'utilisateur après la mise à jour.
     static var releases: [WhatsNewRelease] { [
+        WhatsNewRelease(version: "1.10.0", headline: L("Wii in a TV"), items: [
+            WhatsNewItem(symbol: "tv", title: L("The Wii screen in a TV"),
+                         text: L("In the Wii style, the menu and every tool now appear inside an old see-through TV, with the screen fitted exactly to the glass. The TV keeps the same size: a big tool is scaled down to fit. Turn it off in Settings → Appearance to get the screen alone.")),
+        ]),
         WhatsNewRelease(version: "1.9.2", headline: L("Screenshots and progress"), items: [
             WhatsNewItem(symbol: "camera.viewfinder", title: L("Drag a screenshot thumbnail"),
                          text: L("The thumbnail that appears right after a screenshot can now be dragged onto the wheel. It used to give a black image or “Unable to decode”.")),

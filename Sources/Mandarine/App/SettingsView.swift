@@ -90,6 +90,11 @@ struct SettingsView: View {
                 Picker(L("Menu style"), selection: $s.appearance) { ForEach(MenuAppearance.allCases) { Text(L($0.title)).tag($0) } }
                 Text(s.appearance == .wii ? L("A small Wii-style screen: every tool is a channel, with a clock, a pointer hand and a description line.") : s.appearance.isBubbles ? L("Tools are round bubbles floating around your logo.") : L("The radial wheel."))
                     .font(.caption).foregroundStyle(.secondary)
+                if s.appearance == .wii {
+                    Toggle(L("Show the screen in a TV"), isOn: $s.wiiTV)
+                    Text(L("The Wii screen sits inside an old see-through TV. Turn it off to get the screen alone."))
+                        .font(.caption).foregroundStyle(.secondary)
+                }
                 if s.appearance == .wheel {
                     Picker(L("Opening animation"), selection: $s.wheelEntrance) { ForEach(WheelEntrance.allCases) { Text(L($0.title)).tag($0) } }
                 }

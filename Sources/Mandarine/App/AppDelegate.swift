@@ -439,6 +439,7 @@ extension AppDelegate {
             let tool = ToolID(rawValue: a[1]) ?? .compress
             let urls = [a.count > 3 ? URL(fileURLWithPath: a[3]) : HelpAssets.fakeImage]
             let wc = WheelController.shared, shell = WiiShell.shared
+            WiiLayout.inTV = WiiTV.enabled
             wc.model.mode = .tools; wc.model.items = Catalog.items(mode: .tools, urls: urls); wc.model.appear = true
             wc.model.fileCount = 1; wc.model.infoLines = ["2.4 MB", "4032 × 3024", "JPG"]
             let idx = wc.model.items.firstIndex { $0.id == tool.rawValue || $0.children.contains { $0.id == tool.rawValue } } ?? 0
@@ -493,8 +494,8 @@ extension AppDelegate {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 3.2) {
                     print("interactif :", shell.interactive, "taille :", shell.naturalSize)
                     shell.backToMenu()
-                    for (i, t) in [0.2, 0.45, 0.7, 2.0].enumerated() { DispatchQueue.main.asyncAfter(deadline: .now() + t) { grab("b\(i)") } }
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 2.4) {
+                    for (i, t) in [0.2, 0.45, 0.7, 2.0, 2.3].enumerated() { DispatchQueue.main.asyncAfter(deadline: .now() + t) { grab("b\(i)") } }
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 2.8) {
                         print("après retour : interactif menu =", wc.model.wiiInteractive, "taille avant réouverture", shell.naturalSize)
                         wc.model.hover = idx; wc.model.hoverChild = nil
                         shell.chooseHovered()
@@ -894,7 +895,7 @@ extension AppDelegate {
         } else if target[0] == "toaststyles" {
             view = AnyView(ToastLab(page: Int(target.count > 1 ? target[1] : "1") ?? 1))
         } else if target[0] == "whatsnew" {
-            view = AnyView(WhatsNewView(releases: WhatsNew.releases, highlighted: ["1.9.2", "1.9.1"], close: {}))
+            view = AnyView(WhatsNewView(releases: WhatsNew.releases, highlighted: ["1.10.0", "1.9.2"], close: {}))
         } else if target[0] == "features" {
             view = AnyView(FeaturesView(startTab: target.count > 1 ? target[1] : "image", startQuery: target.count > 2 ? target[2] : "", close: {}))
         } else if target[0] == "help" {

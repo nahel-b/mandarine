@@ -291,3 +291,10 @@ Transcription, phrases multiples : la reconnaissance d'Apple repart d'une phrase
 
 ## Capture d'écran en cours (miniature)
 La miniature qui apparaît après une capture est une **promesse de fichier** : son fichier temporaire (`TemporaryItems`) existe mais n'est pas lisible (« Operation not permitted ») tant que la promesse n'est pas honorée. `WheelController.drop(from:)` reçoit donc la promesse (`NSFilePromiseReceiver`) dans le dossier des captures (réglage macOS ; sinon un dossier temporaire), puis traite la copie. Diagnostic : `MANDARINE_DRAGLOG=1` journalise le contenu du glisser (types, URL, promesses). Test : `--stagetest fichier dossier`.
+
+## Style Wii dans un téléviseur
+L'écran Wii (menu et outils) est montré dans un vieux téléviseur transparent (`Resources/WiiTV.png`, alpha d'origine conservé : la coque reste semi-transparente). Réglage : Réglages → Apparence → « Montrer l'écran dans un téléviseur » (`wiiTV`, activé par défaut ; `MANDARINE_WIITV=0` pour les essais).
+- L'image a un trou transparent à la place de l'écran ; `WiiTVScreen.png` est le masque exact de ce trou (+3 px sous le cadre noir, aucun jour). Le contenu est rogné par ce masque (`WiiTV.swift` : `WiiTV.hole`, `maskRect`, `Geometry`, `WiiTVSet`).
+- L'écran prend les proportions exactes de la vitre : la grille du menu est un peu plus haute (`WiiLayout.inTV`), le panneau d'un outil remplit toute la vitre (pas de cadre noir ni de bandes). Les boutons ronds du bas sont rentrés pour les coins du tube.
+- La fenêtre est centrée sur la vitre (`WiiTV.Geometry.stage`) ; la main (pointeur Wii) n'existe que sur la vitre. Si le téléviseur ne tient pas dans la zone visible (gros outil), la télé a TOUJOURS la taille du menu : le panneau d'un outil est mis en page à sa taille naturelle puis réduit pour tenir dans la vitre ; `Geometry.fit` ne réduit que si le menu lui-même ne tient pas dans la zone visible.
+- Les deux images sont copiées dans l'app par `Scripts/build_app.sh`.

@@ -98,6 +98,7 @@ final class AppSettings: ObservableObject {
     @Published var davinciFolders: [DaVinciFolder] { didSet { DaVinciLayout.save(davinciFolders) } }
     @Published var davinciProjectName: String { didSet { d.set(davinciProjectName, forKey: "davinciProjectName") } }
     @Published var davinciNameFromFile: Bool { didSet { d.set(davinciNameFromFile, forKey: "davinciNameFromFile") } }
+    @Published var wiiTV: Bool { didSet { d.set(wiiTV, forKey: "wiiTV") } }          // style Wii : l'écran est montré dans un téléviseur
     @Published var davinciMoveFiles: Bool { didSet { d.set(davinciMoveFiles, forKey: "davinciMoveFiles") } }
     @Published var launchAtLogin: Bool {
         didSet {
@@ -143,6 +144,7 @@ final class AppSettings: ObservableObject {
         davinciProjectName = d.string(forKey: "davinciProjectName") ?? "DaVinci Project"
         davinciNameFromFile = d.object(forKey: "davinciNameFromFile") as? Bool ?? true
         davinciMoveFiles = d.object(forKey: "davinciMoveFiles") as? Bool ?? true
+        wiiTV = ProcessInfo.processInfo.environment["MANDARINE_WIITV"].map { $0 != "0" } ?? (d.object(forKey: "wiiTV") as? Bool ?? true)          // MANDARINE_WIITV=0 : sans téléviseur (essais)
         launchAtLogin = d.bool(forKey: "launchAtLogin")
     }
 

@@ -305,33 +305,67 @@ final class WheelController {
     func bubbleExited() { model.hover = nil; model.hoverChild = nil; model.cursor = nil }
 
     // MARK: Style Wii
+    private var wiiPanelGeo: WiiTV.Geometry?          // téléviseur du panneau actuel (nil : écran seul)
+
+    /// Le téléviseur autour de l'écran `size`, s'il est activé et tient dans la zone visible de `screen`.
+    static func tvGeometry(for size: CGSize, on screen: NSScreen?) -> WiiTV.Geometry? {
+        guard WiiTV.enabled else { return nil }
+        var geo = WiiTV.Geometry(screen: size)
+        guard let vis = screen?.visibleFrame else { return geo }
+        // trop grand pour la zone visible : le téléviseur et son contenu rétrécissent ensemble (en dessous de 45 %, on n'affiche que l'écran)
+        let k = min(1, vis.width * 0.97 / geo.layoutStage.width, vis.height * 0.97 / geo.layoutStage.height)
+        if k < 0.45 { return nil }
+        geo.fit = k
+        return geo
+    }
+
     private func showWii(at mouse: NSPoint) {
+        let screen = NSScreen.screens.first(where: { $0.frame.contains(mouse) }) ?? NSScreen.main
+        WiiLayout.inTV = true                                    // d'abord les proportions de la vitre…
+        var geo = Self.tvGeometry(for: WiiLayout.displaySize, on: screen)
+        if geo == nil { WiiLayout.inTV = false }                 // …sauf s'il n'y a pas de téléviseur
         let size = WiiLayout.displaySize
-        var origin = NSPoint(x: mouse.x - size.width / 2, y: mouse.y - size.height / 2)
-        if let screen = NSScreen.screens.first(where: { $0.frame.contains(mouse) }) ?? NSScreen.main {
-            let f = screen.visibleFrame
-            origin.x = min(max(origin.x, f.minX + 8), f.maxX - size.width - 8)
-            origin.y = min(max(origin.y, f.minY + 8), f.maxY - size.height - 8)
+        let fit = geo?.fit ?? 1
+        // fenêtre : l'écran seul (avec une marge pour l'ombre) ou le téléviseur entier, centré sur l'écran
+        let window = geo?.stage ?? CGSize(width: size.width + 60, height: size.height + 60)
+        var center = mouse
+        if let f = screen?.visibleFrame {
+            if geo != nil {      // tout le téléviseur dans la zone visible
+                center.x = min(max(center.x, f.minX + window.width / 2), f.maxX - window.width / 2)
+                center.y = min(max(center.y, f.minY + window.height / 2), f.maxY - window.height / 2)
+            } else {
+                center.x = min(max(center.x, f.minX + 8 + size.width / 2), f.maxX - size.width / 2 - 8)
+                center.y = min(max(center.y, f.minY + 8 + size.height / 2), f.maxY - size.height / 2 - 8)
+            }
         }
+        if wiiPanel != nil, wiiPanelGeo != geo { wiiPanel?.orderOut(nil); wiiPanel = nil }      // le réglage « téléviseur » a changé
         if wiiPanel == nil {
-            let p = WheelPanel(contentRect: NSRect(origin: origin, size: NSSize(width: size.width + 60, height: size.height + 60)),
-                               styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
+            let p = WheelPanel(contentRect: NSRect(origin: .zero, size: window), styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
             p.isOpaque = false; p.backgroundColor = .clear; p.hasShadow = false
             p.level = .popUpMenu
             p.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .transient]
             p.isMovable = false
-            // la zone de dépôt couvre exactement l'écran Wii ; une marge transparente laisse place à l'ombre
-            let container = NSView(frame: NSRect(origin: .zero, size: NSSize(width: size.width + 60, height: size.height + 60)))
-            let drop = WiiDropView(frame: NSRect(x: 30, y: 30, width: size.width, height: size.height))
+            // la zone de dépôt couvre exactement l'écran Wii (au centre de la fenêtre) ; le reste est transparent (ombre, ou téléviseur)
+            let container = NSView(frame: NSRect(origin: .zero, size: window))
+            let inner = NSRect(x: (window.width - size.width * fit) / 2, y: (window.height - size.height * fit) / 2, width: size.width * fit, height: size.height * fit)
+            let drop = WiiDropView(frame: inner)
             drop.controller = self
-            let host = NSHostingView(rootView: WiiMenuView(model: model))
-            host.frame = NSRect(x: 30, y: 30, width: size.width, height: size.height)
+            drop.unit = WiiLayout.scale * fit
+            let host: NSHostingView<AnyView>
+            if let geo = geo {
+                host = NSHostingView(rootView: AnyView(WiiTVSet(geo) { WiiMenuView(model: model, inTV: true).frame(width: size.width, height: size.height) }))
+                host.frame = NSRect(origin: .zero, size: window)
+            } else {
+                host = NSHostingView(rootView: AnyView(WiiMenuView(model: model)))
+                host.frame = inner
+            }
             container.addSubview(host)
             container.addSubview(drop)                      // au-dessus : reçoit le glisser-déposer
             p.contentView = container
             wiiPanel = p
+            wiiPanelGeo = geo
         }
-        wiiPanel?.setFrame(NSRect(x: origin.x - 30, y: origin.y - 30, width: size.width + 60, height: size.height + 60), display: true)
+        wiiPanel?.setFrame(NSRect(x: center.x - window.width / 2, y: center.y - window.height / 2, width: window.width, height: window.height), display: true)
         model.wiiPage = 0; model.cursor = nil; model.wiiNav = false; model.appear = false
         wiiPanel?.orderFrontRegardless()
         Feedback.shared.open()

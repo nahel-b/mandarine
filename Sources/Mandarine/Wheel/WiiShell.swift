@@ -24,7 +24,10 @@ final class WiiHost: ObservableObject {
 }
 
 private struct WiiHostKey: EnvironmentKey { static let defaultValue: WiiHost? = nil }
+private struct WiiInTVKey: EnvironmentKey { static let defaultValue = false }
 extension EnvironmentValues {
+    /// Le panneau est montré dans le téléviseur : les coins arrondis du tube rognent les angles, le titre se rentre.
+    var wiiInTV: Bool { get { self[WiiInTVKey.self] } set { self[WiiInTVKey.self] = newValue } }
     var wiiHost: WiiHost? { get { self[WiiHostKey.self] } set { self[WiiHostKey.self] = newValue } }
 }
 
@@ -110,6 +113,7 @@ struct WiiToolFrame<Content: View, Footer: View>: View {
     let title: String
     let content: Content
     let footer: Footer
+    @Environment(\.wiiInTV) private var inTV
 
     var body: some View {
         VStack(spacing: 0) {
@@ -162,13 +166,13 @@ struct WiiToolFrame<Content: View, Footer: View>: View {
     }
 
     private var tab: some View {
-        let w = max(230, CGFloat(title.count) * 12 + 110)
+        let w = max(230, CGFloat(title.count) * 12 + 110) + (inTV ? 44 : 0)
         return WiiTabShape()
             .fill(LinearGradient(colors: [Color(red: 0.40, green: 0.82, blue: 0.97), Color(red: 0.16, green: 0.62, blue: 0.90)], startPoint: .top, endPoint: .bottom))
             .overlay(WiiTabShape().stroke(Color.white.opacity(0.55), lineWidth: 1.2))
             .overlay(alignment: .trailing) {
                 Text(L(title)).font(.system(size: 15, weight: .semibold, design: .rounded)).foregroundStyle(.white).lineLimit(1)
-                    .shadow(color: Color(red: 0.1, green: 0.4, blue: 0.7).opacity(0.6), radius: 1, y: 1).padding(.trailing, 36)
+                    .shadow(color: Color(red: 0.1, green: 0.4, blue: 0.7).opacity(0.6), radius: 1, y: 1).padding(.trailing, inTV ? 80 : 36)
             }
             .frame(width: w, height: 42)
             .background(DragZone())
@@ -334,17 +338,40 @@ final class WiiShell: NSObject, ObservableObject, NSWindowDelegate {
 
     private var menuSize: CGSize { WiiLayout.displaySize }
     /// Taille du panneau d'un outil, une fois ouvert.
-    var fullSize: CGSize {
+    var fullSize: CGSize { tvFull ?? plainFullSize }
+    /// Dans le téléviseur, le panneau est mis en page à sa taille naturelle (aux proportions de la vitre) puis réduit pour tenir dans la vitre :
+    /// le téléviseur garde toujours la taille du menu.
+    private var tvFull: CGSize? {
+        guard let s = tvScreen else { return nil }
+        var f = naturalSize
+        let r = WiiTV.hole.width / WiiTV.hole.height
+        if f.width / f.height > r { f.height = f.width / r } else { f.width = f.height * r }
+        return f.width < s.width ? s : f
+    }
+    private var plainFullSize: CGSize {
         let m = menuSize
         return hasMenu ? CGSize(width: max(naturalSize.width, m.width - 16), height: max(naturalSize.height, m.height - 16)) : naturalSize
     }
     /// Taille de l'écran (cadre noir compris) : celle du menu, ou plus grande si l'outil l'est.
-    var screenSize: CGSize {
+    var screenSize: CGSize { tvScreen ?? plainScreenSize }
+    private var plainScreenSize: CGSize {
         guard tool != nil else { return menuSize }
-        let f = fullSize
+        let f = plainFullSize
         return hasMenu ? CGSize(width: max(menuSize.width, f.width + 16), height: max(menuSize.height, f.height + 16)) : CGSize(width: f.width + 16, height: f.height + 16)
     }
-    var stage: CGSize { CGSize(width: screenSize.width + Self.margin, height: screenSize.height + Self.margin) }
+    /// Dans le téléviseur, l'écran prend exactement les proportions de la vitre et le panneau le remplit entièrement (ni cadre noir, ni bandes).
+    private var tvScreen: CGSize? { tvPlan?.screen }
+    var tvGeo: WiiTV.Geometry? { tvPlan?.geo }
+    private var tvPlan: (screen: CGSize, geo: WiiTV.Geometry)? {
+        guard WiiTV.enabled else { return nil }
+        var base = menuSize          // la taille du téléviseur ne change jamais : celle du menu
+        let r = WiiTV.hole.width / WiiTV.hole.height
+        if base.width / base.height > r { base.height = base.width / r } else { base.width = base.height * r }
+        let screen = window?.screen ?? NSScreen.screens.first(where: { $0.frame.contains(center) }) ?? NSScreen.main
+        return WheelController.tvGeometry(for: base, on: screen).map { (base, $0) }
+    }
+    /// La fenêtre : l'écran plus une marge d'ombre, ou le téléviseur entier (centré sur l'écran).
+    var stage: CGSize { tvGeo?.stage ?? CGSize(width: screenSize.width + Self.margin, height: screenSize.height + Self.margin) }
     /// La fenêtre ne fait que grandir tant qu'un outil est ouvert : le panneau (SwiftUI) s'adapte en douceur à l'intérieur, sans que la fenêtre
     /// bouge à chaque changement de contenu (une case qui révèle un réglage, par exemple).
     private var windowStage = CGSize.zero
@@ -551,7 +578,10 @@ final class WiiShell: NSObject, ObservableObject, NSWindowDelegate {
     private func pollPointer() {
         guard let w = window else { stopPointer(); return }
         let loc = NSEvent.mouseLocation
-        let screenRect = w.frame.insetBy(dx: Self.margin / 2, dy: Self.margin / 2)
+        var screenRect = w.frame.insetBy(dx: Self.margin / 2, dy: Self.margin / 2)
+        if let g = tvGeo {          // dans le téléviseur : la main n'existe que sur la vitre
+            screenRect = NSRect(x: w.frame.midX - g.holeOnScreen.width / 2, y: w.frame.midY - g.holeOnScreen.height / 2, width: g.holeOnScreen.width, height: g.holeOnScreen.height)
+        }
         // Une autre fenêtre de l'app au-dessus de l'écran Wii (sélecteur de fichier, notification…) : le vrai curseur reprend la main, sinon on ne le voit pas.
         let covered = NSApp.windows.contains { $0 !== w && $0.isVisible && $0.level.rawValue >= w.level.rawValue && $0.frame.contains(loc) }
         let inside = NSApp.isActive && screenRect.contains(loc) && !exiting && !covered
@@ -572,7 +602,7 @@ final class WiiShell: NSObject, ObservableObject, NSWindowDelegate {
         if tool == nil { windowStage = s } else { windowStage = CGSize(width: max(windowStage.width, s.width), height: max(windowStage.height, s.height)); s = windowStage }
         var f = NSRect(x: center.x - s.width / 2, y: center.y - s.height / 2, width: s.width, height: s.height)
         if let vis = (w.screen ?? NSScreen.main)?.visibleFrame {
-            let m = Self.margin / 2
+            let m = tvGeo == nil ? Self.margin / 2 : 0          // le téléviseur reste entièrement visible
             f.origin.x = min(max(f.origin.x, vis.minX - m), max(vis.maxX - f.width + m, vis.minX - m))
             f.origin.y = min(max(f.origin.y, vis.minY - m), max(vis.maxY - f.height + m, vis.minY - m))
         }
@@ -618,36 +648,41 @@ struct WiiShellView: View {
     @ObservedObject var shell: WiiShell
 
     var body: some View {
-        let menu = WiiLayout.displaySize
-        let full = shell.fullSize, screen = shell.screenSize, stage = shell.stage
+        let tv = shell.tvGeo
+        let full = shell.fullSize, screen = shell.screenSize, stage = tv?.layoutStage ?? shell.stage          // repère de mise en page (avant réduction éventuelle du téléviseur)
+        // Dans le téléviseur, le menu s'agrandit pour remplir toute la vitre quand l'outil ouvert la rend plus grande que lui
+        let mf: CGFloat = tv != nil && shell.hasMenu ? screen.width / WiiLayout.displaySize.width : 1
+        let menu = CGSize(width: WiiLayout.displaySize.width * mf, height: WiiLayout.displaySize.height * mf)
         let p = shell.panel
-        let s = WiiLayout.scale, k = 1 + WiiShell.zoomAmount * (shell.hasMenu ? 1 : 0)
+        let s = WiiLayout.scale * mf, k = 1 + WiiShell.zoomAmount * (shell.hasMenu ? 1 : 0)
         // Départ : la case telle qu'elle est après le zoom de la caméra. Le panneau garde les proportions de l'écran final et grandit
         // d'un seul mouvement (mise à l'échelle uniforme), sans que rien ne se déforme ni ne parte dans une autre direction.
         let ox = (stage.width - menu.width) / 2, oy = (stage.height - menu.height) / 2
         let t = shell.tile
         let sw = max(t.width * s * k, 40), sh = sw * full.height / full.width
         let start = CGRect(x: ox + t.midX * s - sw / 2, y: oy + t.midY * s - sh / 2, width: sw, height: sh)
-        let end = CGRect(x: (stage.width - full.width) / 2, y: (stage.height - full.height) / 2, width: full.width, height: full.height)
+        let endSize = tv != nil ? screen : full          // dans le téléviseur, le panneau finit à la taille de la vitre (il est réduit s'il est plus grand)
+        let end = CGRect(x: (stage.width - endSize.width) / 2, y: (stage.height - endSize.height) / 2, width: endSize.width, height: endSize.height)
         let rect = CGRect(x: start.minX + (end.minX - start.minX) * p, y: start.minY + (end.minY - start.minY) * p,
                           width: start.width + (end.width - start.width) * p, height: start.height + (end.height - start.height) * p)
         let scale = rect.width / full.width
-        let radius = (17 / max(scale, 0.05)) * (1 - p) + 30 * p            // coins de la case au départ, de l'écran à l'arrivée
+        let radius = (17 / max(scale, 0.05)) * (1 - p) + (tv == nil ? 30 : 0) * p            // coins de la case au départ, de l'écran à l'arrivée
         let back = CGSize(width: menu.width + (screen.width - menu.width) * p, height: menu.height + (screen.height - menu.height) * p)
 
-        ZStack {
+        let core = ZStack {
             // Voile presque invisible sous tout l'écran : macOS laisse passer les clics sur les pixels totalement transparents d'une fenêtre,
             // et c'est alors la fenêtre derrière (le Finder…) qui les recevait.
             RoundedRectangle(cornerRadius: 30, style: .continuous).fill(Color.black.opacity(0.02)).frame(width: screen.width, height: screen.height)
             if shell.hasMenu {
-                WiiMenuView(model: model, onChoose: { shell.chooseHovered() }, onClose: { shell.finish() })
+                WiiMenuView(model: model, onChoose: { shell.chooseHovered() }, onClose: { shell.finish() }, inTV: tv != nil).scaleEffect(mf)
             }
             if let tool = shell.tool {
                 RoundedRectangle(cornerRadius: 17 + 17 * p, style: .continuous).fill(Color.black)
                     .frame(width: back.width, height: back.height)
                     .shadow(color: .black.opacity(0.35 * Double(shell.hasMenu ? model.wiiDim : min(1, p * 3))), radius: 24, y: 10)
-                    .opacity(shell.hasMenu ? Double(model.wiiDim) : Double(min(1, p * 4)))
+                    .opacity(tv != nil ? 0 : (shell.hasMenu ? Double(model.wiiDim) : Double(min(1, p * 4))))
                 tool
+                    .environment(\.wiiInTV, tv != nil)
                     .id(shell.toolID)
                     .frame(width: full.width, height: full.height)
                     .clipShape(RoundedRectangle(cornerRadius: radius, style: .continuous))
@@ -656,13 +691,18 @@ struct WiiShellView: View {
                     .opacity(Double(shell.panelShown))
                     .allowsHitTesting(shell.interactive)
             }
-            WiiHandOverlay(pointer: shell.pointer)
+            if tv == nil { WiiHandOverlay(pointer: shell.pointer) }
         }
         .frame(width: stage.width, height: stage.height)
+
+        Group {
+            if let tv = tv { WiiTVSet(tv) { core } } else { core }
+        }
         .animation(shell.interactive ? .easeInOut(duration: 0.18) : nil, value: shell.naturalSize)     // la taille ne bouge pas pendant l'entrée
         .scaleEffect(shell.exiting ? 0.94 : 1)
         .opacity(shell.exiting ? 0 : 1)
         .animation(.easeIn(duration: 0.22), value: shell.exiting)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .overlay(alignment: .topLeading) { if tv != nil { WiiHandOverlay(pointer: shell.pointer) } }          // la main est dans le repère de la fenêtre, hors de la réduction
     }
 }

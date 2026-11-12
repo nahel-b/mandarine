@@ -18,7 +18,7 @@ cp "$BIN" "$APP/Contents/MacOS/Mandarine"
 # Binaires optionnels embarqués (ffmpeg / ffprobe) : placez-les dans Resources/bin avant de lancer ce script.
 if [ -d "Resources/bin" ]; then cp -R Resources/bin/. "$APP/Contents/Resources/bin/"; fi
 if [ -d "Resources/Localization" ]; then mkdir -p "$APP/Contents/Resources/Localization" && cp -R Resources/Localization/. "$APP/Contents/Resources/Localization/"; fi
-for f in Resources/*.mp3 Resources/*.wav Resources/MenuBarIcon*; do [ -f "$f" ] && cp "$f" "$APP/Contents/Resources/"; done
+for f in Resources/*.mp3 Resources/*.wav Resources/MenuBarIcon* Resources/WiiTV*.png; do [ -f "$f" ] && cp "$f" "$APP/Contents/Resources/"; done
 [ -f logo.svg ] && cp logo.svg "$APP/Contents/Resources/logo.svg"
 if [ -f "Resources/AppIcon.icns" ]; then cp Resources/AppIcon.icns "$APP/Contents/Resources/AppIcon.icns"; fi
 cat > "$APP/Contents/Info.plist" <<PLIST
