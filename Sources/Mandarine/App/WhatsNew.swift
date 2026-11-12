@@ -8,6 +8,10 @@ struct WhatsNewRelease { let version: String; let headline: String; let items: [
 enum WhatsNew {
     /// À compléter à chaque version (la plus récente d'abord) : c'est ce que voit l'utilisateur après la mise à jour.
     static var releases: [WhatsNewRelease] { [
+        WhatsNewRelease(version: "1.11.1", headline: L("Whisper fixes"), items: [
+            WhatsNewItem(symbol: "waveform", title: L("No more repeated sentences"),
+                         text: L("With Whisper, silent parts of a recording no longer fill up with the same sentence repeated again and again. Choosing “Detect automatically” now works too.")),
+        ]),
         WhatsNewRelease(version: "1.11.0", headline: L("Whisper and a clearer TV"), items: [
             WhatsNewItem(symbol: "waveform.badge.mic", title: L("Transcribe with Whisper"),
                          text: L("Transcribe can now use Whisper, a more accurate speech recognition that runs entirely on your Mac, with better punctuation and automatic language detection. It needs a one-time download of a 570 MB model: pick Whisper in the tool, or go to Settings → Engines. Apple's recognition stays the default.")),

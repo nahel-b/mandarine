@@ -90,6 +90,13 @@ enum WhisperEngine {
         params.translate = false
         params.print_progress = false; params.print_realtime = false; params.print_timestamps = false; params.print_special = false
         params.suppress_nst = true
+        // Anti-boucles : sans contexte, Whisper ne se met pas à répéter la phrase précédente dans les passages silencieux ;
+        // les seuils font rejeter (et réessayer à une température plus haute) les passages répétitifs ou douteux.
+        params.no_context = true
+        params.temperature_inc = 0.2
+        params.entropy_thold = 2.4
+        params.logprob_thold = -1.0
+        params.no_speech_thold = 0.6
         params.progress_callback = { _, _, pct, user in
             guard let user = user else { return }
             Unmanaged<Control>.fromOpaque(user).takeUnretainedValue().progress(Double(pct) / 100)
@@ -104,7 +111,7 @@ enum WhisperEngine {
 
         let status: Int32 = (language ?? "auto").withCString { lang in
             params.language = lang
-            params.detect_language = language == nil
+            params.detect_language = false          // « true » détecterait la langue puis s'arrêterait sans rien transcrire : la détection se fait avec language = "auto"
             return pcm.withUnsafeBufferPointer { whisper_full(ctx, params, $0.baseAddress, Int32($0.count)) }
         }
         try Task.checkCancellation()
@@ -112,11 +119,17 @@ enum WhisperEngine {
         guard status == 0 else { throw MandarineError(L("The Whisper transcription failed (code \(Int(status))).")) }
 
         // Segments → mots. Whisper donne le début et la fin de chaque segment (en centièmes de seconde) : les mots y sont répartis selon leur longueur.
+        // On écarte les « hallucinations » des silences : segments jugés sans parole, et phrases courtes répétées en boucle.
         var words: [SpokenWord] = []
+        var recent: [String] = []
         for i in 0..<Int(whisper_full_n_segments(ctx)) {
             guard let c = whisper_full_get_segment_text(ctx, Int32(i)) else { continue }
             let text = String(cString: c).trimmingCharacters(in: .whitespacesAndNewlines)
             if text.isEmpty || isNoise(text) { continue }
+            if whisper_full_get_segment_no_speech_prob(ctx, Int32(i)) > 0.6 { continue }
+            let key = text.lowercased().filter { $0.isLetter || $0.isNumber }
+            if !key.isEmpty, recent.contains(key) { continue }          // déjà dit à l'instant : boucle
+            recent.append(key); if recent.count > 8 { recent.removeFirst() }
             let t0 = Double(whisper_full_get_segment_t0(ctx, Int32(i))) / 100, t1 = max(Double(whisper_full_get_segment_t1(ctx, Int32(i))) / 100, t0 + 0.2)
             let parts = text.split(whereSeparator: { $0 == " " || $0 == "\n" }).map(String.init)
             let total = Double(parts.reduce(0) { $0 + $1.count + 1 })
