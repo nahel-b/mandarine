@@ -244,6 +244,37 @@ extension AppDelegate {
             for g in TagSelect.groups(a.dropFirst().map { URL(fileURLWithPath: $0) }) { print(g.tag.name, "couleur", g.tag.color, "→", g.files.map(\.lastPathComponent).joined(separator: ", ")) }
             exit(0)
         }
+        if a.first == "--peopletest" {      // test sans photos : enregistrement, relecture et reconnaissance de personnes avec des empreintes synthétiques
+            func unit(_ seed: Int, noise: Float = 0) -> [Float] {
+                var g = SystemRandomNumberGenerator(); _ = g
+                var rng = UInt64(seed) &* 6364136223846793005 &+ 1442695040888963407
+                var v = (0..<128).map { _ -> Float in rng = rng &* 6364136223846793005 &+ 1442695040888963407; return Float(Int64(bitPattern: rng >> 11) % 2000) / 1000 - 1 }
+                if noise > 0 { var r2 = UInt64(seed + 99) &* 2862933555777941757 &+ 3037000493; for i in v.indices { r2 = r2 &* 2862933555777941757 &+ 3037000493; v[i] += noise * (Float(Int64(bitPattern: r2 >> 11) % 2000) / 1000 - 1) } }
+                let n = v.reduce(0) { $0 + $1 * $1 }.squareRoot(); return v.map { $0 / n }
+            }
+            let ctx = CGContext(data: nil, width: 8, height: 8, bitsPerComponent: 8, bytesPerRow: 0, space: CGColorSpace(name: CGColorSpace.sRGB)!, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
+            let img = ctx.makeImage()!
+            func hit(_ v: [Float], _ f: String) -> FaceHit { FaceHit(file: URL(fileURLWithPath: "/tmp/\(f).jpg"), vector: v, thumb: img, score: 1) }
+            Task { @MainActor in
+                let people = FacePeople.shared
+                for p in people.people { people.remove(p.id) }
+                let me = people.addPerson(name: "Moi", samples: [hit(unit(1), "a"), hit(unit(1, noise: 0.05), "b")])
+                let lea = people.addPerson(name: "Léa", samples: [hit(unit(2), "c")])
+                print("créées :", people.people.map { "\($0.name):\($0.samples.count)" })
+                print("ajout d'un quasi-doublon refusé :", !people.add(hit(unit(2), "d"), to: lea), "· ajout d'un visage différent accepté :", people.add(hit(unit(2, noise: 0.3), "e"), to: lea))
+                let hits = [hit(unit(1, noise: 0.1), "m1"), hit(unit(2, noise: 0.1), "l1"), hit(unit(3), "x1"), hit(unit(1, noise: 0.2), "m2"), hit(unit(4), "x2")]
+                let r = FacePeople.assign(hits, people: people.people, threshold: 0.5)
+                print("Moi →", r.byPerson[me] ?? [], "(attendu [0, 3]) · Léa →", r.byPerson[lea] ?? [], "(attendu [1]) · inconnus →", r.rest, "(attendu [2, 4])")
+                let data = try? Data(contentsOf: FacePeople.file)
+                print("fichier :", FacePeople.file.path, data?.count ?? 0, "octets")
+                people.rename(me, to: "Moi-même"); people.removeSample(people.people[0].samples[0].id, of: me)
+                print("après renommage/suppression :", people.people.map { "\($0.name):\($0.samples.count)" })
+                for p in people.people { people.remove(p.id) }
+                print("vide :", people.people.isEmpty)
+                exit(0)
+            }
+            return
+        }
         if a.count >= 2, a[0] == "--facetest" {      // test : --facetest dossier_avec_un_sous-dossier_par_personne [seuil]
             Task {
                 do {
@@ -904,7 +935,7 @@ extension AppDelegate {
         } else if target[0] == "toaststyles" {
             view = AnyView(ToastLab(page: Int(target.count > 1 ? target[1] : "1") ?? 1))
         } else if target[0] == "whatsnew" {
-            view = AnyView(WhatsNewView(releases: WhatsNew.releases, highlighted: ["1.11.1", "1.11.0"], close: {}))
+            view = AnyView(WhatsNewView(releases: WhatsNew.releases, highlighted: ["1.12.0", "1.11.1"], close: {}))
         } else if target[0] == "features" {
             view = AnyView(FeaturesView(startTab: target.count > 1 ? target[1] : "image", startQuery: target.count > 2 ? target[2] : "", close: {}))
         } else if target[0] == "help" {

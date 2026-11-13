@@ -8,6 +8,10 @@ struct WhatsNewRelease { let version: String; let headline: String; let items: [
 enum WhatsNew {
     /// À compléter à chaque version (la plus récente d'abord) : c'est ce que voit l'utilisateur après la mise à jour.
     static var releases: [WhatsNewRelease] { [
+        WhatsNewRelease(version: "1.12.0", headline: L("People in Face Select"), items: [
+            WhatsNewItem(symbol: "person.2", title: L("Save the people you look for"),
+                         text: L("In Settings → People, create people and add a few photos of each. Face Select then recognizes them among your photos and shows them first, with their name and a checkbox. You can also right-click an unknown face to save it as a person. Only a small fingerprint of each face stays on your Mac.")),
+        ]),
         WhatsNewRelease(version: "1.11.1", headline: L("Whisper fixes"), items: [
             WhatsNewItem(symbol: "waveform", title: L("No more repeated sentences"),
                          text: L("With Whisper, silent parts of a recording no longer fill up with the same sentence repeated again and again. Choosing “Detect automatically” now works too.")),

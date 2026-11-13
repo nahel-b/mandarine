@@ -9,13 +9,13 @@ struct SettingsView: View {
     @State private var tab: Tab
 
     enum Tab: String, CaseIterable, Identifiable {
-        case general, appearance, wheel, petals, davinci, engines, updates, download
+        case general, appearance, wheel, petals, davinci, people, engines, updates, download
         var id: String { rawValue }
         var title: String {
-            switch self { case .general: return L("General"); case .appearance: return L("Appearance"); case .wheel: return L("Wheel keys"); case .petals: return L("Petals"); case .davinci: return L("DaVinci"); case .engines: return L("Engines"); case .updates: return L("Updates"); case .download: return L("Download") }
+            switch self { case .general: return L("General"); case .appearance: return L("Appearance"); case .wheel: return L("Wheel keys"); case .petals: return L("Petals"); case .davinci: return L("DaVinci"); case .people: return L("People"); case .engines: return L("Engines"); case .updates: return L("Updates"); case .download: return L("Download") }
         }
         var symbol: String {
-            switch self { case .general: return "gearshape"; case .appearance: return "paintpalette"; case .wheel: return "circle.hexagongrid"; case .petals: return "leaf"; case .davinci: return "folder.badge.gearshape"; case .engines: return "wrench.and.screwdriver"; case .updates: return "arrow.triangle.2.circlepath"; case .download: return "arrow.down.circle" }
+            switch self { case .general: return "gearshape"; case .appearance: return "paintpalette"; case .wheel: return "circle.hexagongrid"; case .petals: return "leaf"; case .davinci: return "folder.badge.gearshape"; case .people: return "person.2"; case .engines: return "wrench.and.screwdriver"; case .updates: return "arrow.triangle.2.circlepath"; case .download: return "arrow.down.circle" }
         }
     }
 
@@ -194,6 +194,8 @@ struct SettingsView: View {
                 Text(verbatim: "\(s.davinciProjectName)/\n" + DaVinciLayout.treeText(s.davinciFolders)).font(.system(size: 11).monospaced())
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
+        case .people:
+            PeopleSettings()
         case .engines:
             Section(L("Engines")) {
                 engine(L("ffmpeg (video, audio)"), FFmpeg.ffmpeg?.path, install: .ffmpeg)

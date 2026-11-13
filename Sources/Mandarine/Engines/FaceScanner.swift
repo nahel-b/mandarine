@@ -16,11 +16,13 @@ struct FaceHit {
 
 /// Un groupe de visages jugés identiques.
 struct FaceCluster: Identifiable {
-    let id: Int
+    var id: Int
     var members: [Int]
     var centroid: [Float]
     var files: [URL] = []
     var thumb: CGImage
+    var name: String? = nil          // personne enregistrée (Réglages → Personnes) ; nil : visage inconnu
+    var personID: UUID? = nil
 }
 
 /// Mémoire temporaire des visages déjà analysés : relancer Face Select sur les mêmes photos ne refait pas la détection (la partie lente).
@@ -249,7 +251,7 @@ enum FaceScanner {
             var seen = Set<URL>()
             clusters[c].files = clusters[c].members.map { hits[$0].file }.filter { seen.insert($0).inserted }.sorted { (order[$0] ?? 0) < (order[$1] ?? 0) }
         }
-        return clusters.sorted { $0.files.count > $1.files.count }.enumerated().map { var c = $1; c = FaceCluster(id: $0, members: c.members, centroid: c.centroid, files: c.files, thumb: c.thumb); return c }
+        return clusters.sorted { $0.files.count > $1.files.count }.enumerated().map { var c = $1; c.id = $0; return c }
     }
 
     private static func centroid(_ v: [[Float]]) -> [Float] {
