@@ -145,7 +145,7 @@ final class ShelfDragView: NSView, NSDraggingSource {
     override func mouseEntered(with event: NSEvent) { onHover(true); Task { @MainActor in ShelfSound.hover() } }
     override func mouseExited(with event: NSEvent) { onHover(false) }
 
-    override func mouseDown(with event: NSEvent) { downAt = event.locationInWindow }
+    override func mouseDown(with event: NSEvent) { downAt = event.locationInWindow; Task { @MainActor in ShelfPanelController.shared.takeKeyboard() } }
 
     override func mouseDragged(with event: NSEvent) {
         guard let start = downAt, let payload = payload else { return }
@@ -235,6 +235,9 @@ final class ShelfDragView: NSView, NSDraggingSource {
 final class ShelfHostingView<Content: View>: NSHostingView<Content> {
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
     override var mouseDownCanMoveWindow: Bool { false }
+    override func mouseDown(with event: NSEvent) { MainActor.assumeIsolated { ShelfPanelController.shared.takeKeyboard() }; super.mouseDown(with: event) }
+    override func keyDown(with event: NSEvent) { if !MainActor.assumeIsolated({ ShelfPanelController.shared.handleKey(event) }) { super.keyDown(with: event) } }
+    override func performKeyEquivalent(with event: NSEvent) -> Bool { MainActor.assumeIsolated { ShelfPanelController.shared.handleKey(event) } || super.performKeyEquivalent(with: event) }
     override func scrollWheel(with event: NSEvent) { MainActor.assumeIsolated { ShelfPanelController.shared.scroll(event) } }          // pages de l'étagère
     override func hitTest(_ point: NSPoint) -> NSView? {
         let p = convert(point, from: superview)

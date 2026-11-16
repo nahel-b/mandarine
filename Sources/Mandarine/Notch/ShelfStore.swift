@@ -84,6 +84,25 @@ final class ShelfStore: ObservableObject {
         if AppSettings.shared.shelfEnabled { ShelfPanelController.shared.present() }
     }
 
+    /// Touche pressée sur l'étagère (Suppr, Échap, Espace) : les vues agissent sur leur sélection.
+    @Published private(set) var keyToken = UUID()
+    private(set) var keyKind = ""
+    func key(_ kind: String) { keyKind = kind; keyToken = UUID() }
+
+    /// Change la place d'éléments (glisser pour réordonner). `target` : rang visé dans la liste actuelle ; les épinglés restent devant.
+    func move(_ ids: [UUID], to target: Int) {
+        let moving = items.indices.filter { ids.contains(items[$0].id) }
+        guard !moving.isEmpty else { return }
+        let pinnedMoving = items[moving[0]].pinned
+        let movedE = moving.map { entries[$0] }, movedI = moving.map { items[$0] }
+        var at = target - moving.filter { $0 < target }.count
+        for i in moving.reversed() { entries.remove(at: i); items.remove(at: i) }
+        let pinnedLeft = entries.filter { $0.pinned == true }.count
+        at = pinnedMoving ? min(max(0, at), pinnedLeft) : min(max(pinnedLeft, at), entries.count)
+        entries.insert(contentsOf: movedE, at: at); items.insert(contentsOf: movedI, at: at)
+        save()
+    }
+
     func isPinned(_ id: UUID) -> Bool { items.first { $0.id == id }?.pinned ?? false }
 
     /// Épingle ou désépingle ; les épinglés remontent devant.

@@ -146,6 +146,15 @@ struct ShelfPetalsPanel: View {
         return open ? t : CGPoint(x: center.x + (t.x - center.x) * 0.25, y: center.y + (t.y - center.y) * 0.25)
     }
 
+    /// Suppr : retire la sélection ; Échap : la lâche ; Espace : aperçu Quick Look de la sélection (ou de l'élément survolé).
+    private func keyPressed(_ k: String) {
+        switch k {
+        case "delete": if !selection.isEmpty { ShelfSound.remove(); store.remove(selection); selection = []; anchor = nil }
+        case "escape": if selection.isEmpty { controller.releaseKeyboard() } else { selection = []; anchor = nil }
+        default: ShelfQuickLook.toggle(chosen.isEmpty ? (current.map { [$0] } ?? []) : chosen)
+        }
+    }
+
     private func showPageOf(_ ids: Set<UUID>) {
         if let i = items.firstIndex(where: { ids.contains($0.id) }) { controller.go(to: i / ShelfPanelController.pageSize) }
     }
@@ -160,7 +169,7 @@ struct ShelfPetalsPanel: View {
     var body: some View {
         ZStack(alignment: .topLeading) {
             halo
-            ForEach(Array(shownPages), id: \.self) { p in ForEach(0..<8, id: \.self) { i in slot(i, page: p) } }
+            ForEach(Array(shownPages), id: \.self) { p in slots(page: p) }
             if pg > 0 { ShelfPageArrow(left: true) { controller.step(-1) }.position(x: 38, y: 34).opacity(open ? 1 : 0) }
             if pg < controller.pageCount - 1 { ShelfPageArrow(left: false) { controller.step(1) }.position(x: 402, y: 34).opacity(open ? 1 : 0) }
             centerPill.position(x: center.x, y: 92).opacity(open ? 1 : 0).scaleEffect(open ? 1 : 0.6, anchor: .top).animation(.spring(response: 0.3, dampingFraction: 0.82), value: open)
@@ -170,26 +179,32 @@ struct ShelfPetalsPanel: View {
         .onChange(of: store.highlightToken) { _ in selection = store.highlightIDs; anchor = nil; showPageOf(store.highlightIDs) }          // « Afficher » sur une notification
         .onChange(of: store.items.first?.id) { _ in controller.page = 0 }          // du nouveau : on revient au début
         .onChange(of: store.selectAllToken) { _ in selection = Set(items.map(\.id)); anchor = nil }          // ⌘A
+        .onChange(of: store.keyToken) { _ in keyPressed(store.keyKind) }
     }
 
     /// Les éléments se placent au milieu de l'arc, le plus récent à gauche ; l'étagère vide montre les huit places en pointillés.
-    @ViewBuilder private func slot(_ i: Int, page p: Int) -> some View {
+    /// Un pétale par élément (reconnu par son identité : quand on réordonne, il glisse vers sa nouvelle place).
+    @ViewBuilder private func slots(page p: Int) -> some View {
         let list = pageItems(p)
         let n = min(list.count, 8), first = (8 - n) / 2
-        let k = 7 - i - first                      // rang de l'élément (0 = le plus récent) dans cette place
-        Group {
-            if k >= 0 && k < n {
-                petal(list[k])
-            } else if items.isEmpty {
-                RoundedRectangle(cornerRadius: 15, style: .continuous)
+        ForEach(Array(list.enumerated()), id: \.element.id) { k, it in
+            let i = 7 - k - first                      // place sur l'arc (le plus récent à gauche)
+            placed(petal(it), i, page: p)
+        }
+        if items.isEmpty && p == 0 {
+            ForEach(0..<8, id: \.self) { i in
+                placed(RoundedRectangle(cornerRadius: 15, style: .continuous)
                     .strokeBorder(Color.white.opacity(0.3), style: StrokeStyle(lineWidth: 1.2, dash: [4, 3]))
-                    .frame(width: 46, height: 46)
+                    .frame(width: 46, height: 46), i, page: p)
             }
         }
-        .scaleEffect(open ? 1 : 0.4).opacity(open ? 1 : 0)
-        .position(position(i))
-        .animation(open ? .spring(response: 0.3, dampingFraction: 0.84).delay(Double(i) * 0.025) : .easeOut(duration: 0.12), value: open)
-        .offset(x: CGFloat(p - pg) * 440).opacity(p == pg ? 1 : 0)          // la page tournée glisse vers le côté en s'effaçant
+    }
+
+    private func placed<V: View>(_ v: V, _ i: Int, page p: Int) -> some View {
+        v.scaleEffect(open ? 1 : 0.4).opacity(open ? 1 : 0)
+            .position(position(i))
+            .animation(open ? .spring(response: 0.3, dampingFraction: 0.84).delay(Double(i) * 0.025) : .easeOut(duration: 0.12), value: open)
+            .offset(x: CGFloat(p - pg) * 440).opacity(p == pg ? 1 : 0)          // la page tournée glisse vers le côté en s'effaçant
     }
 
     private func petal(_ it: ShelfItem) -> some View {
@@ -211,6 +226,8 @@ struct ShelfPetalsPanel: View {
         }
         .frame(width: 46, height: 46)
         .overlay(alignment: .topTrailing) { if it.pinned { PinBadge().offset(x: 5, y: -5) } }
+        .overlay(shape.strokeBorder(Theme.orange, lineWidth: 3).opacity(controller.overSlot != nil && controller.overSlot == items.firstIndex(where: { $0.id == it.id }) ? 1 : 0))          // place visée en réordonnant
+        .background(GeometryReader { g in Color.clear.preference(key: ShelfSlotFrames.self, value: [items.firstIndex(where: { $0.id == it.id }) ?? 0: g.frame(in: .named("shelfRoot"))]) })
         .onAppear { thumbs.request(it, side: 100) }
         .onChange(of: it.payload) { _ in thumbs.request(it, side: 100) }
         .shadow(color: active ? Theme.orange.opacity(0.55) : Color.black.opacity(0.25), radius: active ? 10 : 5, y: active ? 0 : 2)
@@ -340,6 +357,15 @@ struct ShelfChannelsPanel: View {
             }
             .onChange(of: store.items.first?.id) { _ in controller.page = 0 }          // du nouveau : on revient au début
             .onChange(of: store.selectAllToken) { _ in selection = Set(items.map(\.id)); anchor = nil }          // ⌘A
+            .onChange(of: store.keyToken) { _ in keyPressed(store.keyKind) }
+    }
+
+    private func keyPressed(_ k: String) {
+        switch k {
+        case "delete": if !selection.isEmpty { ShelfSound.remove(); store.remove(selection); selection = []; anchor = nil }
+        case "escape": if selection.isEmpty { controller.releaseKeyboard() } else { selection = []; anchor = nil }
+        default: ShelfQuickLook.toggle(chosen.isEmpty ? (current.map { [$0] } ?? []) : chosen)
+        }
     }
 
     /// Allumage / extinction du tube.
@@ -376,8 +402,9 @@ struct ShelfChannelsPanel: View {
     private func grid(_ p: Int) -> some View {
         let list = pageItems(p)
         return LazyVGrid(columns: Array(repeating: GridItem(.fixed(84), spacing: 8), count: 4), spacing: 8) {
-            ForEach(0..<8, id: \.self) { i in
-                if i < list.count { tile(list[i]) } else { emptySlot }
+            ForEach(list) { tile($0) }          // reconnues par leur identité : réordonner les fait glisser
+            ForEach(Array(list.count..<8), id: \.self) { i in
+                emptySlot.background(GeometryReader { g in Color.clear.preference(key: ShelfSlotFrames.self, value: [-(p * 8 + i) - 1: g.frame(in: .named("shelfRoot"))]) })
             }
         }
     }
@@ -390,7 +417,10 @@ struct ShelfChannelsPanel: View {
     }
 
     private func tile(_ it: ShelfItem) -> some View {
-        ShelfChannelTile(item: it, hovered: hover == it.id, selected: selection.contains(it.id), w: 84, h: 58)
+        let index = items.firstIndex(where: { $0.id == it.id }) ?? 0
+        return ShelfChannelTile(item: it, hovered: hover == it.id, selected: selection.contains(it.id), w: 84, h: 58)
+            .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(Theme.orange, lineWidth: 4).opacity(controller.overSlot == index ? 1 : 0))          // place visée en réordonnant
+            .background(GeometryReader { g in Color.clear.preference(key: ShelfSlotFrames.self, value: [index: g.frame(in: .named("shelfRoot"))]) })
             .overlay(ShelfDragSource(item: it, group: group(it), onClick: { f in ShelfSelecting.click(it.id, f, order: visible.map(\.id), selection: &selection, anchor: &anchor) },
                                      onHover: { hover = $0 ? it.id : (hover == it.id ? nil : hover) }))
     }
@@ -703,4 +733,11 @@ struct PinBadge: View {
             .background(Circle().fill(Theme.orange)).overlay(Circle().strokeBorder(Color.white, lineWidth: 1.5))
             .shadow(color: .black.opacity(0.3), radius: 2, y: 1)
     }
+}
+
+
+/// Où sont les places de l'étagère (rang dans la liste → cadre), pour ranger un élément glissé à sa nouvelle place. Négatif : une case vide.
+struct ShelfSlotFrames: PreferenceKey {
+    static var defaultValue: [Int: CGRect] = [:]
+    static func reduce(value: inout [Int: CGRect], nextValue: () -> [Int: CGRect]) { value.merge(nextValue()) { $1 } }
 }

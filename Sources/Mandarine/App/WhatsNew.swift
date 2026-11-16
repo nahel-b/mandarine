@@ -8,6 +8,12 @@ struct WhatsNewRelease { let version: String; let headline: String; let items: [
 enum WhatsNew {
     /// À compléter à chaque version (la plus récente d'abord) : c'est ce que voit l'utilisateur après la mise à jour.
     static var releases: [WhatsNewRelease] { [
+        WhatsNewRelease(version: "1.15.0", headline: L("Keys and reordering"), items: [
+            WhatsNewItem(symbol: "keyboard", title: L("Keyboard on the shelf"),
+                         text: L("Click the shelf, then press Delete to remove the selection, Esc to deselect, Space for a Quick Look preview, ⌘A to select everything.")),
+            WhatsNewItem(symbol: "arrow.left.arrow.right", title: L("Reorder by dragging"),
+                         text: L("Drop an item on another spot of the shelf and it slides into place. Pinned items stay in front.")),
+        ]),
         WhatsNewRelease(version: "1.14.0", headline: L("A fuller shelf"), items: [
             WhatsNewItem(symbol: "pin", title: L("Pin, preview, open"),
                          text: L("The shelf shows real previews of images, videos and PDFs, and takes folders too (only their location is kept, nothing is copied). Pin an item — right-click, or the new Add / Pin petals under Float in the ⌃ wheel — and it stays when you drag it out. Double-click opens it. Too many items? A blue arrow turns the page, with a smooth slide.")),

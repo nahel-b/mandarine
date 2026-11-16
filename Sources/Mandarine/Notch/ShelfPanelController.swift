@@ -22,7 +22,7 @@ final class ShelfPanelController: ObservableObject {
     @Published var dropTarget = false
     /// Un élément de l'étagère est en train d'être glissé dehors : l'étagère reste ouverte.
     var draggingOut = false {
-        didSet { if !draggingOut { overTarget = nil } }
+        didSet { if !draggingOut { overTarget = nil; overSlot = nil } }
     }
     /// Éléments en cours de glisser vers l'extérieur ; « consumed » : l'étagère les a déjà traités (œil, poubelle), le glisser n'a plus rien à enlever.
     var draggedIDs: [UUID] = []
@@ -30,6 +30,10 @@ final class ShelfPanelController: ObservableObject {
     /// Bouton de l'étagère survolé pendant un glisser sorti d'elle (pour l'éclairer).
     @Published var overTarget: String?
     var buttonFrames: [String: CGRect] = [:]
+    var slotFrames: [Int: CGRect] = [:]
+    /// Place survolée pendant qu'on réordonne (rang dans la liste), pour l'éclairer.
+    @Published var overSlot: Int?
+    func slot(at p: CGPoint) -> Int? { slotFrames.first { $0.value.insetBy(dx: -4, dy: -4).contains(p) }?.key }
     func button(at p: CGPoint) -> String? { buttonFrames.first { $0.value.insetBy(dx: -6, dy: -6).contains(p) }?.key }
     private var holdUntil = Date.distantPast
     /// Page affichée quand il y a plus d'éléments que de places (8 par page).
@@ -186,6 +190,31 @@ final class ShelfPanelController: ObservableObject {
         setOpen(true)
     }
 
+    // MARK: Clavier (Suppr, Échap, Espace, ⌘A) : l'étagère prend le clavier quand on clique dessus, et le rend en se refermant
+
+    func takeKeyboard() {
+        guard let p = panel, open else { return }
+        p.keyable = true
+        if !p.isKeyWindow { p.makeKey(); p.makeFirstResponder(p.contentView) }
+    }
+    func releaseKeyboard() {
+        guard let p = panel, p.keyable else { return }
+        p.keyable = false
+        if p.isKeyWindow { p.orderOut(nil); p.orderFrontRegardless() }          // le clavier retourne à l'app d'avant
+    }
+    /// Rend vrai si la touche a servi à l'étagère.
+    func handleKey(_ e: NSEvent) -> Bool {
+        let mods = e.modifierFlags.intersection(.deviceIndependentFlagsMask)
+        if mods == .command, e.charactersIgnoringModifiers?.lowercased() == "a" { ShelfStore.shared.selectAll(); return true }
+        guard mods.isEmpty else { return false }
+        switch e.keyCode {
+        case 51, 117: ShelfStore.shared.key("delete"); return true
+        case 53: ShelfStore.shared.key("escape"); return true
+        case 49: ShelfStore.shared.key("space"); return true
+        default: return false
+        }
+    }
+
     // MARK: Glisser sorti de l'étagère, déposé sur ses boutons
 
     /// Œil : montrer dans le Finder. Poubelle : retirer de l'étagère.
@@ -206,12 +235,13 @@ final class ShelfPanelController: ObservableObject {
 
     /// Le glisser est fini pour l'étagère. (Si l'élément glissé vient d'être retiré, sa vue n'est plus là pour le dire.)
     func endDragState() {
-        draggingOut = false; dropTarget = false; overTarget = nil; idleTicks = 0
+        draggingOut = false; dropTarget = false; overTarget = nil; overSlot = nil; idleTicks = 0
         DragMonitor.shared.endInternalDrag()
     }
 
     func setOpen(_ on: Bool) {
         guard open != on else { return }
+        if !on { releaseKeyboard() }
         closeAt = nil; dwell = 0
         if on { place0(open: true) }
         if on { ShelfSound.open() } else { ShelfSound.close() }
@@ -233,7 +263,8 @@ final class ShelfPanelController: ObservableObject {
 }
 
 final class ShelfPanel: NSPanel {
-    override var canBecomeKey: Bool { false }
+    var keyable = false          // vrai seulement après un clic dans l'étagère
+    override var canBecomeKey: Bool { keyable }
     override var canBecomeMain: Bool { false }
 }
 
@@ -262,6 +293,7 @@ struct ShelfRootView: View {
         .contentShape(Rectangle())
         .coordinateSpace(name: "shelfRoot")
         .onPreferenceChange(ShelfButtonFrames.self) { controller.buttonFrames = $0 }
+        .onPreferenceChange(ShelfSlotFrames.self) { controller.slotFrames = $0 }
         .onDrop(of: [UTType.fileURL, .url, .plainText, .image, .item], delegate: ShelfDropper(controller: controller, store: store, targeted: $targeted))
         .onChange(of: targeted) { controller.dropTarget = $0 }
     }
@@ -274,15 +306,23 @@ struct ShelfDropper: DropDelegate {
     @Binding var targeted: Bool
 
     func dropEntered(info: DropInfo) { targeted = true }
-    func dropExited(info: DropInfo) { targeted = false; controller.overTarget = nil }
+    func dropExited(info: DropInfo) { targeted = false; controller.overTarget = nil; controller.overSlot = nil }
     func dropUpdated(info: DropInfo) -> DropProposal? {
         controller.overTarget = controller.draggingOut ? controller.button(at: info.location) : nil
+        controller.overSlot = controller.draggingOut && controller.overTarget == nil ? controller.slot(at: info.location) : nil
         return DropProposal(operation: .copy)
     }
     func performDrop(info: DropInfo) -> Bool {
         if controller.draggingOut {
             if let name = controller.button(at: info.location) { if controller.dropOnButton(name) { ShelfSound.remove() } }
-            else { controller.consumedByShelf = true }          // retour sur l'étagère : rien à faire
+            else {
+                controller.consumedByShelf = true          // retour sur l'étagère : l'élément ne part pas
+                if let i = controller.slot(at: info.location), !controller.draggedIDs.isEmpty {          // lâché sur une place : il s'y range
+                    let ids = controller.draggedIDs
+                    withAnimation(.spring(response: 0.38, dampingFraction: 0.8)) { store.move(ids, to: i < 0 ? store.items.count : i) }          // les éléments glissent vers leur place
+                    ShelfSound.drop()
+                }
+            }
             controller.overTarget = nil
             targeted = false
             controller.endDragState()

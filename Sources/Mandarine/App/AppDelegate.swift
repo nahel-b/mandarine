@@ -122,6 +122,8 @@ extension AppDelegate {
                 store.add(providers: providers)
                 try? await Task.sleep(nanoseconds: 800_000_000)
                 store.setPinned(Set(store.items.filter { $0.kind == .folder }.map(\.id)), true)
+                if let last = store.items.last { store.move([last.id], to: 0); print("après déplacement :", store.items.map(\.name)) }          // les épinglés restent devant
+                if let last = store.items.last { store.move([last.id], to: 2); print("encore :", store.items.map { ($0.pinned ? "📌" : "") + $0.name }) }
                 print("fill :", ProcessInfo.processInfo.environment["MANDARINE_SHELFFILL"] ?? "nil", "total", store.items.count)
                 print("éléments :", store.items.map { "\($0.kind)/\($0.name)/\($0.detail)" })
                 ShelfPanelController.shared.page = Int(ProcessInfo.processInfo.environment["MANDARINE_SHELFPAGE"] ?? "") ?? 0
@@ -991,7 +993,7 @@ extension AppDelegate {
         } else if target[0] == "toaststyles" {
             view = AnyView(ToastLab(page: Int(target.count > 1 ? target[1] : "1") ?? 1))
         } else if target[0] == "whatsnew" {
-            view = AnyView(WhatsNewView(releases: WhatsNew.releases, highlighted: ["1.14.0", "1.13.0"], close: {}))
+            view = AnyView(WhatsNewView(releases: WhatsNew.releases, highlighted: ["1.15.0", "1.14.0"], close: {}))
         } else if target[0] == "features" {
             view = AnyView(FeaturesView(startTab: target.count > 1 ? target[1] : "image", startQuery: target.count > 2 ? target[2] : "", close: {}))
         } else if target[0] == "help" {
