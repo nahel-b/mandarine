@@ -57,6 +57,7 @@ private extension ShelfKind {
         case .audio: return (Color(red: 0.62, green: 0.93, blue: 0.32), Color(red: 0.06, green: 0.62, blue: 0.40), .white, .waves, false)
         case .link: return (Color(red: 1.0, green: 0.93, blue: 0.80), Color(red: 0.98, green: 0.73, blue: 0.40), Color(red: 0.62, green: 0.30, blue: 0.05), .diamonds, true)
         case .text: return (Color(red: 1.0, green: 0.98, blue: 0.88), Color(red: 0.99, green: 0.90, blue: 0.62), Color(red: 0.65, green: 0.42, blue: 0.04), .dots, true)
+        case .folder: return (Color(red: 0.90, green: 0.96, blue: 1.0), Color(red: 0.60, green: 0.80, blue: 0.97), Color(red: 0.10, green: 0.38, blue: 0.70), .dots, true)
         case .other: return (Color(white: 0.96), Color(white: 0.82), Color(white: 0.35), .dots, true)
         }
     }
@@ -71,22 +72,35 @@ private struct ShelfChannelTile: View {
     var hovered = false
     var selected = false
     var w: CGFloat = 80, h: CGFloat = 58
+    @ObservedObject private var thumbs = ShelfThumbs.shared
     var body: some View {
         let look = item.kind.wii
         ZStack {
             RoundedRectangle(cornerRadius: 14, style: .continuous).fill(LinearGradient(colors: [look.top, look.bottom], startPoint: .top, endPoint: .bottom))
             ShelfPatternLayer(kind: look.pattern, color: (look.light ? look.ink : Color.white).opacity(look.light ? 0.13 : 0.18)).clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-            VStack(spacing: 2) {
-                Image(systemName: item.kind.symbol).font(.system(size: 17))
-                Text(item.name).font(.system(size: 10.5, weight: .bold, design: .rounded)).lineLimit(1).minimumScaleFactor(0.7)
+            if thumbs.image(for: item) != nil {
+                ShelfThumb(item: item).frame(width: w, height: h).clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                VStack { Spacer(); Text(item.name).font(.system(size: 9.5, weight: .bold, design: .rounded)).lineLimit(1).minimumScaleFactor(0.7).foregroundStyle(.white).shadow(color: .black.opacity(0.8), radius: 2)
+                    .padding(.horizontal, 6).padding(.bottom, 3).frame(maxWidth: .infinity).background(LinearGradient(colors: [.clear, Color.black.opacity(0.55)], startPoint: .top, endPoint: .bottom)) }
+                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                if item.kind == .video { Image(systemName: "play.fill").font(.system(size: 13)).foregroundStyle(.white).shadow(color: .black.opacity(0.6), radius: 2).offset(y: -4) }
+            } else {
+                VStack(spacing: 2) {
+                    if let icon = item.fileIcon { Image(nsImage: icon).resizable().interpolation(.high).frame(width: 28, height: 28) }
+                    else { Image(systemName: item.kind.symbol).font(.system(size: 17)) }
+                    Text(item.name).font(.system(size: 10.5, weight: .bold, design: .rounded)).lineLimit(1).minimumScaleFactor(0.7)
+                }
+                .foregroundStyle(look.ink).padding(.horizontal, 6)
+                .shadow(color: look.light ? .clear : Color.black.opacity(0.3), radius: 1.5, y: 1)
             }
-            .foregroundStyle(look.ink).padding(.horizontal, 6)
-            .shadow(color: look.light ? .clear : Color.black.opacity(0.3), radius: 1.5, y: 1)
             RoundedRectangle(cornerRadius: 14, style: .continuous).fill(LinearGradient(colors: [Color.white.opacity(0.42), .clear], startPoint: .top, endPoint: UnitPoint(x: 0.5, y: 0.5)))
             RoundedRectangle(cornerRadius: 14, style: .continuous)
                 .strokeBorder(selected ? AnyShapeStyle(Theme.orange) : (hovered ? AnyShapeStyle(wiiBlue) : AnyShapeStyle(LinearGradient(colors: [Color(white: 0.95), Color(white: 0.62)], startPoint: .top, endPoint: .bottom))), lineWidth: selected || hovered ? 3.5 : 2.5)
         }
+        .overlay(alignment: .topTrailing) { if item.pinned { PinBadge().offset(x: 5, y: -5) } }
         .frame(width: w, height: h)
+        .onAppear { thumbs.request(item) }
+        .onChange(of: item.payload) { _ in thumbs.request(item) }
         .scaleEffect(hovered || selected ? 1.04 : 1)
         .animation(.spring(response: 0.2, dampingFraction: 0.7), value: hovered)
     }
@@ -97,11 +111,19 @@ private struct ShelfChannelTile: View {
 /// L'étagère en demi-roue sous l'encoche : chaque élément est un pétale de verre, la pastille du centre dit ce qu'on survole.
 struct ShelfPetalsPanel: View {
     @ObservedObject var store: ShelfStore
+    @ObservedObject private var controller = ShelfPanelController.shared
+    @ObservedObject private var thumbs = ShelfThumbs.shared
     var open = true                 // faux : les pétales sont rentrés vers l'encoche
     @State private var hover: UUID?
     @State private var selection: Set<UUID>
     @State private var anchor: UUID?
     private var items: [ShelfItem] { store.items }
+    private var pg: Int { min(controller.page, controller.pageCount - 1) }
+    /// Les éléments de la page affichée (8 places).
+    private var visible: [ShelfItem] { pageItems(pg) }
+    private func pageItems(_ p: Int) -> [ShelfItem] { Array(items.dropFirst(p * ShelfPanelController.pageSize).prefix(ShelfPanelController.pageSize)) }
+    /// La page affichée et ses voisines : elles glissent de côté quand on tourne la page.
+    private var shownPages: ClosedRange<Int> { max(0, pg - 1)...min(controller.pageCount - 1, pg + 1) }
 
     init(store: ShelfStore, state: ShelfState = .filled, open: Bool = true) {
         self.store = store; self.open = open
@@ -111,7 +133,7 @@ struct ShelfPetalsPanel: View {
     private let center = CGPoint(x: 220, y: 16), radius: CGFloat = 150
     private var chosen: [ShelfItem] { items.filter { selection.contains($0.id) } }
     private var current: ShelfItem? { items.first { $0.id == hover } ?? (chosen.count == 1 ? chosen.first : nil) }
-    private func click(_ id: UUID, _ f: NSEvent.ModifierFlags) { ShelfSelecting.click(id, f, order: Array(items.prefix(8)).map(\.id), selection: &selection, anchor: &anchor) }
+    private func click(_ id: UUID, _ f: NSEvent.ModifierFlags) { ShelfSelecting.click(id, f, order: visible.map(\.id), selection: &selection, anchor: &anchor) }
     private func group(_ it: ShelfItem) -> [ShelfItem] { selection.contains(it.id) && selection.count > 1 ? chosen : [it] }
 
     private func target(_ i: Int) -> CGPoint {
@@ -124,6 +146,10 @@ struct ShelfPetalsPanel: View {
         return open ? t : CGPoint(x: center.x + (t.x - center.x) * 0.25, y: center.y + (t.y - center.y) * 0.25)
     }
 
+    private func showPageOf(_ ids: Set<UUID>) {
+        if let i = items.firstIndex(where: { ids.contains($0.id) }) { controller.go(to: i / ShelfPanelController.pageSize) }
+    }
+
     /// Pas de fond : seulement un voile très doux autour de l'arc (pour rester lisible sur un fond clair), qui s'efface avant les bords.
     private var halo: some View {
         Circle().fill(RadialGradient(colors: [Color.black.opacity(0.34), Color.black.opacity(0.18), Color.black.opacity(0)], center: .center, startRadius: 30, endRadius: 215))
@@ -134,20 +160,26 @@ struct ShelfPetalsPanel: View {
     var body: some View {
         ZStack(alignment: .topLeading) {
             halo
-            ForEach(0..<8, id: \.self) { i in slot(i) }
+            ForEach(Array(shownPages), id: \.self) { p in ForEach(0..<8, id: \.self) { i in slot(i, page: p) } }
+            if pg > 0 { ShelfPageArrow(left: true) { controller.step(-1) }.position(x: 38, y: 34).opacity(open ? 1 : 0) }
+            if pg < controller.pageCount - 1 { ShelfPageArrow(left: false) { controller.step(1) }.position(x: 402, y: 34).opacity(open ? 1 : 0) }
             centerPill.position(x: center.x, y: 92).opacity(open ? 1 : 0).scaleEffect(open ? 1 : 0.6, anchor: .top).animation(.spring(response: 0.3, dampingFraction: 0.82), value: open)
         }
         .frame(width: 440, height: 220, alignment: .topLeading)
         .foregroundStyle(Color.white).environment(\.colorScheme, .dark)
+        .onChange(of: store.highlightToken) { _ in selection = store.highlightIDs; anchor = nil; showPageOf(store.highlightIDs) }          // « Afficher » sur une notification
+        .onChange(of: store.items.first?.id) { _ in controller.page = 0 }          // du nouveau : on revient au début
+        .onChange(of: store.selectAllToken) { _ in selection = Set(items.map(\.id)); anchor = nil }          // ⌘A
     }
 
     /// Les éléments se placent au milieu de l'arc, le plus récent à gauche ; l'étagère vide montre les huit places en pointillés.
-    @ViewBuilder private func slot(_ i: Int) -> some View {
-        let n = min(items.count, 8), first = (8 - n) / 2
+    @ViewBuilder private func slot(_ i: Int, page p: Int) -> some View {
+        let list = pageItems(p)
+        let n = min(list.count, 8), first = (8 - n) / 2
         let k = 7 - i - first                      // rang de l'élément (0 = le plus récent) dans cette place
         Group {
             if k >= 0 && k < n {
-                petal(items[k])
+                petal(list[k])
             } else if items.isEmpty {
                 RoundedRectangle(cornerRadius: 15, style: .continuous)
                     .strokeBorder(Color.white.opacity(0.3), style: StrokeStyle(lineWidth: 1.2, dash: [4, 3]))
@@ -157,6 +189,7 @@ struct ShelfPetalsPanel: View {
         .scaleEffect(open ? 1 : 0.4).opacity(open ? 1 : 0)
         .position(position(i))
         .animation(open ? .spring(response: 0.3, dampingFraction: 0.84).delay(Double(i) * 0.025) : .easeOut(duration: 0.12), value: open)
+        .offset(x: CGFloat(p - pg) * 440).opacity(p == pg ? 1 : 0)          // la page tournée glisse vers le côté en s'effaçant
     }
 
     private func petal(_ it: ShelfItem) -> some View {
@@ -166,17 +199,43 @@ struct ShelfPetalsPanel: View {
             shape.fill(Color.black.opacity(active ? 0 : 0.5))                                   // fond sombre translucide : lisible sans panneau derrière
             shape.fill(LinearGradient(colors: active ? [Theme.orange.opacity(0.95), Theme.orange] : [Color.white.opacity(hot ? 0.28 : 0.17), Color.white.opacity(hot ? 0.14 : 0.07)], startPoint: .top, endPoint: .bottom))
             shape.stroke(active ? Color.white.opacity(0.6) : Color.white.opacity(hot ? 0.5 : 0.3), lineWidth: active ? 1.6 : 1)
-            Image(systemName: it.kind.symbol).font(.system(size: 17, weight: .semibold))
+            if thumbs.image(for: it) != nil {
+                ShelfThumb(item: it).frame(width: 46, height: 46).clipShape(shape)
+                shape.stroke(active ? Color.white.opacity(0.9) : Color.white.opacity(0.4), lineWidth: active ? 2 : 1)
+                if it.kind == .video { Image(systemName: "play.fill").font(.system(size: 11)).shadow(color: .black.opacity(0.7), radius: 2) }
+            } else if let icon = it.fileIcon {
+                Image(nsImage: icon).resizable().interpolation(.high).frame(width: 30, height: 30)
+            } else {
+                Image(systemName: it.kind.symbol).font(.system(size: 17, weight: .semibold))
+            }
         }
         .frame(width: 46, height: 46)
+        .overlay(alignment: .topTrailing) { if it.pinned { PinBadge().offset(x: 5, y: -5) } }
+        .onAppear { thumbs.request(it, side: 100) }
+        .onChange(of: it.payload) { _ in thumbs.request(it, side: 100) }
         .shadow(color: active ? Theme.orange.opacity(0.55) : Color.black.opacity(0.25), radius: active ? 10 : 5, y: active ? 0 : 2)
         .scaleEffect(active || hot ? 1.06 : 1)
         .animation(.easeOut(duration: 0.1), value: hover)
         .overlay(ShelfDragSource(item: it, group: group(it), onClick: { click(it.id, $0) }, onHover: { hover = $0 ? it.id : (hover == it.id ? nil : hover) }))
     }
 
+    /// Pendant qu'on emporte des éléments hors de l'étagère : trois cibles où les lâcher (localiser, copier, retirer).
+    private var dropPill: some View {
+        HStack(spacing: 10) {
+            ForEach([("eye", "locate"), ("doc.on.doc", "copy"), ("trash", "remove")], id: \.1) { symbol, name in
+                let hot = controller.overTarget == name
+                Image(systemName: symbol).font(.system(size: 14, weight: .semibold)).frame(width: 40, height: 40)
+                    .background(Circle().fill(name == "remove" ? Color.black.opacity(0.55) : Theme.orange.opacity(hot ? 1 : 0.7)))
+                    .overlay(Circle().strokeBorder(Color.white.opacity(hot ? 0.95 : 0.3), lineWidth: hot ? 2 : 1))
+                    .scaleEffect(hot ? 1.18 : 1).animation(.easeOut(duration: 0.1), value: hot)
+                    .background(GeometryReader { g in Color.clear.preference(key: ShelfButtonFrames.self, value: [name: g.frame(in: .named("shelfRoot"))]) })
+            }
+        }
+    }
+
     @ViewBuilder private var centerPill: some View {
-        if !selection.isEmpty, hover == nil || selection.contains(hover!) {
+        if controller.draggingOut { dropPill }
+        else if !selection.isEmpty, hover == nil || selection.contains(hover!) {
             VStack(spacing: 5) {
                 if chosen.count > 1 { Text(L("\(chosen.count) items selected")).font(.system(size: 11, weight: .semibold)).padding(.horizontal, 9).padding(.vertical, 2).background(Capsule().fill(Color.black.opacity(0.55))) }
                 HStack(spacing: 8) {
@@ -245,6 +304,7 @@ struct ShelfHoverHost<Content: View>: View {
 /// « s'allume » depuis son milieu : un trait horizontal s'étire, puis l'image se déploie.
 struct ShelfChannelsPanel: View {
     @ObservedObject var store: ShelfStore
+    @ObservedObject private var controller = ShelfPanelController.shared
     var open = true
     @State private var hover: UUID?
     @State private var selection: Set<UUID>
@@ -253,6 +313,10 @@ struct ShelfChannelsPanel: View {
     @State private var sy: CGFloat
     @State private var flash = 0.0
     private var items: [ShelfItem] { store.items }
+    private var pg: Int { min(controller.page, controller.pageCount - 1) }
+    private var visible: [ShelfItem] { pageItems(pg) }
+    private func pageItems(_ p: Int) -> [ShelfItem] { Array(items.dropFirst(p * ShelfPanelController.pageSize).prefix(ShelfPanelController.pageSize)) }
+    private var shownPages: ClosedRange<Int> { max(0, pg - 1)...min(controller.pageCount - 1, pg + 1) }
     private let ink = Color(red: 0.56, green: 0.58, blue: 0.60)
 
     init(store: ShelfStore, state: ShelfState = .filled, open: Bool = true) {
@@ -270,6 +334,12 @@ struct ShelfChannelsPanel: View {
             .opacity(sx > 0.05 ? 1 : 0)
             .environment(\.colorScheme, .light)
             .onChange(of: open) { on in turn(on) }
+            .onChange(of: store.highlightToken) { _ in
+                selection = store.highlightIDs; anchor = nil          // « Afficher » sur une notification
+                if let i = items.firstIndex(where: { store.highlightIDs.contains($0.id) }) { controller.go(to: i / ShelfPanelController.pageSize) }
+            }
+            .onChange(of: store.items.first?.id) { _ in controller.page = 0 }          // du nouveau : on revient au début
+            .onChange(of: store.selectAllToken) { _ in selection = Set(items.map(\.id)); anchor = nil }          // ⌘A
     }
 
     /// Allumage / extinction du tube.
@@ -289,7 +359,9 @@ struct ShelfChannelsPanel: View {
     private var screen: some View {
         ZStack(alignment: .top) {
             NotchShape(radius: 34).fill(LinearGradient(colors: [Color(white: 0.99), Color(red: 0.90, green: 0.91, blue: 0.93)], startPoint: .top, endPoint: .bottom))
-            grid.padding(.top, 38).padding(.horizontal, 20)
+            ForEach(Array(shownPages), id: \.self) { p in grid(p).padding(.top, 38).padding(.horizontal, 20).offset(x: CGFloat(p - pg) * 380) }          // la page glisse de côté
+            if pg > 0 { ShelfPageArrow(left: true) { controller.step(-1) }.position(x: 17, y: 99) }
+            if pg < controller.pageCount - 1 { ShelfPageArrow(left: false) { controller.step(1) }.position(x: 363, y: 99) }
             bar.frame(height: 78).frame(maxHeight: .infinity, alignment: .bottom)
             // la vitre
             WiiCRT().clipShape(NotchShape(radius: 34))
@@ -301,10 +373,11 @@ struct ShelfChannelsPanel: View {
 
     // MARK: Cases
 
-    private var grid: some View {
-        LazyVGrid(columns: Array(repeating: GridItem(.fixed(84), spacing: 8), count: 4), spacing: 8) {
+    private func grid(_ p: Int) -> some View {
+        let list = pageItems(p)
+        return LazyVGrid(columns: Array(repeating: GridItem(.fixed(84), spacing: 8), count: 4), spacing: 8) {
             ForEach(0..<8, id: \.self) { i in
-                if i < items.count { tile(items[i]) } else { emptySlot }
+                if i < list.count { tile(list[i]) } else { emptySlot }
             }
         }
     }
@@ -312,12 +385,13 @@ struct ShelfChannelsPanel: View {
     private var emptySlot: some View {
         RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Color.black.opacity(0.04))
             .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(Color.black.opacity(0.07), lineWidth: 2))
+            .overlay(WiiLogoShape().fill(Color(white: 0.5).opacity(0.17)).aspectRatio(1830 / 870, contentMode: .fit).frame(width: 40))          // le logo, très discret, comme sur la Wii
             .frame(width: 84, height: 58)
     }
 
     private func tile(_ it: ShelfItem) -> some View {
         ShelfChannelTile(item: it, hovered: hover == it.id, selected: selection.contains(it.id), w: 84, h: 58)
-            .overlay(ShelfDragSource(item: it, group: group(it), onClick: { f in ShelfSelecting.click(it.id, f, order: Array(items.prefix(8)).map(\.id), selection: &selection, anchor: &anchor) },
+            .overlay(ShelfDragSource(item: it, group: group(it), onClick: { f in ShelfSelecting.click(it.id, f, order: visible.map(\.id), selection: &selection, anchor: &anchor) },
                                      onHover: { hover = $0 ? it.id : (hover == it.id ? nil : hover) }))
     }
 
@@ -334,10 +408,10 @@ struct ShelfChannelsPanel: View {
             WiiBarLine().stroke(wiiBlue, lineWidth: 2.5)
             TimelineView(.periodic(from: .now, by: 1)) { ctx in SevenSegmentClock(date: ctx.date).scaleEffect(0.8).position(x: 190, y: 9) }
             description.position(x: 190, y: 57)
-            roundButton("eye").position(x: 34, y: 46)
+            roundButton("eye", target: "locate").position(x: 34, y: 46)
                 .onTapGesture { let t = chosen.isEmpty ? current.map { [$0] } ?? [] : chosen; if !t.isEmpty { ShelfSound.press(); ShelfActions.reveal(t) } }
             sdInfo.position(x: 100, y: 49)
-            roundButton("trash").position(x: 346, y: 46)
+            roundButton("trash", target: "remove").position(x: 346, y: 46)
                 .onTapGesture { if !selection.isEmpty { ShelfSound.remove(); store.remove(selection); selection = []; anchor = nil } }
         }
         .frame(width: 380, height: 78)
@@ -369,12 +443,15 @@ struct ShelfChannelsPanel: View {
         }.frame(width: 84, alignment: .leading)
     }
 
-    private func roundButton(_ symbol: String) -> some View {
-        ZStack {
+    private func roundButton(_ symbol: String, target: String) -> some View {
+        let hot = controller.overTarget == target, ready = controller.draggingOut
+        return ZStack {
             Circle().fill(LinearGradient(colors: [.white, Color(white: 0.9)], startPoint: .top, endPoint: .bottom))
-            Circle().strokeBorder(wiiBlue.opacity(0.9), lineWidth: 3)
-            Image(systemName: symbol).font(.system(size: 16)).foregroundStyle(Color(white: 0.55))
+            Circle().strokeBorder(hot ? Theme.orange : wiiBlue.opacity(0.9), lineWidth: hot ? 4.5 : 3)
+            Image(systemName: symbol).font(.system(size: 16)).foregroundStyle(hot ? Theme.orange : Color(white: 0.55))
         }.frame(width: 44, height: 44).shadow(color: .black.opacity(0.18), radius: 4, y: 2).contentShape(Circle())
+            .background(GeometryReader { g in Color.clear.preference(key: ShelfButtonFrames.self, value: [target: g.frame(in: .named("shelfRoot"))]) })
+            .scaleEffect(hot ? 1.18 : (ready ? 1.06 : 1)).animation(.easeOut(duration: 0.1), value: hot)
     }
 }
 
@@ -551,5 +628,79 @@ struct ShelfTabPanel: View {
                 Capsule().fill(LinearGradient(colors: [.white, Color(white: 0.9)], startPoint: .top, endPoint: .bottom)).padding(3)
                 Capsule().fill(LinearGradient(colors: [Color.white.opacity(0.55), .clear], startPoint: .top, endPoint: UnitPoint(x: 0.5, y: 0.55))).padding(4)
             })
+    }
+}
+
+/// Où sont les boutons qui acceptent un élément emporté hors de l'étagère (œil, copier, corbeille), dans le repère de la fenêtre.
+struct ShelfButtonFrames: PreferenceKey {
+    static var defaultValue: [String: CGRect] = [:]
+    static func reduce(value: inout [String: CGRect], nextValue: () -> [String: CGRect]) { value.merge(nextValue()) { $1 } }
+}
+
+
+/// Le mot « Wii » en vectoriel (grille de 1830 × 870), pour les places vides.
+struct WiiLogoShape: Shape {
+    func path(in r: CGRect) -> Path {
+        let sx = r.width / 1830, sy = r.height / 870
+        func P(_ x: CGFloat, _ y: CGFloat) -> CGPoint { CGPoint(x: r.minX + x * sx, y: r.minY + y * sy) }
+        var p = Path()
+        p.move(to: P(0, 47)); p.addLine(to: P(185, 47)); p.addLine(to: P(338, 650))
+        p.addLine(to: P(472, 140))
+        p.addCurve(to: P(589, 40), control1: P(495, 75), control2: P(535, 40))
+        p.addCurve(to: P(705, 140), control1: P(645, 40), control2: P(685, 75))
+        p.addLine(to: P(840, 650)); p.addLine(to: P(993, 47)); p.addLine(to: P(1179, 47)); p.addLine(to: P(975, 770))
+        p.addCurve(to: P(845, 870), control1: P(950, 840), control2: P(905, 870))
+        p.addCurve(to: P(720, 760), control1: P(785, 870), control2: P(740, 835))
+        p.addLine(to: P(589, 290)); p.addLine(to: P(460, 760))
+        p.addCurve(to: P(330, 870), control1: P(440, 835), control2: P(395, 870))
+        p.addCurve(to: P(200, 760), control1: P(270, 870), control2: P(222, 835))
+        p.closeSubpath()
+        for x in [CGFloat(1272), 1628] {
+            p.addRect(CGRect(x: r.minX + x * sx, y: r.minY + 297 * sy, width: 175 * sx, height: 565 * sy))
+            p.addEllipse(in: CGRect(x: r.minX + (x - 18) * sx, y: r.minY + 0 * sy, width: 209 * sx, height: 197 * sy))
+        }
+        return p
+    }
+}
+
+/// La petite flèche bleue des pages de la Wii (vers la droite ou vers la gauche).
+struct ShelfPageArrow: View {
+    var left = false
+    var action: () -> Void
+    @State private var hot = false
+    var body: some View {
+        ArrowShape().fill(LinearGradient(colors: [Color(red: 0.62, green: 0.86, blue: 0.97), Color(red: 0.17, green: 0.63, blue: 0.88)], startPoint: .top, endPoint: .bottom))
+            .overlay(ArrowShape().stroke(Color.white, lineWidth: 2))
+            .shadow(color: .black.opacity(0.25), radius: 2, y: 1)
+            .frame(width: 18, height: 26)
+            .scaleEffect(x: left ? -1 : 1, y: 1).scaleEffect(hot ? 1.2 : 1)
+            .animation(.easeOut(duration: 0.1), value: hot)
+            .contentShape(Rectangle().inset(by: -8))
+            .onHover { hot = $0; if $0 { ShelfSound.hover() } }
+            .onTapGesture(perform: action)
+    }
+    private struct ArrowShape: Shape {
+        func path(in r: CGRect) -> Path {
+            var p = Path()
+            p.move(to: CGPoint(x: r.minX + 2, y: r.minY + 3))
+            p.addQuadCurve(to: CGPoint(x: r.minX + 5, y: r.minY), control: CGPoint(x: r.minX + 2, y: r.minY))
+            p.addLine(to: CGPoint(x: r.maxX - 2, y: r.midY - 3))
+            p.addQuadCurve(to: CGPoint(x: r.maxX - 2, y: r.midY + 3), control: CGPoint(x: r.maxX + 1, y: r.midY))
+            p.addLine(to: CGPoint(x: r.minX + 5, y: r.maxY))
+            p.addQuadCurve(to: CGPoint(x: r.minX + 2, y: r.maxY - 3), control: CGPoint(x: r.minX + 2, y: r.maxY))
+            p.closeSubpath()
+            return p
+        }
+    }
+}
+
+
+/// La petite épingle des éléments épinglés.
+struct PinBadge: View {
+    var body: some View {
+        Image(systemName: "pin.fill").font(.system(size: 9, weight: .bold)).foregroundStyle(.white).rotationEffect(.degrees(35))
+            .frame(width: 18, height: 18)
+            .background(Circle().fill(Theme.orange)).overlay(Circle().strokeBorder(Color.white, lineWidth: 1.5))
+            .shadow(color: .black.opacity(0.3), radius: 2, y: 1)
     }
 }

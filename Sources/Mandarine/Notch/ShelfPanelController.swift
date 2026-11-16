@@ -7,7 +7,7 @@ import UniformTypeIdentifiers
 enum ShelfStyle: String, CaseIterable, Identifiable {
     case petals, channels
     var id: String { rawValue }
-    var title: String { self == .petals ? L("Petals") : L("Channels") }
+    var title: String { self == .petals ? L("Bubble") : "Wii" }
     /// Taille de la zone qui reste ouverte autour de l'étagère.
     var openSize: CGSize { self == .petals ? CGSize(width: 460, height: 236) : CGSize(width: 400, height: 252) }
 }
@@ -21,7 +21,49 @@ final class ShelfPanelController: ObservableObject {
     @Published private(set) var open = false
     @Published var dropTarget = false
     /// Un élément de l'étagère est en train d'être glissé dehors : l'étagère reste ouverte.
-    var draggingOut = false
+    var draggingOut = false {
+        didSet { if !draggingOut { overTarget = nil } }
+    }
+    /// Éléments en cours de glisser vers l'extérieur ; « consumed » : l'étagère les a déjà traités (œil, poubelle), le glisser n'a plus rien à enlever.
+    var draggedIDs: [UUID] = []
+    var consumedByShelf = false
+    /// Bouton de l'étagère survolé pendant un glisser sorti d'elle (pour l'éclairer).
+    @Published var overTarget: String?
+    var buttonFrames: [String: CGRect] = [:]
+    func button(at p: CGPoint) -> String? { buttonFrames.first { $0.value.insetBy(dx: -6, dy: -6).contains(p) }?.key }
+    private var holdUntil = Date.distantPast
+    /// Page affichée quand il y a plus d'éléments que de places (8 par page).
+    static let pageSize = 8
+    @Published var page = 0
+    private var scrollAcc: CGFloat = 0
+    private var scrollLocked = false
+    private var lastWheel = Date.distantPast
+    var pageCount: Int { max(1, (ShelfStore.shared.items.count + Self.pageSize - 1) / Self.pageSize) }
+    func go(to p: Int) {
+        let target = min(max(0, p), pageCount - 1)
+        guard target != page else { return }
+        withAnimation(.spring(response: 0.38, dampingFraction: 0.86)) { page = target }
+        ShelfSound.press()
+    }
+    func step(_ d: Int) { go(to: min(page, pageCount - 1) + d) }
+
+    /// Défilement horizontal (trackpad ou molette) : une page par geste.
+    func scroll(_ e: NSEvent) {
+        guard pageCount > 1 else { return }
+        let dx = e.scrollingDeltaX, dy = e.scrollingDeltaY
+        let d = abs(dx) >= abs(dy) ? dx : dy
+        if !e.hasPreciseScrollingDeltas {          // molette de souris : un cran, une page (avec un petit délai)
+            guard d != 0, Date().timeIntervalSince(lastWheel) > 0.25 else { return }
+            lastWheel = Date(); step(d < 0 ? 1 : -1); return
+        }
+        if e.phase == .began || e.phase == .mayBegin { scrollAcc = 0; scrollLocked = false }
+        if scrollLocked { if e.phase == .ended || e.phase == .cancelled || e.momentumPhase == .ended { scrollLocked = false; scrollAcc = 0 }; return }
+        scrollAcc += d
+        if abs(scrollAcc) > 30 { step(scrollAcc < 0 ? 1 : -1); scrollLocked = true; scrollAcc = 0 }
+        if e.phase == .ended || e.phase == .cancelled { scrollAcc = 0 }
+    }
+    private var idleTicks = 0
+    private var keyMonitor: Any?
     var holdOpen = false          // essais : ne pas refermer
     /// Le glisser en cours a été déposé sur la roue de Mandarine : l'élément reste sur l'étagère (le travail crée un nouveau fichier ; s'il remplace l'original, l'élément suit).
     nonisolated(unsafe) var wheelTookDrag = false
@@ -34,6 +76,16 @@ final class ShelfPanelController: ObservableObject {
     private let settings = AppSettings.shared
 
     func start() {
+        if keyMonitor == nil {          // ⌘A tant que l'étagère est ouverte et que le pointeur est dessus
+            keyMonitor = NSEvent.addGlobalMonitorForEvents(matching: .keyDown) { [weak self] e in
+                guard e.modifierFlags.intersection(.deviceIndependentFlagsMask) == .command, e.charactersIgnoringModifiers?.lowercased() == "a" else { return }
+                Task { @MainActor in
+                    guard let self = self, self.open else { return }
+                    let m = NSEvent.mouseLocation, r = self.openRect
+                    if m.x >= r.minX && m.x <= r.maxX && m.y >= r.minY && m.y <= r.maxY + 4 { ShelfStore.shared.selectAll() }
+                }
+            }
+        }
         Publishers.Merge(settings.$shelfEnabled.map { _ in () }, settings.$shelfStyle.map { _ in () })
             .receive(on: DispatchQueue.main).sink { [weak self] _ in self?.apply() }.store(in: &cancellables)          // (après le changement : la valeur est à jour)
         NotificationCenter.default.addObserver(forName: NSApplication.didChangeScreenParametersNotification, object: nil, queue: .main) { [weak self] _ in
@@ -107,19 +159,55 @@ final class ShelfPanelController: ObservableObject {
     private func tick() {
         guard panel != nil else { return }
         let m = NSEvent.mouseLocation
+        // filet de sécurité : plus aucun bouton enfoncé mais l'étagère se croit encore en plein glisser → on remet à zéro (sinon elle resterait ouverte)
+        if (draggingOut || dropTarget) && NSEvent.pressedMouseButtons == 0 {
+            idleTicks += 1
+            if idleTicks >= 12 { endDragState() }
+        } else { idleTicks = 0 }
         let closed = closedRect, opened = openRect
         let inClosed = m.x >= closed.minX - 2 && m.x <= closed.maxX + 2 && m.y >= closed.minY && m.y <= closed.maxY + 4          // le bord haut de l'écran compte
         let inOpen = m.x >= opened.minX && m.x <= opened.maxX && m.y >= opened.minY && m.y <= opened.maxY + 4
         if !open {
             dwell = inClosed ? dwell + 1 : 0
             if dwell >= 2 || (inClosed && dropTarget) { setOpen(true) }
-        } else if inOpen || dropTarget || draggingOut || holdOpen {
+        } else if inOpen || dropTarget || draggingOut || holdOpen || Date() < holdUntil {
             closeAt = nil
         } else if let t = closeAt {
             if Date() >= t { setOpen(false) }
         } else {
             closeAt = Date().addingTimeInterval(0.35)                   // délai de grâce : on peut repasser par le bord sans tout refermer
         }
+    }
+
+    /// Ouvre l'étagère d'elle-même (bouton « Afficher » d'une notification) et la garde ouverte quelques secondes.
+    func present() {
+        guard panel != nil else { return }
+        holdUntil = Date().addingTimeInterval(6)
+        setOpen(true)
+    }
+
+    // MARK: Glisser sorti de l'étagère, déposé sur ses boutons
+
+    /// Œil : montrer dans le Finder. Poubelle : retirer de l'étagère.
+    func dropOnButton(_ name: String) -> Bool {
+        let ids = draggedIDs
+        guard draggingOut, !ids.isEmpty else { return false }
+        let store = ShelfStore.shared
+        consumedByShelf = true
+        switch name {
+        case "locate": ShelfActions.reveal(ids.compactMap { id in store.items.first { $0.id == id } })
+        case "copy": ShelfActions.copy(ids.compactMap { id in store.items.first { $0.id == id } })
+        default: for id in ids { store.remove(id) }
+        }
+        overTarget = nil
+        endDragState()
+        return true
+    }
+
+    /// Le glisser est fini pour l'étagère. (Si l'élément glissé vient d'être retiré, sa vue n'est plus là pour le dire.)
+    func endDragState() {
+        draggingOut = false; dropTarget = false; overTarget = nil; idleTicks = 0
+        DragMonitor.shared.endInternalDrag()
     }
 
     func setOpen(_ on: Bool) {
@@ -172,11 +260,37 @@ struct ShelfRootView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .contentShape(Rectangle())
-        .onDrop(of: [UTType.fileURL, .url, .plainText, .image, .item], isTargeted: $targeted) { providers in
-            store.add(providers: providers)
-            ShelfSound.drop()
+        .coordinateSpace(name: "shelfRoot")
+        .onPreferenceChange(ShelfButtonFrames.self) { controller.buttonFrames = $0 }
+        .onDrop(of: [UTType.fileURL, .url, .plainText, .image, .item], delegate: ShelfDropper(controller: controller, store: store, targeted: $targeted))
+        .onChange(of: targeted) { controller.dropTarget = $0 }
+    }
+}
+
+/// Reçoit tout ce qu'on dépose sur l'étagère. Ce qui vient d'elle-même ne s'ajoute pas : sur l'œil ou la corbeille il fait leur fonction, ailleurs rien.
+struct ShelfDropper: DropDelegate {
+    let controller: ShelfPanelController
+    let store: ShelfStore
+    @Binding var targeted: Bool
+
+    func dropEntered(info: DropInfo) { targeted = true }
+    func dropExited(info: DropInfo) { targeted = false; controller.overTarget = nil }
+    func dropUpdated(info: DropInfo) -> DropProposal? {
+        controller.overTarget = controller.draggingOut ? controller.button(at: info.location) : nil
+        return DropProposal(operation: .copy)
+    }
+    func performDrop(info: DropInfo) -> Bool {
+        if controller.draggingOut {
+            if let name = controller.button(at: info.location) { if controller.dropOnButton(name) { ShelfSound.remove() } }
+            else { controller.consumedByShelf = true }          // retour sur l'étagère : rien à faire
+            controller.overTarget = nil
+            targeted = false
+            controller.endDragState()
             return true
         }
-        .onChange(of: targeted) { controller.dropTarget = $0 }
+        targeted = false
+        store.add(providers: info.itemProviders(for: [.fileURL, .url, .plainText, .image, .item]))
+        ShelfSound.drop()
+        return true
     }
 }

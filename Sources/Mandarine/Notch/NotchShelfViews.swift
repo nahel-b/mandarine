@@ -237,7 +237,7 @@ private struct ShelfList: View {
         case .video: return [L("Compress"), L("Transcribe"), L("Remove")]
         case .audio: return [L("Transcribe"), L("Convert"), L("Remove")]
         case .text: return [L("Open"), L("Remove")]
-        case .other: return [L("Open"), L("Remove")]
+        case .folder, .other: return [L("Open"), L("Remove")]
         }
     }
 }

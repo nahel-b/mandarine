@@ -35,7 +35,7 @@ enum Replacer {
             try? undo(done)          // une erreur en route : on remet ce qui avait déjà été fait
             throw error
         }
-        let moves = done.map { ($0.original, $0.final) }
+        let moves = done.flatMap { [($0.original, $0.final), ($0.output, $0.final)] }          // le résultat déjà posé sur l'étagère fusionne avec l'original
         Task { @MainActor in ShelfStore.shared.follow(moves) }          // l'étagère suit : l'élément devient son résultat
         return done
     }

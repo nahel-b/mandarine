@@ -1,4 +1,5 @@
 import AppKit
+import UniformTypeIdentifiers
 import VideoToolbox
 import SwiftUI
 
@@ -113,12 +114,21 @@ extension AppDelegate {
                 if let p = NSItemProvider(contentsOf: URL(fileURLWithPath: a[1])) { providers.append(p) }
                 providers.append(NSItemProvider(object: URL(string: "https://youtu.be/dQw4w9")! as NSURL))
                 providers.append(NSItemProvider(object: "Une note glissée depuis un autre logiciel" as NSString))
+                let dir = URL(fileURLWithPath: a[1]).deletingLastPathComponent()
+                providers.append(NSItemProvider(item: dir.absoluteString.data(using: .utf8)! as NSData, typeIdentifier: UTType.fileURL.identifier))          // comme le Finder : l'adresse du dossier en données
+                let sub = dir.appendingPathComponent("Sous dossier", isDirectory: true); try? FileManager.default.createDirectory(at: sub, withIntermediateDirectories: true)
+                providers.append(NSItemProvider(item: sub as NSURL, typeIdentifier: UTType.fileURL.identifier))          // un dossier : gardé tel quel, sans copie
+                for i in 0..<(Int(ProcessInfo.processInfo.environment["MANDARINE_SHELFFILL"] ?? "") ?? 0) { providers.append(NSItemProvider(object: "Note \(i)" as NSString)) }
                 store.add(providers: providers)
                 try? await Task.sleep(nanoseconds: 800_000_000)
+                store.setPinned(Set(store.items.filter { $0.kind == .folder }.map(\.id)), true)
+                print("fill :", ProcessInfo.processInfo.environment["MANDARINE_SHELFFILL"] ?? "nil", "total", store.items.count)
                 print("éléments :", store.items.map { "\($0.kind)/\($0.name)/\($0.detail)" })
+                ShelfPanelController.shared.page = Int(ProcessInfo.processInfo.environment["MANDARINE_SHELFPAGE"] ?? "") ?? 0
                 ShelfPanelController.shared.holdOpen = true
                 ShelfPanelController.shared.setOpen(true)
                 try? await Task.sleep(nanoseconds: 1_500_000_000)
+                print("boutons :", ShelfPanelController.shared.buttonFrames.mapValues { NSStringFromRect($0) })
                 print("capture :", ShelfPanelController.shared.debugCapture(to: URL(fileURLWithPath: a[2])))
                 print("fichier d'étagère :", FileManager.default.fileExists(atPath: ShelfStore.file.path))
                 exit(0)
@@ -981,7 +991,7 @@ extension AppDelegate {
         } else if target[0] == "toaststyles" {
             view = AnyView(ToastLab(page: Int(target.count > 1 ? target[1] : "1") ?? 1))
         } else if target[0] == "whatsnew" {
-            view = AnyView(WhatsNewView(releases: WhatsNew.releases, highlighted: ["1.13.0", "1.12.0"], close: {}))
+            view = AnyView(WhatsNewView(releases: WhatsNew.releases, highlighted: ["1.14.0", "1.13.0"], close: {}))
         } else if target[0] == "features" {
             view = AnyView(FeaturesView(startTab: target.count > 1 ? target[1] : "image", startQuery: target.count > 2 ? target[2] : "", close: {}))
         } else if target[0] == "help" {

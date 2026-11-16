@@ -128,11 +128,13 @@ enum ToolID: String {
 }
 
 enum FileAction: String, CaseIterable {
-    case airDrop, float, copy, move, copyPath, terminal, switchView, searchWeb
+    case airDrop, float, copy, move, copyPath, terminal, switchView, searchWeb, shelfAdd, shelfPin
     var label: String {
         switch self {
         case .airDrop: return L("AIRDROP")
         case .float: return L("FLOAT")
+        case .shelfAdd: return L("ADD")
+        case .shelfPin: return L("PIN")
         case .copy: return L("COPY")
         case .move: return L("MOVE")
         case .copyPath: return L("COPY PATH")
@@ -145,6 +147,8 @@ enum FileAction: String, CaseIterable {
         switch self {
         case .airDrop: return L("AirDrop")
         case .float: return L("Float")
+        case .shelfAdd: return L("Add to the shelf")
+        case .shelfPin: return L("Pin to the shelf")
         case .copy: return L("Copy")
         case .move: return L("Move")
         case .copyPath: return L("Copy Path")
@@ -157,6 +161,8 @@ enum FileAction: String, CaseIterable {
         switch self {
         case .airDrop: return L("airplayaudio")
         case .float: return L("square.stack.3d.up")
+        case .shelfAdd: return "plus"
+        case .shelfPin: return "pin.fill"
         case .copy: return L("doc.on.doc")
         case .move: return L("folder")
         case .copyPath: return L("link")

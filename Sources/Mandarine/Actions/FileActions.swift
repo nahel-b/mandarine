@@ -9,7 +9,11 @@ enum FileActions {
             if let s = NSSharingService(named: .sendViaAirDrop), s.canPerform(withItems: urls) { s.perform(withItems: urls) }
             else { Toast.shared.fail(L("AirDrop unavailable"), subtitle: L("Turn on Wi‑Fi and Bluetooth to use AirDrop.")) }
         case .float:
-            FloatShelf.shared.add(urls)
+            if AppSettings.shared.shelfEnabled { addToShelf(urls, pinned: false) } else { FloatShelf.shared.add(urls) }
+        case .shelfAdd:
+            addToShelf(urls, pinned: false)
+        case .shelfPin:
+            addToShelf(urls, pinned: true)
         case .searchWeb:
             let q = urls.map { SnippetStore.text(of: $0) }.joined(separator: " ").trimmingCharacters(in: .whitespacesAndNewlines)
             var c = URLComponents(string: "https://www.google.com/search"); c?.queryItems = [URLQueryItem(name: "q", value: String(q.prefix(300)))]
@@ -43,6 +47,15 @@ enum FileActions {
             let s = AppSettings.shared
             s.appearance = s.appearance == .wii ? .wheel : .wii
             Toast.shared.done(s.appearance == .wii ? L("Wii view") : L("Wheel view"), subtitle: L("Menu style changed — you can switch back from the ⌃ menu or Settings"))
+        }
+    }
+
+    /// Met ces fichiers, dossiers ou liens sur l'étagère de l'encoche (rien n'est copié : seul le chemin est gardé) et l'ouvre dessus.
+    private static func addToShelf(_ urls: [URL], pinned: Bool) {
+        Task { @MainActor in
+            ShelfStore.shared.add(urls: urls, pinned: pinned)
+            let name = urls.count == 1 ? (urls[0].isFileURL ? urls[0].lastPathComponent : urls[0].absoluteString) : L("\(urls.count) items")
+            Toast.shared.done(pinned ? L("Pinned to the shelf") : L("Added to the shelf"), subtitle: name)
         }
     }
 

@@ -182,6 +182,7 @@ final class JobQueue {
             }
             let shown = replacements.isEmpty ? outs : replacements.map(\.final)
             let replaced = !replacements.isEmpty
+            if !replaced { Task { @MainActor in ShelfStore.shared.adopt(shown) } }          // un travail lancé sur un élément de l'étagère : son résultat y revient
             let title = replaced ? (outs.count == 1 ? "Replaced" : "Replaced \(outs.count) items") : (outs.count == 1 ? "Saved" : "Saved \(outs.count) items")
             let id = e.id, originals = e.replaces
             Toast.shared.update(e.id) {

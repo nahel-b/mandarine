@@ -154,7 +154,7 @@ private struct ToastRow: View {
     private var shortAction: String { item.action.map { $0.title == L("Replace original") ? L("Replace") : $0.title } ?? "" }
 
     private func copyError() { NSPasteboard.general.clearContents(); NSPasteboard.general.setString(item.detail, forType: .string) }
-    private func show() { NSWorkspace.shared.activateFileViewerSelecting(item.reveal) }
+    private func show() { if !ShelfStore.shared.presentIfOnShelf(item.reveal) { NSWorkspace.shared.activateFileViewerSelecting(item.reveal) } }          // sur l'étagère : on l'ouvre dessus
 
     private var swipeFade: Double { 1 - Double(min(max(swipe, 0) / 300, 1)) * 0.8 }
     private var lift: Double { item.dragging ? 0.06 : 0.11 }

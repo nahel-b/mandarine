@@ -3,7 +3,7 @@ import SwiftUI
 /// Essai de design : l'étagère de l'encoche (éléments gardés sous la main : fichiers, liens, texte).
 /// Données d'exemple seulement pour l'instant ; rien n'est branché sur les vrais glisser-déposer.
 enum ShelfKind {
-    case image, pdf, video, audio, link, text, other
+    case image, pdf, video, audio, link, text, folder, other
 
     var symbol: String {
         switch self {
@@ -13,6 +13,7 @@ enum ShelfKind {
         case .audio: return "waveform"
         case .link: return "link"
         case .text: return "text.alignleft"
+        case .folder: return "folder.fill"
         case .other: return "doc"
         }
     }
@@ -24,11 +25,13 @@ enum ShelfKind {
         case .audio: return Color(red: 0.42, green: 0.31, blue: 0.64)
         case .link: return Color(red: 0.18, green: 0.49, blue: 0.43)
         case .text: return Color(red: 0.64, green: 0.38, blue: 0.17)
+        case .folder: return Color(red: 0.25, green: 0.52, blue: 0.82)
         case .other: return Color(red: 0.45, green: 0.47, blue: 0.50)
         }
     }
     var isLink: Bool { self == .link }
     var isFile: Bool { self != .link && self != .text }
+    var isFolder: Bool { self == .folder }
 }
 
 /// Ce que l'élément est vraiment : un fichier (on garde son chemin), un lien, du texte.
@@ -42,9 +45,15 @@ struct ShelfItem: Identifiable, Equatable {
     var detail: String          // taille, durée, pages…
     var age: String
     var title: String? = nil    // titre d'un lien
+    var pinned = false          // épinglé : reste sur l'étagère même glissé dehors
 }
 
 extension ShelfItem {
+    /// L'icône que le Finder donne à ce fichier ou dossier (dossiers et fichiers sans aperçu).
+    var fileIcon: NSImage? {
+        guard case .file(let u)? = payload, kind == .folder || kind == .other else { return nil }
+        return NSWorkspace.shared.icon(forFile: u.path)
+    }
     /// « il y a 2 min », ou « à l'instant ».
     var agoText: String { age == L("now") ? age : L("\(age) ago") }
 }

@@ -168,11 +168,16 @@ enum Catalog {
         case .actions:
             let isText = urls.count == 1 && FileKind.detect(urls[0]) == .snippet
             let actions: [FileAction] = isText ? [.copy, .searchWeb, .switchView]
-                : linksOnly ? [.airDrop, .float, .copy, .copyPath] : FileAction.allCases.filter { $0 != .searchWeb }
+                : linksOnly ? [.airDrop, .float, .copy, .copyPath] : FileAction.allCases.filter { $0 != .searchWeb && $0 != .shelfAdd && $0 != .shelfPin }
             return actions.map {
                 let isLink = linksOnly && $0 == .copyPath
-                return WheelItem(id: $0.rawValue, label: isLink ? L("COPY LINK") : $0.label, caption: isLink ? L("Copy Link") : $0.caption,
-                                 symbol: $0.symbol, payload: .action($0))
+                var item = WheelItem(id: $0.rawValue, label: isLink ? L("COPY LINK") : $0.label, caption: isLink ? L("Copy Link") : $0.caption,
+                                     symbol: $0.symbol, payload: .action($0))
+                // FLOAT mène à l'étagère de l'encoche : deux sous-pétales, ajouter ou épingler (épinglé = reste même glissé dehors)
+                if $0 == .float, AppSettings.shared.shelfEnabled {
+                    item.children = [.shelfAdd, .shelfPin].map { WheelItem(id: $0.rawValue, label: $0.label, caption: $0.caption, symbol: $0.symbol, payload: .action($0)) }
+                }
+                return item
             }
         case .convert:
             guard let kind = FileKind.common(of: urls), let first = urls.first else { return [] }

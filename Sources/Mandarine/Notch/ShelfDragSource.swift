@@ -23,6 +23,17 @@ enum ShelfActions {
         case nil: break
         }
     }
+    /// Double clic : ouvre le fichier (un dossier s'ouvre dans le Finder), le lien dans le navigateur ; un texte est copié.
+    static func open(_ items: [ShelfItem]) {
+        for i in items {
+            switch i.payload {
+            case .file(let u): NSWorkspace.shared.open(u)
+            case .link(let u): NSWorkspace.shared.open(u)
+            default: break
+            }
+        }
+        if items.allSatisfy({ if case .text = $0.payload { return true } else { return false } }) { copy(items) }
+    }
     /// Pour une sélection : tous les fichiers ensemble dans le Finder, tous les liens ouverts.
     static func reveal(_ items: [ShelfItem]) {
         let files = items.compactMap { i -> URL? in if case .file(let u) = i.payload { return u } else { return nil } }
@@ -94,6 +105,8 @@ final class ShelfDragView: NSView, NSDraggingSource {
     var onClick: (NSEvent.ModifierFlags) -> Void = { _ in }
     var onHover: (Bool) -> Void = { _ in }
     private var downAt: NSPoint?
+    private var mayMove = false          // ⌥ tenue au départ du glisser : le Finder peut déplacer (même disque) ; sinon c'est toujours une copie
+    private var refs: [(old: URL, ref: URL)] = []          // adresses « par référence » : elles suivent un fichier déplacé
 
     /// Clic droit : localiser, copier, enlever.
     override func menu(for event: NSEvent) -> NSMenu? {
@@ -103,6 +116,8 @@ final class ShelfDragView: NSView, NSDraggingSource {
         if all.contains(where: { if case .file = $0.payload { return true } else { return false } }) { menu.addItem(Self.entry(L("Locate"), "magnifyingglass") { ShelfActions.reveal(all) }) }
         else if case .link = payload { menu.addItem(Self.entry(L("Open"), "safari") { ShelfActions.reveal(all) }) }
         menu.addItem(Self.entry(L("Copy"), "doc.on.doc") { ShelfActions.copy(all) })
+        let allPinned = all.allSatisfy(\.pinned)
+        menu.addItem(Self.entry(allPinned ? L("Unpin") : L("Pin"), allPinned ? "pin.slash" : "pin") { Task { @MainActor in ShelfStore.shared.setPinned(Set(all.map(\.id)), !allPinned) } })
         menu.addItem(.separator())
         menu.addItem(Self.entry(all.count > 1 ? L("Take \(all.count) items off the shelf") : L("Take off the shelf"), "trash") {
             Task { @MainActor in ShelfSound.remove(); ShelfStore.shared.remove(Set(all.map(\.id))) }
@@ -146,7 +161,12 @@ final class ShelfDragView: NSView, NSDraggingSource {
             let icon: NSImage
             switch pl {
             case .file(let u): di = NSDraggingItem(pasteboardWriter: u as NSURL); icon = NSWorkspace.shared.icon(forFile: u.path)
-            case .link(let u): di = NSDraggingItem(pasteboardWriter: u as NSURL); icon = NSImage(systemSymbolName: "link", accessibilityDescription: nil) ?? NSImage()
+            case .link(let u):          // un vrai lien : adresse + texte, jamais un fichier .webloc
+                let pb = NSPasteboardItem()
+                pb.setString(u.absoluteString, forType: .URL)
+                pb.setString(u.absoluteString, forType: NSPasteboard.PasteboardType("public.url"))
+                pb.setString(u.absoluteString, forType: .string)
+                di = NSDraggingItem(pasteboardWriter: pb); icon = NSImage(systemSymbolName: "link", accessibilityDescription: nil) ?? NSImage()
             case .text(let t): di = NSDraggingItem(pasteboardWriter: t as NSString); icon = NSImage(systemSymbolName: "text.alignleft", accessibilityDescription: nil) ?? NSImage()
             }
             icon.size = NSSize(width: 48, height: 48)
@@ -154,6 +174,7 @@ final class ShelfDragView: NSView, NSDraggingSource {
             dragged.append(di)
         }
         guard !dragged.isEmpty else { return }
+        mayMove = event.modifierFlags.contains(.option)
         let session = beginDraggingSession(with: dragged, event: event, source: self)
         session.draggingFormation = .pile
         session.animatesToStartingPositionsOnCancelOrFail = true
@@ -162,24 +183,45 @@ final class ShelfDragView: NSView, NSDraggingSource {
     override func mouseUp(with event: NSEvent) {
         let wasClick = downAt != nil
         downAt = nil
-        if wasClick { onClick(event.modifierFlags); Task { @MainActor in ShelfSound.press() } }
+        if wasClick {
+            if event.clickCount >= 2 { let all = group.isEmpty ? (item.map { [$0] } ?? []) : group; ShelfActions.open(all); Task { @MainActor in ShelfSound.press() } }          // double clic : ouvrir
+            else { onClick(event.modifierFlags); Task { @MainActor in ShelfSound.press() } }
+        }
     }
 
-    func draggingSession(_ session: NSDraggingSession, sourceOperationMaskFor context: NSDraggingContext) -> NSDragOperation { .copy }
+    func draggingSession(_ session: NSDraggingSession, sourceOperationMaskFor context: NSDraggingContext) -> NSDragOperation { mayMove && context != .withinApplication ? [.copy, .move] : .copy }
     func ignoreModifierKeys(for session: NSDraggingSession) -> Bool { true }          // ⇧ ⌘ ⌥ ⌃ servent à ouvrir la roue, pas à changer l'opération
     func draggingSession(_ session: NSDraggingSession, willBeginAt screenPoint: NSPoint) {
-        Task { @MainActor in ShelfPanelController.shared.draggingOut = true; ShelfPanelController.shared.wheelTookDrag = false; ShelfSound.press() }
         let all = group.isEmpty ? (item.map { [$0] } ?? []) : group
+        let dragIDs = all.map(\.id)
+        refs = all.compactMap { i -> (URL, URL)? in
+            guard case .file(let u)? = i.payload, let r = (u as NSURL).fileReferenceURL() else { return nil }
+            return (u, r)
+        }
+        Task { @MainActor in
+            let c = ShelfPanelController.shared
+            c.draggedIDs = dragIDs; c.consumedByShelf = false; c.draggingOut = true; c.wheelTookDrag = false; ShelfSound.press()
+        }
         let urls = all.compactMap { i -> URL? in switch i.payload { case .file(let u), .link(let u): return u; default: return nil } }
         if urls.isEmpty, all.count == 1, case .text(let t)? = all.first?.payload { DragMonitor.shared.beginInternalDrag([], text: t) }
         else { DragMonitor.shared.beginInternalDrag(urls, text: "") }
     }
     func draggingSession(_ session: NSDraggingSession, endedAt screenPoint: NSPoint, operation: NSDragOperation) {
         DragMonitor.shared.endInternalDrag()
-        let ids = Set((group.isEmpty ? (item.map { [$0] } ?? []) : group).map(\.id)), taken = operation != []          // quelqu'un a accepté l'élément (dossier, app, roue…)
+        let moved = operation.contains(.move) ? refs : []
+        let ids = Set((group.isEmpty ? (item.map { [$0] } ?? []) : group).filter { !$0.pinned }.map(\.id)), taken = operation != []          // les épinglés restent          // quelqu'un a accepté l'élément (dossier, app, roue…)
         Task { @MainActor in
-            ShelfPanelController.shared.draggingOut = false
-            guard taken, !ids.isEmpty, AppSettings.shared.shelfRemoveOnDrag else { return }
+            if !moved.isEmpty {          // le Finder a déplacé le fichier : l'élément le suit à sa nouvelle place
+                try? await Task.sleep(nanoseconds: 500_000_000)
+                let moves = moved.compactMap { m -> (from: URL, to: URL)? in
+                    guard let new = (m.ref as NSURL).filePathURL, new.path != m.old.path else { return nil }
+                    return (m.old, new)
+                }
+                if !moves.isEmpty { ShelfStore.shared.follow(moves) }
+            }
+            let c = ShelfPanelController.shared
+            c.draggingOut = false
+            guard taken, !ids.isEmpty, !c.consumedByShelf, AppSettings.shared.shelfRemoveOnDrag else { c.draggedIDs = []; return }
             try? await Task.sleep(nanoseconds: 600_000_000)          // la roue reçoit parfois le dépôt un instant après la fin du glisser
             guard !ShelfPanelController.shared.wheelTookDrag else { return }          // déposé sur la roue : l'élément reste
             ShelfSound.drop()
@@ -193,6 +235,7 @@ final class ShelfDragView: NSView, NSDraggingSource {
 final class ShelfHostingView<Content: View>: NSHostingView<Content> {
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
     override var mouseDownCanMoveWindow: Bool { false }
+    override func scrollWheel(with event: NSEvent) { MainActor.assumeIsolated { ShelfPanelController.shared.scroll(event) } }          // pages de l'étagère
     override func hitTest(_ point: NSPoint) -> NSView? {
         let p = convert(point, from: superview)
         if let h = Self.sources(in: self).first(where: { !$0.isHiddenOrHasHiddenAncestor && $0.convert($0.bounds, to: self).contains(p) }) { return h }

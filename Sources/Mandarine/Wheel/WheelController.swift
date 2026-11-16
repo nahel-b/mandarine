@@ -481,6 +481,7 @@ final class WheelController {
         if forced == nil { ReplaceMode.shared.capture() }          // la touche d'inversion est lue maintenant : le travail démarre un peu plus tard
         let dropped = forced ?? DragMonitor.shared.latestURLs(fallback: urls)
         let files = ScreenshotStaging.stabilize(dropped)          // miniature de capture d'écran : fichier temporaire recopié
+        if DragMonitor.shared.isInternalDrag { MainActor.assumeIsolated { ShelfStore.shared.watch(files) } }          // un élément de l'étagère : ses résultats y reviendront
         if DragMonitor.debugLog { DragMonitor.log("DROP " + ScreenshotStaging.describe(dropped, files)) }
         // Style Wii, outil à fenêtre : l'écran Wii reste, zoome sur la case et devient la fenêtre de l'outil
         if AppSettings.shared.appearance == .wii, case .tool(let id) = item.payload, !ToolRegistry.isDirect(id) {
