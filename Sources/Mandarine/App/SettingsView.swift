@@ -90,6 +90,13 @@ struct SettingsView: View {
                 Picker(L("Menu style"), selection: $s.appearance) { ForEach(MenuAppearance.allCases) { Text(L($0.title)).tag($0) } }
                 Text(s.appearance == .wii ? L("A small Wii-style screen: every tool is a channel, with a clock, a pointer hand and a description line.") : s.appearance.isBubbles ? L("Tools are round bubbles floating around your logo.") : L("The radial wheel."))
                     .font(.caption).foregroundStyle(.secondary)
+                Toggle(L("Show the shelf at the top of the screen"), isOn: $s.shelfEnabled)
+                if s.shelfEnabled {
+                    Picker(L("Shelf style"), selection: $s.shelfStyle) { ForEach(ShelfStyle.allCases) { Text($0.title).tag($0.rawValue) } }.pickerStyle(.segmented)
+                    Toggle(L("Take an item off the shelf once dragged out (except onto the wheel)"), isOn: $s.shelfRemoveOnDrag)
+                }
+                Text(L("A shelf under the notch: drop files, links or text on it to keep them at hand, then drag them out again — onto a folder, an app, or the wheel."))
+                    .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                 if s.appearance == .wii {
                     Toggle(L("Show the screen in a TV"), isOn: $s.wiiTV)
                     Text(L("The Wii screen sits inside an old see-through TV. Turn it off to get the screen alone."))

@@ -91,6 +91,9 @@ final class DragMonitor {
         startPolling()
     }
 
+    /// Un glisser venu de Mandarine même (notification, étagère) est en cours.
+    var isInternalDrag: Bool { internalDrag }
+
     func endInternalDrag() {
         guard internalDrag else { return }
         internalDrag = false

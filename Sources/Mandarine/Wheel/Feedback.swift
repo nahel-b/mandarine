@@ -91,6 +91,24 @@ final class Feedback {
         lastSlide = Date(); playFirst(wiiSlideP)
     }
 
+    /// Sons de l'écran Wii joués quel que soit le style de menu choisi (l'étagère « Chaînes » les utilise).
+    enum WiiSound { case open, hover, press, release, drop, close, buttonHover, done }
+    func play(_ s: WiiSound) {
+        switch s {
+        case .open: NSHapticFeedbackManager.defaultPerformer.perform(.levelChange, performanceTime: .now); playFirst(wiiOpen)
+        case .hover:
+            guard !wiiHover.isEmpty, Date().timeIntervalSince(lastPlay) > 0.04 else { return }
+            lastPlay = Date(); NSHapticFeedbackManager.defaultPerformer.perform(.alignment, performanceTime: .now)
+            let p = wiiHover[wiiHoverNext % wiiHover.count]; wiiHoverNext += 1; p.currentTime = 0; p.play()
+        case .press: wiiPress()
+        case .release: wiiRelease()
+        case .drop: NSHapticFeedbackManager.defaultPerformer.perform(.levelChange, performanceTime: .now); playFirst(wiiDrop)
+        case .close: wiiClose()
+        case .buttonHover: wiiButtonHover()
+        case .done: done()
+        }
+    }
+
     /// Apparition de la roue / de l'écran : son d'ouverture en style Wii, sinon le « tick » habituel.
     func open() {
         guard isWii else { tick(); return }

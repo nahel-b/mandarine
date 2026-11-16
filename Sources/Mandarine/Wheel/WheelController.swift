@@ -477,6 +477,7 @@ final class WheelController {
     private func drop(overriding forced: [URL]?) -> Bool {
         if receivingPromise && forced == nil { return true }          // la capture arrive : ne pas partir sur le fichier temporaire
         guard let item = targetItem, item.enabled else { dismiss(); return false }
+        if DragMonitor.shared.isInternalDrag { MainActor.assumeIsolated { ShelfPanelController.shared.wheelTookDrag = true } }          // un élément de l'étagère vient d'être déposé sur la roue : il reste
         if forced == nil { ReplaceMode.shared.capture() }          // la touche d'inversion est lue maintenant : le travail démarre un peu plus tard
         let dropped = forced ?? DragMonitor.shared.latestURLs(fallback: urls)
         let files = ScreenshotStaging.stabilize(dropped)          // miniature de capture d'écran : fichier temporaire recopié

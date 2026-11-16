@@ -8,6 +8,12 @@ struct WhatsNewRelease { let version: String; let headline: String; let items: [
 enum WhatsNew {
     /// À compléter à chaque version (la plus récente d'abord) : c'est ce que voit l'utilisateur après la mise à jour.
     static var releases: [WhatsNewRelease] { [
+        WhatsNewRelease(version: "1.13.0", headline: L("A shelf under the notch"), items: [
+            WhatsNewItem(symbol: "tray.full", title: L("Keep things at hand"),
+                         text: L("Drop files, links or text on the notch: they stay in a shelf that opens when you point at it. Drag them out again — onto a folder, an app, or the wheel, where you apply any tool. Click to select, ⇧-click for a range, right-click to locate or remove. Two looks: Petals (a transparent half-wheel) and Channels (a CRT screen with the Wii menu bar). Settings → Appearance.")),
+            WhatsNewItem(symbol: "crop", title: L("Crop with a bigger frame"),
+                         text: L("In Crop Image, type a bigger width or height to add room around the photo, filled with a color or left transparent.")),
+        ]),
         WhatsNewRelease(version: "1.12.0", headline: L("People in Face Select"), items: [
             WhatsNewItem(symbol: "person.2", title: L("Save the people you look for"),
                          text: L("In Settings → People, create people and add a few photos of each. Face Select then recognizes them among your photos and shows them first, with their name and a checkbox. You can also right-click an unknown face to save it as a person. Only a small fingerprint of each face stays on your Mac.")),

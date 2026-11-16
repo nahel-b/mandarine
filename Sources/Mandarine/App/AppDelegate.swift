@@ -12,6 +12,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         return nil
     }
     private var settingsWindow: NSWindow?
+    var notchDemoWindow: NSWindow?          // essai de l'étagère de l'encoche
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Une icône par fichier MenuBarIcon*.png|svg|pdf : permet de comparer plusieurs candidats côte à côte dans la barre de menus.
@@ -32,6 +33,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         FaceCache.purge()
         monitor.start()
         runLaunchArguments()
+        if CommandLine.arguments.count < 2 { ShelfPanelController.shared.start() }          // l'étagère sous l'encoche
         if CommandLine.arguments.count < 2 { Updater.shared.start() }
         if CommandLine.arguments.count < 2 { DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { FullDiskAccess.checkAtLaunch() } }
         if CommandLine.arguments.count < 2 { DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) { WhatsNew.showIfNeeded() } }
@@ -101,6 +103,39 @@ extension AppDelegate {
     func runLaunchArguments() {
         let a = Array(CommandLine.arguments.dropFirst())
         if a.count >= 4, a[0] == "--snapshot" { snapshot(a); return }
+        if a.count >= 3, a[0] == "--shelftest" {      // essai : --shelftest fichier sortie.png [petals|channels] (avec MANDARINE_MODEL_DIR pour ne pas toucher aux vraies données)
+            Task { @MainActor in
+                AppSettings.shared.shelfStyle = a.count > 3 ? a[3] : "petals"
+                ShelfPanelController.shared.start()
+                let store = ShelfStore.shared
+                for it in store.items { store.remove(it.id) }
+                var providers: [NSItemProvider] = []
+                if let p = NSItemProvider(contentsOf: URL(fileURLWithPath: a[1])) { providers.append(p) }
+                providers.append(NSItemProvider(object: URL(string: "https://youtu.be/dQw4w9")! as NSURL))
+                providers.append(NSItemProvider(object: "Une note glissée depuis un autre logiciel" as NSString))
+                store.add(providers: providers)
+                try? await Task.sleep(nanoseconds: 800_000_000)
+                print("éléments :", store.items.map { "\($0.kind)/\($0.name)/\($0.detail)" })
+                ShelfPanelController.shared.holdOpen = true
+                ShelfPanelController.shared.setOpen(true)
+                try? await Task.sleep(nanoseconds: 1_500_000_000)
+                print("capture :", ShelfPanelController.shared.debugCapture(to: URL(fileURLWithPath: a[2])))
+                print("fichier d'étagère :", FileManager.default.fileExists(atPath: ShelfStore.file.path))
+                exit(0)
+            }
+            return
+        }
+        if a.first == "--notchdemo" {      // essai : l'étagère de l'encoche, quatre designs, sur un faux bureau
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+                let host = NSHostingView(rootView: NotchDemoView(design: ShelfDesign(rawValue: a.count > 1 ? a[1] : "") ?? .grid, state: ShelfState(rawValue: a.count > 2 ? a[2] : "") ?? .filled))
+                let win = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 760, height: 520), styleMask: [.titled, .closable, .miniaturizable], backing: .buffered, defer: false)
+                win.title = "Mandarine — étagère de l'encoche (essai)"
+                win.contentView = host; win.isReleasedWhenClosed = false; win.center()
+                NSApp.activate(ignoringOtherApps: true); win.makeKeyAndOrderFront(nil)
+                self.notchDemoWindow = win
+            }
+            return
+        }
         if a.count >= 3, a[0] == "--upscale" {      // test : --upscale fichier facteur
             Task {
                 do {
@@ -242,6 +277,17 @@ extension AppDelegate {
         }
         if a.count >= 2, a[0] == "--tags" {          // test : --tags fichier… (étiquettes Finder lues)
             for g in TagSelect.groups(a.dropFirst().map { URL(fileURLWithPath: $0) }) { print(g.tag.name, "couleur", g.tag.color, "→", g.files.map(\.lastPathComponent).joined(separator: ", ")) }
+            exit(0)
+        }
+        if a.count >= 8, a[0] == "--croptest" {      // test : --croptest fichier sortie.png x y largeur hauteur transparent|#RRGGBB  (pixels ; peut dépasser l'image)
+            do {
+                let (img, _) = try ImageEngine.load(URL(fileURLWithPath: a[1]))
+                let rect = CGRect(x: Double(a[3])!, y: Double(a[4])!, width: Double(a[5])!, height: Double(a[6])!)
+                let color: CGColor? = a[7] == "transparent" ? nil : NSColor(hex: String(a[7].dropFirst()))?.cgColor
+                guard let out = ImageEngine.crop(img, to: rect, fill: color) else { print("ERR crop"); exit(1) }
+                try ImageEngine.write(out, to: URL(fileURLWithPath: a[2]), ext: "png")
+                print("OK", out.width, "x", out.height, "alpha", ImageEngine.hasAlpha(out))
+            } catch { print("ERR", error.localizedDescription) }
             exit(0)
         }
         if a.first == "--peopletest" {      // test sans photos : enregistrement, relecture et reconnaissance de personnes avec des empreintes synthétiques
@@ -935,11 +981,13 @@ extension AppDelegate {
         } else if target[0] == "toaststyles" {
             view = AnyView(ToastLab(page: Int(target.count > 1 ? target[1] : "1") ?? 1))
         } else if target[0] == "whatsnew" {
-            view = AnyView(WhatsNewView(releases: WhatsNew.releases, highlighted: ["1.12.0", "1.11.1"], close: {}))
+            view = AnyView(WhatsNewView(releases: WhatsNew.releases, highlighted: ["1.13.0", "1.12.0"], close: {}))
         } else if target[0] == "features" {
             view = AnyView(FeaturesView(startTab: target.count > 1 ? target[1] : "image", startQuery: target.count > 2 ? target[2] : "", close: {}))
         } else if target[0] == "help" {
             view = AnyView(HelpView(startPage: Int(target[1]) ?? 0, close: {}))
+        } else if target[0] == "notch", target.count >= 3, let d = ShelfDesign(rawValue: target[1]), let st = ShelfState(rawValue: target[2]) {
+            view = AnyView(NotchShelfPanel(design: d, state: st).padding(.horizontal, 20).padding(.bottom, 20).background(Color(red: 0.81, green: 0.85, blue: 0.89)))
         } else if target[0] == "tool", let id = ToolID(rawValue: target[1]) {
             view = AnyView(ToolRegistry.view(for: id, urls: urls, close: {}).padding(30).background(Color(white: 0.55)))
         } else { exit(2) }

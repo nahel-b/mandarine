@@ -17,6 +17,11 @@ struct RegionEditor<Content: View>: View {
     var allowsDraw = false
     var dimOutside = false
     var fillStyle: ((Region) -> AnyView)? = nil
+    /// Zone où le cadre peut aller (normalisée, comme les cadres) : l'image (0…1) ou, si on l'a agrandi en tapant une taille, un rectangle plus grand.
+    /// L'éditeur montre toute cette zone ; ce qui dépasse de l'image est noir.
+    var bounds = CGRect(x: 0, y: 0, width: 1, height: 1)
+    /// Ce qu'on voit dans la partie du cadre qui dépasse de l'image (damier = transparent, ou une couleur).
+    var outsideFill: AnyView? = nil
     @ViewBuilder var content: () -> Content
 
     private enum Handle { case tl, tr, bl, br, t, b, l, r, move }
@@ -25,13 +30,17 @@ struct RegionEditor<Content: View>: View {
 
     var body: some View {
         GeometryReader { geo in
-            let frame = fit(contentSize, in: geo.size)
+            let frame = imageFrame(in: geo.size)
             ZStack(alignment: .topLeading) {
                 Theme.previewBG
+                if bounds != CGRect(x: 0, y: 0, width: 1, height: 1), let r = regions.first, let f = outsideFill {          // partie du cadre hors de l'image : damier ou couleur
+                    let vr = viewRect(r.rect, frame)
+                    f.frame(width: max(vr.width, 1), height: max(vr.height, 1)).position(x: vr.midX, y: vr.midY)
+                }
                 content().frame(width: frame.width, height: frame.height).position(x: frame.midX, y: frame.midY)
                 if dimOutside, let r = regions.first {
                     let vr = viewRect(r.rect, frame)
-                    Path { p in p.addRect(frame); p.addRect(vr) }
+                    Path { p in p.addRect(CGRect(origin: .zero, size: geo.size)); p.addRect(vr) }
                         .fill(Color.black.opacity(0.5), style: FillStyle(eoFill: true))
                 }
                 ForEach(regions) { r in
@@ -65,6 +74,13 @@ struct RegionEditor<Content: View>: View {
     }
 
     // MARK: Géométrie
+    /// Où l'image est dessinée : seule (marge 0) ou au centre d'une zone plus grande qui laisse la place du cadre agrandi.
+    private func imageFrame(in box: CGSize) -> CGRect {
+        guard bounds.width > 0, bounds.height > 0, contentSize.width > 0, contentSize.height > 0 else { return fit(contentSize, in: box) }
+        let outer = fit(CGSize(width: contentSize.width * bounds.width, height: contentSize.height * bounds.height), in: box)      // la zone entière remplit l'éditeur
+        let w = outer.width / bounds.width, h = outer.height / bounds.height
+        return CGRect(x: outer.minX - bounds.minX * w, y: outer.minY - bounds.minY * h, width: w, height: h)
+    }
     private func fit(_ size: CGSize, in box: CGSize) -> CGRect {
         guard size.width > 0, size.height > 0 else { return CGRect(origin: .zero, size: box) }
         let s = min(box.width / size.width, box.height / size.height)
@@ -105,8 +121,9 @@ struct RegionEditor<Content: View>: View {
     // MARK: Gestes
     private func onDrag(_ v: DragGesture.Value, _ frame: CGRect) {
         let p = v.location
-        let nx = { (x: CGFloat) in min(1, max(0, (x - frame.minX) / frame.width)) }
-        let ny = { (y: CGFloat) in min(1, max(0, (y - frame.minY) / frame.height)) }
+        let loX = bounds.minX, hiX = bounds.maxX, loY = bounds.minY, hiY = bounds.maxY          // limites du cadre
+        let nx = { (x: CGFloat) in min(hiX, max(loX, (x - frame.minX) / frame.width)) }
+        let ny = { (y: CGFloat) in min(hiY, max(loY, (y - frame.minY) / frame.height)) }
 
         if active == nil && drawing == nil {
             if let (id, h) = hit(v.startLocation, frame), let r = regions.first(where: { $0.id == id }) {
@@ -127,22 +144,22 @@ struct RegionEditor<Content: View>: View {
         var r = a.startRect
         switch a.handle {
         case .move:
-            r.origin.x = min(max(0, r.origin.x + dx), 1 - r.width)
-            r.origin.y = min(max(0, r.origin.y + dy), 1 - r.height)
+            r.origin.x = min(max(loX, r.origin.x + dx), hiX - r.width)
+            r.origin.y = min(max(loY, r.origin.y + dy), hiY - r.height)
         default:
             var minX = r.minX, maxX = r.maxX, minY = r.minY, maxY = r.maxY
-            if [.tl, .bl, .l].contains(a.handle) { minX = min(max(0, minX + dx), maxX - 0.02) }
-            if [.tr, .br, .r].contains(a.handle) { maxX = max(min(1, maxX + dx), minX + 0.02) }
-            if [.tl, .tr, .t].contains(a.handle) { minY = min(max(0, minY + dy), maxY - 0.02) }
-            if [.bl, .br, .b].contains(a.handle) { maxY = max(min(1, maxY + dy), minY + 0.02) }
+            if [.tl, .bl, .l].contains(a.handle) { minX = min(max(loX, minX + dx), maxX - 0.02) }
+            if [.tr, .br, .r].contains(a.handle) { maxX = max(min(hiX, maxX + dx), minX + 0.02) }
+            if [.tl, .tr, .t].contains(a.handle) { minY = min(max(loY, minY + dy), maxY - 0.02) }
+            if [.bl, .br, .b].contains(a.handle) { maxY = max(min(hiY, maxY + dy), minY + 0.02) }
             if let ratio = lockAspect, contentSize.width > 0 {
                 // ratio px = (nw * W) / (nh * H)
                 let k = ratio * contentSize.height / contentSize.width        // nw / nh
                 let w = maxX - minX
                 var h = w / k
                 let anchorBottom = [.tl, .tr].contains(a.handle)
-                if anchorBottom { minY = maxY - h; if minY < 0 { minY = 0; h = maxY; let w2 = h * k; if [.tl, .bl].contains(a.handle) { minX = maxX - w2 } else { maxX = minX + w2 } } }
-                else { maxY = minY + h; if maxY > 1 { maxY = 1; h = maxY - minY; let w2 = h * k; if [.tl, .bl].contains(a.handle) { minX = maxX - w2 } else { maxX = minX + w2 } } }
+                if anchorBottom { minY = maxY - h; if minY < loY { minY = loY; h = maxY - loY; let w2 = h * k; if [.tl, .bl].contains(a.handle) { minX = maxX - w2 } else { maxX = minX + w2 } } }
+                else { maxY = minY + h; if maxY > hiY { maxY = hiY; h = maxY - minY; let w2 = h * k; if [.tl, .bl].contains(a.handle) { minX = maxX - w2 } else { maxX = minX + w2 } } }
             }
             r = CGRect(x: minX, y: minY, width: maxX - minX, height: maxY - minY)
         }
@@ -174,7 +191,12 @@ struct AspectRatioChoice: Hashable {
 }
 
 /// Ligne « Aspect ratio » + champs W × H, partagée par Crop Image / Crop Video.
+/// `extend` : taper une taille plus grande que l'image est permis (le cadre grandit autour de l'image) ; `didType` reçoit alors le cadre
+/// obtenu, pour que l'éditeur agrandisse sa zone. À la main, on ne peut qu'aller jusqu'au bord de cette zone.
 struct CropControls: View {
+    var extend = false
+    var didType: ((CGRect) -> Void)? = nil
+    static let maxScale: CGFloat = 3                  // jusqu'à 3 fois l'image
     let pixelSize: CGSize
     @Binding var region: Region
     @Binding var ratio: AspectRatioChoice
@@ -186,7 +208,7 @@ struct CropControls: View {
                 Spacer()
                 PillPicker(options: AspectRatioChoice.all.map { ($0, $0.label) }, selection: Binding(
                     get: { ratio },
-                    set: { ratio = $0; if let r = $0.ratio { region.rect = .normalizedFit(ratio: r, imageSize: pixelSize) } }))
+                    set: { ratio = $0; if let r = $0.ratio { region.rect = .normalizedFit(ratio: r, imageSize: pixelSize); didType?(region.rect) } }))
             }
             HStack(spacing: 6) {
                 Text("W").sectionLabel()
@@ -199,19 +221,38 @@ struct CropControls: View {
         }
     }
 
+    /// Nouvelle position et taille sur un axe. Plus grand que l'image : centré sur l'image (bords tout autour). Sinon : même place,
+    /// ramenée dans l'image ; si le cadre dépassait, il se réduit autour de son centre.
+    private func resized(origin: CGFloat, size old: CGFloat, to new: CGFloat) -> (CGFloat, CGFloat) {
+        guard extend else { return (origin, min(new, 1 - origin)) }
+        let w = min(new, Self.maxScale)
+        if w > 1 { return ((1 - w) / 2, w) }
+        if origin < 0 || origin + old > 1 { return (min(max(origin + old / 2 - w / 2, 0), 1 - w), w) }
+        return (min(origin, 1 - w), w)
+    }
+
     private func field(width: Bool) -> some View {
         let value = Binding<Int>(
             get: { Int((width ? region.rect.width * pixelSize.width : region.rect.height * pixelSize.height).rounded()) },
             set: { v in
                 var r = region.rect
                 if width {
-                    r.size.width = min(CGFloat(max(2, v)) / pixelSize.width, 1 - r.minX)
-                    if let k = ratio.ratio { r.size.height = min(r.width * pixelSize.width / k / pixelSize.height, 1 - r.minY) }
+                    (r.origin.x, r.size.width) = resized(origin: r.minX, size: r.width, to: CGFloat(max(2, v)) / pixelSize.width)
+                    if let k = ratio.ratio {
+                        let h = r.width * pixelSize.width / k / pixelSize.height
+                        (r.origin.y, r.size.height) = resized(origin: r.minY, size: r.height, to: h)
+                        if r.height < h - 0.0001 { r.size.width = r.height * pixelSize.height * k / pixelSize.width }      // plafond atteint : on garde le ratio
+                    }
                 } else {
-                    r.size.height = min(CGFloat(max(2, v)) / pixelSize.height, 1 - r.minY)
-                    if let k = ratio.ratio { r.size.width = min(r.height * pixelSize.height * k / pixelSize.width, 1 - r.minX) }
+                    (r.origin.y, r.size.height) = resized(origin: r.minY, size: r.height, to: CGFloat(max(2, v)) / pixelSize.height)
+                    if let k = ratio.ratio {
+                        let w = r.height * pixelSize.height * k / pixelSize.width
+                        (r.origin.x, r.size.width) = resized(origin: r.minX, size: r.width, to: w)
+                        if r.width < w - 0.0001 { r.size.height = r.width * pixelSize.width / k / pixelSize.height }
+                    }
                 }
                 region.rect = r
+                didType?(r)
             })
         return TextField("", value: value, format: .number.grouping(.never))
             .textFieldStyle(.roundedBorder).frame(width: 70).multilineTextAlignment(.trailing)

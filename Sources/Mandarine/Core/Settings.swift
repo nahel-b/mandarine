@@ -100,6 +100,9 @@ final class AppSettings: ObservableObject {
     @Published var davinciNameFromFile: Bool { didSet { d.set(davinciNameFromFile, forKey: "davinciNameFromFile") } }
     @Published var wiiTV: Bool { didSet { d.set(wiiTV, forKey: "wiiTV") } }          // style Wii : l'écran est montré dans un téléviseur
     @Published var faceMatchThreshold: Double { didSet { d.set(faceMatchThreshold, forKey: "faceMatchThreshold") } }          // ressemblance minimale pour reconnaître une personne enregistrée
+    @Published var shelfEnabled: Bool { didSet { d.set(shelfEnabled, forKey: "shelfEnabled") } }          // l'étagère en haut de l'écran
+    @Published var shelfStyle: String { didSet { d.set(shelfStyle, forKey: "shelfStyle") } }              // « petals » ou « channels »
+    @Published var shelfRemoveOnDrag: Bool { didSet { d.set(shelfRemoveOnDrag, forKey: "shelfRemoveOnDrag") } }          // un élément glissé hors de l'étagère en part
     @Published var davinciMoveFiles: Bool { didSet { d.set(davinciMoveFiles, forKey: "davinciMoveFiles") } }
     @Published var launchAtLogin: Bool {
         didSet {
@@ -145,6 +148,9 @@ final class AppSettings: ObservableObject {
         davinciProjectName = d.string(forKey: "davinciProjectName") ?? "DaVinci Project"
         davinciNameFromFile = d.object(forKey: "davinciNameFromFile") as? Bool ?? true
         davinciMoveFiles = d.object(forKey: "davinciMoveFiles") as? Bool ?? true
+        shelfEnabled = d.object(forKey: "shelfEnabled") as? Bool ?? true
+        shelfRemoveOnDrag = d.object(forKey: "shelfRemoveOnDrag") as? Bool ?? true
+        shelfStyle = d.string(forKey: "shelfStyle") ?? "petals"
         faceMatchThreshold = d.object(forKey: "faceMatchThreshold") as? Double ?? 0.50
         wiiTV = ProcessInfo.processInfo.environment["MANDARINE_WIITV"].map { $0 != "0" } ?? (d.object(forKey: "wiiTV") as? Bool ?? true)          // MANDARINE_WIITV=0 : sans téléviseur (essais)
         launchAtLogin = d.bool(forKey: "launchAtLogin")

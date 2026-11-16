@@ -122,7 +122,7 @@ enum WiiText {
 }
 
 // MARK: Horloge à segments
-private struct SevenSegmentClock: View {
+struct SevenSegmentClock: View {
     let date: Date
     private static let masks: [[Bool]] = [   // a b c d e f g
         [true, true, true, true, true, true, false], [false, true, true, false, false, false, false], [true, true, false, true, true, false, true],
@@ -171,7 +171,7 @@ private struct SevenSegmentClock: View {
 }
 
 // MARK: Formes
-private struct WiiBar: Shape {
+struct WiiBar: Shape {
     func path(in r: CGRect) -> Path {
         var p = Path()
         let w = r.width
@@ -188,7 +188,7 @@ private struct WiiBar: Shape {
     }
 }
 
-private struct WiiBarLine: Shape {
+struct WiiBarLine: Shape {
     func path(in r: CGRect) -> Path {
         var p = Path()
         let w = r.width

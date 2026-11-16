@@ -50,6 +50,19 @@ enum ImageEngine {
         return (cg, props)
     }
 
+    /// Recadre `rect` (pixels, origine en haut à gauche), qui peut dépasser l'image : la partie ajoutée est transparente (`fill` nil) ou de cette couleur.
+    static func crop(_ image: CGImage, to rect: CGRect, fill: CGColor?) -> CGImage? {
+        let W = CGFloat(image.width), H = CGFloat(image.height)
+        if CGRect(x: 0, y: 0, width: W, height: H).contains(rect) { return image.cropping(to: rect) }
+        guard rect.width >= 1, rect.height >= 1, rect.width <= 16384, rect.height <= 16384,
+              let ctx = CGContext(data: nil, width: Int(rect.width), height: Int(rect.height), bitsPerComponent: 8, bytesPerRow: 0,
+                                  space: CGColorSpace(name: CGColorSpace.sRGB)!, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return nil }
+        if let fill = fill { ctx.setFillColor(fill); ctx.fill(CGRect(x: 0, y: 0, width: rect.width, height: rect.height)) }
+        ctx.interpolationQuality = .high
+        ctx.draw(image, in: CGRect(x: -rect.minX, y: rect.height + rect.minY - H, width: W, height: H))          // le CGContext a son origine en bas
+        return ctx.makeImage()
+    }
+
     static func flatten(_ image: CGImage, on color: CGColor = CGColor(gray: 1, alpha: 1)) -> CGImage {
         let w = image.width, h = image.height
         guard let ctx = CGContext(data: nil, width: w, height: h, bitsPerComponent: 8, bytesPerRow: 0,

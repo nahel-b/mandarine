@@ -35,12 +35,16 @@ enum Replacer {
             try? undo(done)          // une erreur en route : on remet ce qui avait déjà été fait
             throw error
         }
+        let moves = done.map { ($0.original, $0.final) }
+        Task { @MainActor in ShelfStore.shared.follow(moves) }          // l'étagère suit : l'élément devient son résultat
         return done
     }
 
     /// Rend l'original et remet le résultat là où il avait été écrit.
     static func undo(_ list: [Replacement]) throws {
         let fm = FileManager.default
+        let back = list.map { ($0.final, $0.original) }
+        defer { Task { @MainActor in ShelfStore.shared.follow(back) } }          // et il redevient l'original
         for r in list.reversed() {
             if r.final != r.output, fm.fileExists(atPath: r.final.path), !fm.fileExists(atPath: r.output.path) { try fm.moveItem(at: r.final, to: r.output) }
             if fm.fileExists(atPath: r.trashed.path), !fm.fileExists(atPath: r.original.path) { try fm.moveItem(at: r.trashed, to: r.original) }
