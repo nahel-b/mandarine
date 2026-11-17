@@ -8,6 +8,10 @@ struct WhatsNewRelease { let version: String; let headline: String; let items: [
 enum WhatsNew {
     /// À compléter à chaque version (la plus récente d'abord) : c'est ce que voit l'utilisateur après la mise à jour.
     static var releases: [WhatsNewRelease] { [
+        WhatsNewRelease(version: "1.15.1", headline: L("Installer fix"), items: [
+            WhatsNewItem(symbol: "arrow.down.app", title: L("Opens after download"),
+                         text: L("The app downloaded from GitHub could be reported as damaged by macOS. Its signature is now valid, so it opens normally.")),
+        ]),
         WhatsNewRelease(version: "1.15.0", headline: L("Keys and reordering"), items: [
             WhatsNewItem(symbol: "keyboard", title: L("Keyboard on the shelf"),
                          text: L("Click the shelf, then press Delete to remove the selection, Esc to deselect, Space for a Quick Look preview, ⌘A to select everything.")),

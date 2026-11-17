@@ -49,5 +49,9 @@ cat > "$APP/Contents/Info.plist" <<PLIST
 PLIST
 # Signature « ad hoc », mais avec une exigence stable (l'identifiant de l'app) plutôt que l'empreinte du binaire : sans cela, macOS
 # oublie l'accès complet au disque (et les autres autorisations) à chaque nouvelle version.
-codesign --force --deep --sign - -r='designated => identifier "com.mandarine.app"' "$APP" >/dev/null 2>&1 || codesign --force --deep --sign - "$APP" >/dev/null 2>&1 || true
+# Du plus profond au plus haut : d'abord le framework Whisper, puis l'app. (Avec --deep seul, la signature de l'app était déclarée
+# « modifiée ou invalide » à cause du framework : une fois téléchargée, macOS la disait « endommagée ».)
+for fw in "$APP"/Contents/Frameworks/*.framework; do [ -d "$fw" ] && codesign --force --sign - "$fw"; done
+codesign --force --sign - -r='designated => identifier "com.mandarine.app"' "$APP"
+codesign --verify --deep --strict "$APP" || { echo "La signature de l'app est invalide"; exit 1; }
 echo "→ $APP"
