@@ -111,9 +111,17 @@ final class DragMonitor {
     private var lastDragCount = -1
     static func log(_ s: String) { FileHandle.standardError.write(Data((s + "\n").utf8)) }
 
+    /// Un texte qui n'est qu'une adresse web (sans espace ni retour à la ligne) est un lien.
+    static func webLink(in text: String) -> URL? {
+        let t = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !t.contains(" "), !t.contains("\n"), let u = URL(string: t), ["http", "https"].contains(u.scheme?.lowercased() ?? ""), u.host != nil else { return nil }
+        return u
+    }
+
     /// Ce qui est en train d'être glissé : fichiers, sinon liens, sinon texte (petit fichier). nil si rien d'exploitable.
     private func readDraggedURLs(_ pb: NSPasteboard) -> [URL]? {
-        let all = (pb.readObjects(forClasses: [NSURL.self], options: nil) as? [URL]) ?? []
+        var all = (pb.readObjects(forClasses: [NSURL.self], options: nil) as? [URL]) ?? []
+        if all.isEmpty, let t = pb.string(forType: .URL), let u = URL(string: t.trimmingCharacters(in: .whitespacesAndNewlines)), u.scheme != nil { all = [u] }          // adresse écrite en texte
         if Self.debugLog, pb.changeCount != lastLoggedCount {          // MANDARINE_DRAGLOG=1 : ce que le glisser contient vraiment
             lastLoggedCount = pb.changeCount
             let fm = FileManager.default
@@ -125,6 +133,7 @@ final class DragMonitor {
         var urls = files.isEmpty ? links : files       // un lien glissé depuis un navigateur ouvre aussi la roue
         if urls.isEmpty, settings.enableTextDrag,       // texte sélectionné et glissé : enregistré dans un petit fichier, traité comme un fichier
            let text = pb.string(forType: .string)?.trimmingCharacters(in: .whitespacesAndNewlines), text.count >= 2 {
+            if let link = Self.webLink(in: text) { return [link] }          // texte qui est une adresse web : c'est un lien (téléchargements, pas traduction)
             if text == dragText, let known = draggedURLs.first, SnippetStore.isSnippet(known) { urls = draggedURLs }
             else if let snippet = SnippetStore.make(text) { urls = [snippet]; dragText = text }
         }
@@ -138,6 +147,7 @@ final class DragMonitor {
         let pb = NSPasteboard(name: .drag)
         // Une grosse sélection (dizaines de fichiers) peut s'allonger sans que le compteur du presse-papiers bouge :
         // on relit donc aussi à intervalle régulier, et on ne garde que ce qui a changé.
+        guard !internalDrag else { return }          // glisser venu de Mandarine (étagère, notification) : le contenu est connu, on ne le relit pas
         let now = Date()
         guard pb.changeCount != seenCount || now.timeIntervalSince(lastRead) > 0.25 else { return }
         seenCount = pb.changeCount

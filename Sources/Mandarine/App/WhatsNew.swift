@@ -8,6 +8,12 @@ struct WhatsNewRelease { let version: String; let headline: String; let items: [
 enum WhatsNew {
     /// À compléter à chaque version (la plus récente d'abord) : c'est ce que voit l'utilisateur après la mise à jour.
     static var releases: [WhatsNewRelease] { [
+        WhatsNewRelease(version: "1.16.0", headline: L("Paste on the shelf"), items: [
+            WhatsNewItem(symbol: "doc.on.clipboard", title: L("⌘V on the shelf"),
+                         text: L("With the shelf open, press ⌘V to put what you copied on it: files, folders, links, images or text.")),
+            WhatsNewItem(symbol: "link", title: L("Links stay links"),
+                         text: L("A link dragged from the shelf (or a text that is just a web address) onto the wheel now offers the download tools instead of translation.")),
+        ]),
         WhatsNewRelease(version: "1.15.1", headline: L("Installer fix"), items: [
             WhatsNewItem(symbol: "arrow.down.app", title: L("Opens after download"),
                          text: L("The app downloaded from GitHub could be reported as damaged by macOS. Its signature is now valid, so it opens normally.")),

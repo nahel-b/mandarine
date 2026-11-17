@@ -67,6 +67,7 @@ final class ShelfPanelController: ObservableObject {
         if e.phase == .ended || e.phase == .cancelled { scrollAcc = 0 }
     }
     private var idleTicks = 0
+    private var hoverTicks = 0
     private var keyMonitor: Any?
     var holdOpen = false          // essais : ne pas refermer
     /// Le glisser en cours a été déposé sur la roue de Mandarine : l'élément reste sur l'étagère (le travail crée un nouveau fichier ; s'il remplace l'original, l'élément suit).
@@ -176,6 +177,8 @@ final class ShelfPanelController: ObservableObject {
             if dwell >= 2 || (inClosed && dropTarget) { setOpen(true) }
         } else if inOpen || dropTarget || draggingOut || holdOpen || Date() < holdUntil {
             closeAt = nil
+            // le pointeur reste sur l'étagère ouverte : elle prend le clavier (⌘V pour coller, Suppr, Espace…) ; elle le rend en se refermant
+            if inOpen, !draggingOut, NSEvent.pressedMouseButtons == 0 { hoverTicks += 1; if hoverTicks == 8 { takeKeyboard() } } else { hoverTicks = 0 }
         } else if let t = closeAt {
             if Date() >= t { setOpen(false) }
         } else {
@@ -206,6 +209,7 @@ final class ShelfPanelController: ObservableObject {
     func handleKey(_ e: NSEvent) -> Bool {
         let mods = e.modifierFlags.intersection(.deviceIndependentFlagsMask)
         if mods == .command, e.charactersIgnoringModifiers?.lowercased() == "a" { ShelfStore.shared.selectAll(); return true }
+        if mods == .command, e.charactersIgnoringModifiers?.lowercased() == "v" { if ShelfStore.shared.pasteFromClipboard() { ShelfSound.drop() }; return true }          // coller sur l'étagère
         guard mods.isEmpty else { return false }
         switch e.keyCode {
         case 51, 117: ShelfStore.shared.key("delete"); return true
@@ -242,7 +246,7 @@ final class ShelfPanelController: ObservableObject {
     func setOpen(_ on: Bool) {
         guard open != on else { return }
         if !on { releaseKeyboard() }
-        closeAt = nil; dwell = 0
+        closeAt = nil; dwell = 0; hoverTicks = 0
         if on { place0(open: true) }
         if on { ShelfSound.open() } else { ShelfSound.close() }
         withAnimation(.easeOut(duration: 0.12)) { open = on }

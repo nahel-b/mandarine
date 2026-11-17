@@ -103,6 +103,28 @@ final class ShelfStore: ObservableObject {
         save()
     }
 
+    /// ⌘V : ce que contient le presse-papiers (fichiers ou dossiers copiés, liens, image, texte) arrive sur l'étagère.
+    @discardableResult
+    func pasteFromClipboard(_ pb: NSPasteboard = .general) -> Bool {
+        let files = (pb.readObjects(forClasses: [NSURL.self], options: [.urlReadingFileURLsOnly: true]) as? [URL]) ?? []
+        let before = Set(items.map(\.id))
+        if !files.isEmpty {
+            for u in files { if let link = Self.linkInside(u) { add(link: link) } else { add(file: u) } }
+        } else if let links = (pb.readObjects(forClasses: [NSURL.self], options: nil) as? [URL])?.filter({ ["http", "https"].contains($0.scheme?.lowercased() ?? "") }), !links.isEmpty {
+            for u in links { add(link: u) }
+        } else if let text = pb.string(forType: .string), !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            add(text: text)          // une adresse devient un lien
+        } else if let img = NSImage(pasteboard: pb), let tiff = img.tiffRepresentation, let png = NSBitmapImageRep(data: tiff)?.representation(using: .png, properties: [:]) {
+            let dir = Self.folder.appendingPathComponent(UUID().uuidString, isDirectory: true)
+            let dest = dir.appendingPathComponent(L("Pasted image") + ".png")
+            guard (try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)) != nil, (try? png.write(to: dest)) != nil else { return false }
+            add(file: dest)
+        } else { return false }
+        let new = Set(items.map(\.id)).subtracting(before)
+        highlightIDs = new.isEmpty ? Set(items.prefix(1).map(\.id)) : new; highlightToken = UUID()
+        return true
+    }
+
     func isPinned(_ id: UUID) -> Bool { items.first { $0.id == id }?.pinned ?? false }
 
     /// Épingle ou désépingle ; les épinglés remontent devant.

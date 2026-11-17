@@ -124,6 +124,16 @@ extension AppDelegate {
                 store.setPinned(Set(store.items.filter { $0.kind == .folder }.map(\.id)), true)
                 if let last = store.items.last { store.move([last.id], to: 0); print("après déplacement :", store.items.map(\.name)) }          // les épinglés restent devant
                 if let last = store.items.last { store.move([last.id], to: 2); print("encore :", store.items.map { ($0.pinned ? "📌" : "") + $0.name }) }
+                let tp = NSPasteboard(name: NSPasteboard.Name("mandarine.test"))          // coller : un presse-papiers d'essai, pas le vrai
+                tp.clearContents(); tp.setString("https://www.youtube.com/watch?v=abc123", forType: .string)
+                print("coller lien :", store.pasteFromClipboard(tp), store.items.first(where: { !$0.pinned }).map { "\($0.kind)/\($0.name)" } ?? "-")
+                tp.clearContents(); tp.writeObjects([URL(fileURLWithPath: a[1]) as NSURL])
+                print("coller fichier :", store.pasteFromClipboard(tp), store.items.first(where: { !$0.pinned }).map { "\($0.kind)/\($0.name)" } ?? "-")
+                tp.clearContents(); tp.setString("une phrase à moi", forType: .string)
+                print("coller texte :", store.pasteFromClipboard(tp), store.items.first(where: { !$0.pinned }).map { "\($0.kind)/\($0.name)" } ?? "-")
+                tp.clearContents(); tp.writeObjects([NSImage(contentsOfFile: a[1])!])
+                print("coller image :", store.pasteFromClipboard(tp), store.items.first(where: { !$0.pinned }).map { "\($0.kind)/\($0.name)" } ?? "-")
+                print("lien texte :", DragMonitor.webLink(in: " https://youtu.be/dQw4w9 \n") as Any, DragMonitor.webLink(in: "bonjour https://x.fr") as Any)
                 print("fill :", ProcessInfo.processInfo.environment["MANDARINE_SHELFFILL"] ?? "nil", "total", store.items.count)
                 print("éléments :", store.items.map { "\($0.kind)/\($0.name)/\($0.detail)" })
                 ShelfPanelController.shared.page = Int(ProcessInfo.processInfo.environment["MANDARINE_SHELFPAGE"] ?? "") ?? 0
@@ -993,7 +1003,7 @@ extension AppDelegate {
         } else if target[0] == "toaststyles" {
             view = AnyView(ToastLab(page: Int(target.count > 1 ? target[1] : "1") ?? 1))
         } else if target[0] == "whatsnew" {
-            view = AnyView(WhatsNewView(releases: WhatsNew.releases, highlighted: ["1.15.1", "1.15.0"], close: {}))
+            view = AnyView(WhatsNewView(releases: WhatsNew.releases, highlighted: ["1.16.0", "1.15.0"], close: {}))
         } else if target[0] == "features" {
             view = AnyView(FeaturesView(startTab: target.count > 1 ? target[1] : "image", startQuery: target.count > 2 ? target[2] : "", close: {}))
         } else if target[0] == "help" {
