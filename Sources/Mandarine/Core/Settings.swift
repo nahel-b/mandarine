@@ -102,6 +102,8 @@ final class AppSettings: ObservableObject {
     @Published var faceMatchThreshold: Double { didSet { d.set(faceMatchThreshold, forKey: "faceMatchThreshold") } }          // ressemblance minimale pour reconnaître une personne enregistrée
     @Published var shelfEnabled: Bool { didSet { d.set(shelfEnabled, forKey: "shelfEnabled") } }          // l'étagère en haut de l'écran
     @Published var shelfStyle: String { didSet { d.set(shelfStyle, forKey: "shelfStyle") } }              // « petals » ou « channels »
+    @Published var shelfCalendar: Bool { didSet { d.set(shelfCalendar, forKey: "shelfCalendar") } }          // page Calendrier / Rappels de l'étagère « Wii »
+    @Published var shelfCalendarsOff: [String] { didSet { d.set(shelfCalendarsOff, forKey: "shelfCalendarsOff") } }          // calendriers et listes de rappels masqués (identifiants) : les nouveaux s'affichent d'office
     @Published var shelfRemoveOnDrag: Bool { didSet { d.set(shelfRemoveOnDrag, forKey: "shelfRemoveOnDrag") } }          // un élément glissé hors de l'étagère en part
     @Published var davinciMoveFiles: Bool { didSet { d.set(davinciMoveFiles, forKey: "davinciMoveFiles") } }
     @Published var launchAtLogin: Bool {
@@ -150,6 +152,8 @@ final class AppSettings: ObservableObject {
         davinciMoveFiles = d.object(forKey: "davinciMoveFiles") as? Bool ?? true
         shelfEnabled = d.object(forKey: "shelfEnabled") as? Bool ?? true
         shelfRemoveOnDrag = d.object(forKey: "shelfRemoveOnDrag") as? Bool ?? true
+        shelfCalendar = d.object(forKey: "shelfCalendar") as? Bool ?? true
+        shelfCalendarsOff = d.stringArray(forKey: "shelfCalendarsOff") ?? []
         shelfStyle = d.string(forKey: "shelfStyle") ?? "petals"
         faceMatchThreshold = d.object(forKey: "faceMatchThreshold") as? Double ?? 0.50
         wiiTV = ProcessInfo.processInfo.environment["MANDARINE_WIITV"].map { $0 != "0" } ?? (d.object(forKey: "wiiTV") as? Bool ?? true)          // MANDARINE_WIITV=0 : sans téléviseur (essais)

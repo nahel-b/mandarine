@@ -238,7 +238,10 @@ final class ShelfHostingView<Content: View>: NSHostingView<Content> {
     override func mouseDown(with event: NSEvent) { MainActor.assumeIsolated { ShelfPanelController.shared.takeKeyboard() }; super.mouseDown(with: event) }
     override func keyDown(with event: NSEvent) { if !MainActor.assumeIsolated({ ShelfPanelController.shared.handleKey(event) }) { super.keyDown(with: event) } }
     override func performKeyEquivalent(with event: NSEvent) -> Bool { MainActor.assumeIsolated { ShelfPanelController.shared.handleKey(event) } || super.performKeyEquivalent(with: event) }
-    override func scrollWheel(with event: NSEvent) { MainActor.assumeIsolated { ShelfPanelController.shared.scroll(event) } }          // pages de l'étagère
+    override func scrollWheel(with event: NSEvent) {
+        if MainActor.assumeIsolated({ ShelfPanelController.shared.calendarMode }) { MainActor.assumeIsolated { ShelfPanelController.shared.scrollCalendar(event) }; return }          // page Calendrier : ce sont ses colonnes qui défilent
+        MainActor.assumeIsolated { ShelfPanelController.shared.scroll(event) }          // pages de l'étagère
+    }
     override func hitTest(_ point: NSPoint) -> NSView? {
         let p = convert(point, from: superview)
         if let h = Self.sources(in: self).first(where: { !$0.isHiddenOrHasHiddenAncestor && $0.convert($0.bounds, to: self).contains(p) }) { return h }

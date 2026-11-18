@@ -119,7 +119,7 @@ extension AppDelegate {
                 let sub = dir.appendingPathComponent("Sous dossier", isDirectory: true); try? FileManager.default.createDirectory(at: sub, withIntermediateDirectories: true)
                 providers.append(NSItemProvider(item: sub as NSURL, typeIdentifier: UTType.fileURL.identifier))          // un dossier : gardé tel quel, sans copie
                 for i in 0..<(Int(ProcessInfo.processInfo.environment["MANDARINE_SHELFFILL"] ?? "") ?? 0) { providers.append(NSItemProvider(object: "Note \(i)" as NSString)) }
-                store.add(providers: providers)
+                if ProcessInfo.processInfo.environment["MANDARINE_SHELFNONE"] == nil { store.add(providers: providers) }          // MANDARINE_SHELFNONE : étagère vide (la page Calendrier s'ouvre seule)
                 try? await Task.sleep(nanoseconds: 800_000_000)
                 store.setPinned(Set(store.items.filter { $0.kind == .folder }.map(\.id)), true)
                 if let last = store.items.last { store.move([last.id], to: 0); print("après déplacement :", store.items.map(\.name)) }          // les épinglés restent devant
@@ -134,11 +134,14 @@ extension AppDelegate {
                 tp.clearContents(); tp.writeObjects([NSImage(contentsOfFile: a[1])!])
                 print("coller image :", store.pasteFromClipboard(tp), store.items.first(where: { !$0.pinned }).map { "\($0.kind)/\($0.name)" } ?? "-")
                 print("lien texte :", DragMonitor.webLink(in: " https://youtu.be/dQw4w9 \n") as Any, DragMonitor.webLink(in: "bonjour https://x.fr") as Any)
+                if ProcessInfo.processInfo.environment["MANDARINE_SHELFNONE"] != nil { for it in store.items { store.remove(it.id) } }
+                print("agenda :", CalendarStore.shared.events.map(\.title), "encoche :", ShelfPanelController.shared.notchSize)
                 print("fill :", ProcessInfo.processInfo.environment["MANDARINE_SHELFFILL"] ?? "nil", "total", store.items.count)
                 print("éléments :", store.items.map { "\($0.kind)/\($0.name)/\($0.detail)" })
                 ShelfPanelController.shared.page = Int(ProcessInfo.processInfo.environment["MANDARINE_SHELFPAGE"] ?? "") ?? 0
                 ShelfPanelController.shared.holdOpen = true
                 ShelfPanelController.shared.setOpen(true)
+                if ProcessInfo.processInfo.environment["MANDARINE_SHELFCAL"] != nil { ShelfPanelController.shared.calendarMode = true }          // forcer la page Calendrier
                 try? await Task.sleep(nanoseconds: 1_500_000_000)
                 print("boutons :", ShelfPanelController.shared.buttonFrames.mapValues { NSStringFromRect($0) })
                 print("capture :", ShelfPanelController.shared.debugCapture(to: URL(fileURLWithPath: a[2])))
@@ -1003,13 +1006,15 @@ extension AppDelegate {
         } else if target[0] == "toaststyles" {
             view = AnyView(ToastLab(page: Int(target.count > 1 ? target[1] : "1") ?? 1))
         } else if target[0] == "whatsnew" {
-            view = AnyView(WhatsNewView(releases: WhatsNew.releases, highlighted: ["1.16.0", "1.15.0"], close: {}))
+            view = AnyView(WhatsNewView(releases: WhatsNew.releases, highlighted: ["1.17.0", "1.16.0"], close: {}))
         } else if target[0] == "features" {
             view = AnyView(FeaturesView(startTab: target.count > 1 ? target[1] : "image", startQuery: target.count > 2 ? target[2] : "", close: {}))
         } else if target[0] == "help" {
             view = AnyView(HelpView(startPage: Int(target[1]) ?? 0, close: {}))
         } else if target[0] == "notch", target.count >= 3, let d = ShelfDesign(rawValue: target[1]), let st = ShelfState(rawValue: target[2]) {
             view = AnyView(NotchShelfPanel(design: d, state: st).padding(.horizontal, 20).padding(.bottom, 20).background(Color(red: 0.81, green: 0.85, blue: 0.89)))
+        } else if target[0] == "wiinotch", target.count >= 2 {
+            view = AnyView(WiiProposalSheet(kind: target[1]))
         } else if target[0] == "tool", let id = ToolID(rawValue: target[1]) {
             view = AnyView(ToolRegistry.view(for: id, urls: urls, close: {}).padding(30).background(Color(white: 0.55)))
         } else { exit(2) }

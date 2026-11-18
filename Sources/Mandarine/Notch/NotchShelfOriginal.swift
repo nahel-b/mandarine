@@ -322,6 +322,7 @@ struct ShelfHoverHost<Content: View>: View {
 struct ShelfChannelsPanel: View {
     @ObservedObject var store: ShelfStore
     @ObservedObject private var controller = ShelfPanelController.shared
+    @ObservedObject private var settings = AppSettings.shared
     var open = true
     @State private var hover: UUID?
     @State private var selection: Set<UUID>
@@ -344,7 +345,8 @@ struct ShelfChannelsPanel: View {
 
     var body: some View {
         screen
-            .frame(width: 380, height: 252)
+            .frame(width: controller.calendarMode ? 470 : 380, height: 252)
+            .animation(.spring(response: 0.4, dampingFraction: 0.85), value: controller.calendarMode)
             .clipShape(NotchShape(radius: 34))
             .overlay(NotchShape(radius: 34).fill(Color.white.opacity(flash)).allowsHitTesting(false))          // le coup de lumière de l'allumage
             .scaleEffect(x: sx, y: sy, anchor: .center)                                                       // depuis le milieu
@@ -385,10 +387,16 @@ struct ShelfChannelsPanel: View {
     private var screen: some View {
         ZStack(alignment: .top) {
             NotchShape(radius: 34).fill(LinearGradient(colors: [Color(white: 0.99), Color(red: 0.90, green: 0.91, blue: 0.93)], startPoint: .top, endPoint: .bottom))
-            ForEach(Array(shownPages), id: \.self) { p in grid(p).padding(.top, 38).padding(.horizontal, 20).offset(x: CGFloat(p - pg) * 380) }          // la page glisse de côté
-            if pg > 0 { ShelfPageArrow(left: true) { controller.step(-1) }.position(x: 17, y: 99) }
-            if pg < controller.pageCount - 1 { ShelfPageArrow(left: false) { controller.step(1) }.position(x: 363, y: 99) }
-            bar.frame(height: 78).frame(maxHeight: .infinity, alignment: .bottom)
+            if controller.calendarMode {
+                ShelfCalendarPage(width: 470, notch: controller.notchSize).transition(.opacity)
+            } else {
+                ZStack(alignment: .top) {
+                    ForEach(Array(shownPages), id: \.self) { p in grid(p).padding(.top, max(38, controller.notchSize.height + 6)).padding(.horizontal, 20).offset(x: CGFloat(p - pg) * 380) }          // la page glisse de côté
+                    if pg > 0 { ShelfPageArrow(left: true) { controller.step(-1) }.position(x: 17, y: 99) }
+                    if pg < controller.pageCount - 1 { ShelfPageArrow(left: false) { controller.step(1) }.position(x: 363, y: 99) }
+                    bar.frame(height: 78).frame(maxHeight: .infinity, alignment: .bottom)
+                }.frame(width: 380).transition(.opacity)
+            }
             // la vitre
             WiiCRT().clipShape(NotchShape(radius: 34))
             RadialGradient(colors: [.clear, Color.black.opacity(0.20)], center: .center, startRadius: 120, endRadius: 270).clipShape(NotchShape(radius: 34)).allowsHitTesting(false)
@@ -441,6 +449,7 @@ struct ShelfChannelsPanel: View {
             roundButton("eye", target: "locate").position(x: 34, y: 46)
                 .onTapGesture { let t = chosen.isEmpty ? current.map { [$0] } ?? [] : chosen; if !t.isEmpty { ShelfSound.press(); ShelfActions.reveal(t) } }
             sdInfo.position(x: 100, y: 49)
+            if settings.shelfCalendar { ShelfCalendarButton(onCalendar: false, count: items.count) { controller.toggleCalendar() }.position(x: 304, y: 47) }          // à gauche de la corbeille, à la place miroir de la carte SD (collé au rond) : ouvre la page Calendrier
             roundButton("trash", target: "remove").position(x: 346, y: 46)
                 .onTapGesture { if !selection.isEmpty { ShelfSound.remove(); store.remove(selection); selection = []; anchor = nil } }
         }

@@ -44,6 +44,10 @@ cat > "$APP/Contents/Info.plist" <<PLIST
   <key>LSUIElement</key><true/>
   <key>NSHighResolutionCapable</key><true/>
   <key>NSSpeechRecognitionUsageDescription</key><string>Mandarine transcrit vos sons et vidéos en texte et en sous-titres avec la reconnaissance vocale d’Apple.</string>
+  <key>NSCalendarsUsageDescription</key><string>Mandarine affiche vos prochains rendez-vous sur l’étagère de l’encoche.</string>
+  <key>NSCalendarsFullAccessUsageDescription</key><string>Mandarine affiche vos prochains rendez-vous sur l’étagère de l’encoche.</string>
+  <key>NSRemindersUsageDescription</key><string>Mandarine affiche vos rappels sur l’étagère de l’encoche.</string>
+  <key>NSRemindersFullAccessUsageDescription</key><string>Mandarine affiche vos rappels sur l’étagère de l’encoche.</string>
   <key>NSAppleEventsUsageDescription</key><string>Mandarine pilote Pages, Keynote et Numbers pour convertir leurs formats.</string>
 </dict></plist>
 PLIST

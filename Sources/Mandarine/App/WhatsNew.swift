@@ -8,6 +8,12 @@ struct WhatsNewRelease { let version: String; let headline: String; let items: [
 enum WhatsNew {
     /// À compléter à chaque version (la plus récente d'abord) : c'est ce que voit l'utilisateur après la mise à jour.
     static var releases: [WhatsNewRelease] { [
+        WhatsNewRelease(version: "1.17.0", headline: L("Calendar on the shelf"), items: [
+            WhatsNewItem(symbol: "calendar", title: L("Events and reminders"),
+                         text: L("In the Wii style, a small calendar button next to the trash opens a page with your next events (all your calendars, in date order) and your reminders on a paper note. With an empty shelf it opens by itself. Scroll each column; tick a reminder to finish it. Choose which calendars to show in Settings → Shelf.")),
+            WhatsNewItem(symbol: "macbook", title: L("Fits your notch"),
+                         text: L("The shelf now uses the real size of your notch, and all shelf options have their own tab in Settings.")),
+        ]),
         WhatsNewRelease(version: "1.16.0", headline: L("Paste on the shelf"), items: [
             WhatsNewItem(symbol: "doc.on.clipboard", title: L("⌘V on the shelf"),
                          text: L("With the shelf open, press ⌘V to put what you copied on it: files, folders, links, images or text.")),

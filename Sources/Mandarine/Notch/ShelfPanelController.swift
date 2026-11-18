@@ -20,6 +20,30 @@ final class ShelfPanelController: ObservableObject {
 
     @Published private(set) var open = false
     @Published var dropTarget = false
+    /// La page Calendrier est affichée à la place de l'étagère (style Wii) : l'encoche s'élargit.
+    @Published var calendarMode = false {
+        didSet { if open && oldValue != calendarMode { place0(open: true) } }
+    }
+    /// Défilement des deux colonnes de la page Calendrier (décalage en points) ; la molette ou le trackpad le font bouger.
+    @Published var eventsScroll: CGFloat = 0
+    @Published var remindersScroll: CGFloat = 0
+    func scrollCalendar(_ e: NSEvent) {
+        let cal = CalendarStore.shared
+        let dy = e.scrollingDeltaY * (e.hasPreciseScrollingDeltas ? 1 : 8)
+        let center = openRect.midX
+        if NSEvent.mouseLocation.x < center + 15 {          // colonne des rendez-vous (à gauche), sinon celle des rappels
+            let maxOffset = max(0, CGFloat(cal.events.count) * 30 - 112 + 18)
+            eventsScroll = min(max(0, eventsScroll - dy), maxOffset)
+        } else {
+            let maxOffset = max(0, CGFloat(cal.reminders.count) * 22 - 90 + 12)
+            remindersScroll = min(max(0, remindersScroll - dy), maxOffset)
+        }
+    }
+    func toggleCalendar() {
+        eventsScroll = 0; remindersScroll = 0
+        withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) { calendarMode.toggle() }
+        ShelfSound.press()
+    }
     /// Un élément de l'étagère est en train d'être glissé dehors : l'étagère reste ouverte.
     var draggingOut = false {
         didSet { if !draggingOut { overTarget = nil; overSlot = nil } }
@@ -113,6 +137,12 @@ final class ShelfPanelController: ObservableObject {
 
     private var screen: NSScreen? { NSScreen.screens.first { $0.safeAreaInsets.top > 0 } ?? NSScreen.main }
 
+    /// La vraie encoche : largeur (l'écart entre les deux zones libres de la barre des menus) et hauteur (la marge haute de l'écran) ; sans encoche, une valeur par défaut.
+    var notchSize: CGSize {
+        guard let s = screen else { return CGSize(width: 130, height: 24) }
+        return CGSize(width: notchWidth, height: s.safeAreaInsets.top > 0 ? s.safeAreaInsets.top : 24)
+    }
+
     private var notchWidth: CGFloat {
         guard let s = screen, let l = s.auxiliaryTopLeftArea, let r = s.auxiliaryTopRightArea else { return 130 }
         return max(100, s.frame.width - l.width - r.width)
@@ -125,7 +155,8 @@ final class ShelfPanelController: ObservableObject {
     }
     private var openRect: NSRect {
         guard let s = screen else { return .zero }
-        let z = style.openSize
+        var z = style.openSize
+        if calendarMode && style == .channels { z.width += 90 }          // plus large pour la page Calendrier
         return NSRect(x: s.frame.midX - z.width / 2, y: s.frame.maxY - z.height, width: z.width, height: z.height)
     }
 
@@ -247,6 +278,9 @@ final class ShelfPanelController: ObservableObject {
         guard open != on else { return }
         if !on { releaseKeyboard() }
         closeAt = nil; dwell = 0; hoverTicks = 0
+        // étagère vide (et pas un glisser en cours) : la page Calendrier s'ouvre directement ; sinon on y va avec le petit bouton du calendrier
+        if on { eventsScroll = 0; remindersScroll = 0 }
+        if on { calendarMode = style == .channels && settings.shelfCalendar && !dropTarget && ShelfStore.shared.items.isEmpty }
         if on { place0(open: true) }
         if on { ShelfSound.open() } else { ShelfSound.close() }
         withAnimation(.easeOut(duration: 0.12)) { open = on }
@@ -290,16 +324,18 @@ struct ShelfRootView: View {
                     ShelfChannelsPanel(store: store, open: controller.open).id("channels")
                 }
             }
-            if controller.hasNotch { RoundedRectangle(cornerRadius: 11, style: .continuous).fill(Color.black).frame(width: 130, height: 24).offset(y: -2) }
+            if controller.hasNotch { RoundedRectangle(cornerRadius: 11, style: .continuous).fill(Color.black).frame(width: controller.notchSize.width + 2, height: controller.notchSize.height + 2).offset(y: -2) }          // recouvre la vraie encoche, à sa vraie taille
             if !controller.open || targeted { Capsule().fill(Theme.orange).frame(width: 50, height: 2).opacity(targeted ? 1 : 0.55).offset(y: 24) }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .ignoresSafeArea()          // la fenêtre recouvre l'encoche : sans cela, les zones de défilement se décalent de sa hauteur
         .contentShape(Rectangle())
         .coordinateSpace(name: "shelfRoot")
         .onPreferenceChange(ShelfButtonFrames.self) { controller.buttonFrames = $0 }
         .onPreferenceChange(ShelfSlotFrames.self) { controller.slotFrames = $0 }
         .onDrop(of: [UTType.fileURL, .url, .plainText, .image, .item], delegate: ShelfDropper(controller: controller, store: store, targeted: $targeted))
-        .onChange(of: targeted) { controller.dropTarget = $0 }
+        .onChange(of: targeted) { controller.dropTarget = $0; if $0 { controller.calendarMode = false } }          // un glisser qui arrive : l'étagère
+        .onChange(of: store.items.first?.id) { _ in if store.items.count > 0 { controller.calendarMode = false } }
     }
 }
 

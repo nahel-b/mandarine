@@ -9,13 +9,13 @@ struct SettingsView: View {
     @State private var tab: Tab
 
     enum Tab: String, CaseIterable, Identifiable {
-        case general, appearance, wheel, petals, davinci, people, engines, updates, download
+        case general, appearance, shelf, wheel, petals, davinci, people, engines, updates, download
         var id: String { rawValue }
         var title: String {
-            switch self { case .general: return L("General"); case .appearance: return L("Appearance"); case .wheel: return L("Wheel keys"); case .petals: return L("Petals"); case .davinci: return L("DaVinci"); case .people: return L("People"); case .engines: return L("Engines"); case .updates: return L("Updates"); case .download: return L("Download") }
+            switch self { case .general: return L("General"); case .appearance: return L("Appearance"); case .shelf: return L("Shelf"); case .wheel: return L("Wheel keys"); case .petals: return L("Petals"); case .davinci: return L("DaVinci"); case .people: return L("People"); case .engines: return L("Engines"); case .updates: return L("Updates"); case .download: return L("Download") }
         }
         var symbol: String {
-            switch self { case .general: return "gearshape"; case .appearance: return "paintpalette"; case .wheel: return "circle.hexagongrid"; case .petals: return "leaf"; case .davinci: return "folder.badge.gearshape"; case .people: return "person.2"; case .engines: return "wrench.and.screwdriver"; case .updates: return "arrow.triangle.2.circlepath"; case .download: return "arrow.down.circle" }
+            switch self { case .general: return "gearshape"; case .appearance: return "paintpalette"; case .shelf: return "tray.full"; case .wheel: return "circle.hexagongrid"; case .petals: return "leaf"; case .davinci: return "folder.badge.gearshape"; case .people: return "person.2"; case .engines: return "wrench.and.screwdriver"; case .updates: return "arrow.triangle.2.circlepath"; case .download: return "arrow.down.circle" }
         }
     }
 
@@ -85,18 +85,27 @@ struct SettingsView: View {
                     .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                 FullDiskAccessRow()
             }
+        case .shelf:
+            Section(L("Shelf")) {
+                Toggle(L("Show the shelf at the top of the screen"), isOn: $s.shelfEnabled)
+                Text(L("A shelf under the notch: drop files, links or text on it to keep them at hand, then drag them out again — onto a folder, an app, or the wheel."))
+                    .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                if s.shelfEnabled {
+                    Picker(L("Shelf style"), selection: $s.shelfStyle) { ForEach(ShelfStyle.allCases) { Text($0.title).tag($0.rawValue) } }.pickerStyle(.segmented)
+                    Toggle(L("Take an item off the shelf once dragged out (except onto the wheel)"), isOn: $s.shelfRemoveOnDrag)
+                }
+            }
+            if s.shelfEnabled {
+                Section(L("Calendar and reminders")) {
+                    Toggle(L("Calendar and reminders page on the shelf (Wii style): opens by itself when the shelf is empty"), isOn: $s.shelfCalendar)
+                    if s.shelfCalendar { ShelfCalendarsPicker() }
+                }
+            }
         case .appearance:
             Section(L("Appearance")) {
                 Picker(L("Menu style"), selection: $s.appearance) { ForEach(MenuAppearance.allCases) { Text(L($0.title)).tag($0) } }
                 Text(s.appearance == .wii ? L("A small Wii-style screen: every tool is a channel, with a clock, a pointer hand and a description line.") : s.appearance.isBubbles ? L("Tools are round bubbles floating around your logo.") : L("The radial wheel."))
                     .font(.caption).foregroundStyle(.secondary)
-                Toggle(L("Show the shelf at the top of the screen"), isOn: $s.shelfEnabled)
-                if s.shelfEnabled {
-                    Picker(L("Shelf style"), selection: $s.shelfStyle) { ForEach(ShelfStyle.allCases) { Text($0.title).tag($0.rawValue) } }.pickerStyle(.segmented)
-                    Toggle(L("Take an item off the shelf once dragged out (except onto the wheel)"), isOn: $s.shelfRemoveOnDrag)
-                }
-                Text(L("A shelf under the notch: drop files, links or text on it to keep them at hand, then drag them out again — onto a folder, an app, or the wheel."))
-                    .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                 if s.appearance == .wii {
                     Toggle(L("Show the screen in a TV"), isOn: $s.wiiTV)
                     Text(L("The Wii screen sits inside an old see-through TV. Turn it off to get the screen alone."))
