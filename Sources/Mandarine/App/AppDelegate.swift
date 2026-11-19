@@ -136,6 +136,16 @@ extension AppDelegate {
                 print("lien texte :", DragMonitor.webLink(in: " https://youtu.be/dQw4w9 \n") as Any, DragMonitor.webLink(in: "bonjour https://x.fr") as Any)
                 if ProcessInfo.processInfo.environment["MANDARINE_SHELFNONE"] != nil { for it in store.items { store.remove(it.id) } }
                 print("agenda :", CalendarStore.shared.events.map(\.title), "encoche :", ShelfPanelController.shared.notchSize)
+                if ProcessInfo.processInfo.environment["MANDARINE_SHELFODD"] != nil {          // fichiers aux extensions rares, par le presse-papiers du glisser puis par les fournisseurs
+                    let odd = URL(fileURLWithPath: "/tmp/shelfdemo/odd", isDirectory: true); try? FileManager.default.createDirectory(at: odd, withIntermediateDirectories: true)
+                    let names = ["rapport.xyz123", "sans_extension", "Épreuve finale (v2).wxyz.bak", ".caché", "archive.tar.zst", "photo.IMG_ODD", "données 日本語.qqq"]
+                    let files = names.map { odd.appendingPathComponent($0) }
+                    for f in files { try? "x".write(to: f, atomically: true, encoding: .utf8) }
+                    for f in files.prefix(4) { let tp = NSPasteboard(name: NSPasteboard.Name("mandarine.test2")); tp.clearContents(); tp.writeObjects([f as NSURL]); _ = store.addFromDrag(tp) }
+                    store.add(providers: files.suffix(3).compactMap { NSItemProvider(contentsOf: $0) })
+                    try? await Task.sleep(nanoseconds: 700_000_000)
+                    print("bizarres :", names.map { n in store.items.contains { $0.name == n } })
+                }
                 print("fill :", ProcessInfo.processInfo.environment["MANDARINE_SHELFFILL"] ?? "nil", "total", store.items.count)
                 print("éléments :", store.items.map { "\($0.kind)/\($0.name)/\($0.detail)" })
                 ShelfPanelController.shared.page = Int(ProcessInfo.processInfo.environment["MANDARINE_SHELFPAGE"] ?? "") ?? 0
@@ -1006,7 +1016,7 @@ extension AppDelegate {
         } else if target[0] == "toaststyles" {
             view = AnyView(ToastLab(page: Int(target.count > 1 ? target[1] : "1") ?? 1))
         } else if target[0] == "whatsnew" {
-            view = AnyView(WhatsNewView(releases: WhatsNew.releases, highlighted: ["1.17.0", "1.16.0"], close: {}))
+            view = AnyView(WhatsNewView(releases: WhatsNew.releases, highlighted: ["1.18.0", "1.17.0"], close: {}))
         } else if target[0] == "features" {
             view = AnyView(FeaturesView(startTab: target.count > 1 ? target[1] : "image", startQuery: target.count > 2 ? target[2] : "", close: {}))
         } else if target[0] == "help" {

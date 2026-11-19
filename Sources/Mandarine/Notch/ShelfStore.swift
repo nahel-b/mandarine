@@ -175,9 +175,36 @@ final class ShelfStore: ObservableObject {
         }
     }
 
+    /// Même lecture que la roue : on lit le presse-papiers du glisser lui-même. Il donne les fichiers et dossiers (n'importe quelle extension), les liens,
+    /// et surtout les « promesses de fichier » (miniature de capture d'écran, Photos, Mail, image d'un navigateur) : leur fichier n'existe qu'une fois la promesse
+    /// honorée, on la reçoit donc dans le dossier de l'étagère. Rend faux s'il n'y a rien à lire ici (texte seul : on passe par les fournisseurs).
+    @discardableResult
+    func addFromDrag(_ pb: NSPasteboard = NSPasteboard(name: .drag)) -> Bool {
+        let receivers = (pb.readObjects(forClasses: [NSFilePromiseReceiver.self], options: nil) as? [NSFilePromiseReceiver]) ?? []
+        let urls = (pb.readObjects(forClasses: [NSURL.self], options: nil) as? [URL]) ?? []
+        if DragMonitor.debugLog { DragMonitor.log("SHELF drag types=\((pb.types ?? []).map(\.rawValue)) urls=\(urls) promises=\(receivers.count)") }
+        let fm = FileManager.default
+        let promised = !receivers.isEmpty && (urls.isEmpty || urls.contains { ScreenshotStaging.isTemporary($0) || !fm.fileExists(atPath: $0.path) })
+        if promised {
+            for r in receivers {
+                let dir = Self.folder.appendingPathComponent(UUID().uuidString, isDirectory: true)          // un dossier par fichier : retirer l'élément n'emporte pas les autres
+                try? fm.createDirectory(at: dir, withIntermediateDirectories: true)
+                r.receivePromisedFiles(atDestination: dir, options: [:], operationQueue: OperationQueue()) { url, error in
+                    if DragMonitor.debugLog { DragMonitor.log("SHELF promise \(url.path) error=\(error.map { "\($0)" } ?? "none")") }
+                    guard error == nil else { try? fm.removeItem(at: dir); return }
+                    Task { @MainActor in self.add(file: url) }
+                }
+            }
+            return true
+        }
+        guard !urls.isEmpty else { return false }
+        for u in urls { dropped(url: u, provider: nil) }
+        return true
+    }
+
     /// Une adresse reçue d'un glisser : web → lien ; raccourci Internet → son adresse ; fichier ou DOSSIER → on garde son chemin (rien n'est copié) ;
     /// seul un fichier qui n'existe que le temps du glisser est recopié.
-    private func dropped(url: URL?, provider p: NSItemProvider) {
+    private func dropped(url: URL?, provider p: NSItemProvider?) {
         guard var url = url else { if DragMonitor.debugLog { DragMonitor.log("SHELF drop: pas d'adresse") }; return }
         if !url.isFileURL { add(link: url); return }
         if let real = (url as NSURL).filePathURL { url = real }          // adresse « par référence » du Finder → vrai chemin
@@ -186,7 +213,7 @@ final class ShelfStore: ObservableObject {
         if exists, isDir.boolValue, !Self.isDocumentPackage(url) { add(file: url); return }          // dossier : jamais copié
         if let link = Self.linkInside(url) { add(link: link); return }          // « Lien.webloc » → l'adresse
         if exists, !ScreenshotStaging.isTemporary(url) { add(file: url) }
-        else if ScreenshotStaging.isTemporary(url) || !exists { stage(p) }
+        else if let p = p, ScreenshotStaging.isTemporary(url) || !exists { stage(p) }
     }
 
     nonisolated private static func isDocumentPackage(_ url: URL) -> Bool { false }

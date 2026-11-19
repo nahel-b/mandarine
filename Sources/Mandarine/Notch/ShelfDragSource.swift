@@ -235,6 +235,62 @@ final class ShelfDragView: NSView, NSDraggingSource {
 final class ShelfHostingView<Content: View>: NSHostingView<Content> {
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
     override var mouseDownCanMoveWindow: Bool { false }
+
+    // MARK: Glisser reçu (tout ce que reçoit la roue : fichiers aux extensions rares, dossiers, liens, texte, promesses de fichier comme la miniature d'une capture)
+    // On reçoit le glisser ici, directement, plutôt que par le `onDrop` de SwiftUI : celui-ci refuse les types qu'il ne connaît pas (promesses, types dynamiques).
+
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        var types: [NSPasteboard.PasteboardType] = [.fileURL, .URL, .string, .tiff, .png, NSPasteboard.PasteboardType("NSFilenamesPboardType")]
+        types += NSFilePromiseReceiver.readableDraggedTypes.map { NSPasteboard.PasteboardType($0) }
+        registerForDraggedTypes(types)
+    }
+    private func dragPoint(_ sender: NSDraggingInfo) -> CGPoint {          // repère de SwiftUI : origine en haut à gauche
+        let p = convert(sender.draggingLocation, from: nil)
+        return CGPoint(x: p.x, y: bounds.height - p.y)
+    }
+    override func draggingEntered(_ sender: NSDraggingInfo) -> NSDragOperation {
+        MainActor.assumeIsolated { let c = ShelfPanelController.shared; c.dropTarget = true; c.calendarMode = false }          // un glisser qui arrive : l'étagère, pas le calendrier
+        return .copy
+    }
+    override func draggingUpdated(_ sender: NSDraggingInfo) -> NSDragOperation {
+        let pt = dragPoint(sender)
+        MainActor.assumeIsolated {
+            let c = ShelfPanelController.shared
+            c.overTarget = c.draggingOut ? c.button(at: pt) : nil
+            c.overSlot = c.draggingOut && c.overTarget == nil ? c.slot(at: pt) : nil
+        }
+        return .copy
+    }
+    override func draggingExited(_ sender: NSDraggingInfo?) {
+        MainActor.assumeIsolated { let c = ShelfPanelController.shared; c.dropTarget = false; c.overTarget = nil; c.overSlot = nil }
+    }
+    override func prepareForDragOperation(_ sender: NSDraggingInfo) -> Bool { true }
+    override func performDragOperation(_ sender: NSDraggingInfo) -> Bool {
+        let pt = dragPoint(sender), pb = sender.draggingPasteboard
+        return MainActor.assumeIsolated {
+            let c = ShelfPanelController.shared, store = ShelfStore.shared
+            c.dropTarget = false
+            if c.draggingOut {          // un élément de l'étagère lâché sur elle-même
+                if let name = c.button(at: pt) { if c.dropOnButton(name) { ShelfSound.remove() } }
+                else {
+                    c.consumedByShelf = true          // retour sur l'étagère : l'élément ne part pas
+                    if let i = c.slot(at: pt), !c.draggedIDs.isEmpty {          // lâché sur une place : il s'y range
+                        let ids = c.draggedIDs
+                        withAnimation(.spring(response: 0.38, dampingFraction: 0.8)) { store.move(ids, to: i < 0 ? store.items.count : i) }
+                        ShelfSound.drop()
+                    }
+                }
+                c.overTarget = nil; c.overSlot = nil
+                c.endDragState()
+                return true
+            }
+            if !store.addFromDrag(pb) { _ = store.pasteFromClipboard(pb) }          // fichiers, dossiers, promesses… sinon liens, image, texte
+            ShelfSound.drop()
+            return true
+        }
+    }
+
     override func mouseDown(with event: NSEvent) { MainActor.assumeIsolated { ShelfPanelController.shared.takeKeyboard() }; super.mouseDown(with: event) }
     override func keyDown(with event: NSEvent) { if !MainActor.assumeIsolated({ ShelfPanelController.shared.handleKey(event) }) { super.keyDown(with: event) } }
     override func performKeyEquivalent(with event: NSEvent) -> Bool { MainActor.assumeIsolated { ShelfPanelController.shared.handleKey(event) } || super.performKeyEquivalent(with: event) }

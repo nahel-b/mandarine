@@ -311,7 +311,7 @@ struct ShelfRootView: View {
     @ObservedObject var controller: ShelfPanelController
     @ObservedObject private var store = ShelfStore.shared
     @ObservedObject private var settings = AppSettings.shared
-    @State private var targeted = false
+    private var targeted: Bool { controller.dropTarget }          // le glisser est reçu par la vue AppKit (`ShelfHostingView`), pas par SwiftUI
 
     private var style: ShelfStyle { ShelfStyle(rawValue: settings.shelfStyle) ?? .petals }
 
@@ -333,44 +333,6 @@ struct ShelfRootView: View {
         .coordinateSpace(name: "shelfRoot")
         .onPreferenceChange(ShelfButtonFrames.self) { controller.buttonFrames = $0 }
         .onPreferenceChange(ShelfSlotFrames.self) { controller.slotFrames = $0 }
-        .onDrop(of: [UTType.fileURL, .url, .plainText, .image, .item], delegate: ShelfDropper(controller: controller, store: store, targeted: $targeted))
-        .onChange(of: targeted) { controller.dropTarget = $0; if $0 { controller.calendarMode = false } }          // un glisser qui arrive : l'étagère
         .onChange(of: store.items.first?.id) { _ in if store.items.count > 0 { controller.calendarMode = false } }
-    }
-}
-
-/// Reçoit tout ce qu'on dépose sur l'étagère. Ce qui vient d'elle-même ne s'ajoute pas : sur l'œil ou la corbeille il fait leur fonction, ailleurs rien.
-struct ShelfDropper: DropDelegate {
-    let controller: ShelfPanelController
-    let store: ShelfStore
-    @Binding var targeted: Bool
-
-    func dropEntered(info: DropInfo) { targeted = true }
-    func dropExited(info: DropInfo) { targeted = false; controller.overTarget = nil; controller.overSlot = nil }
-    func dropUpdated(info: DropInfo) -> DropProposal? {
-        controller.overTarget = controller.draggingOut ? controller.button(at: info.location) : nil
-        controller.overSlot = controller.draggingOut && controller.overTarget == nil ? controller.slot(at: info.location) : nil
-        return DropProposal(operation: .copy)
-    }
-    func performDrop(info: DropInfo) -> Bool {
-        if controller.draggingOut {
-            if let name = controller.button(at: info.location) { if controller.dropOnButton(name) { ShelfSound.remove() } }
-            else {
-                controller.consumedByShelf = true          // retour sur l'étagère : l'élément ne part pas
-                if let i = controller.slot(at: info.location), !controller.draggedIDs.isEmpty {          // lâché sur une place : il s'y range
-                    let ids = controller.draggedIDs
-                    withAnimation(.spring(response: 0.38, dampingFraction: 0.8)) { store.move(ids, to: i < 0 ? store.items.count : i) }          // les éléments glissent vers leur place
-                    ShelfSound.drop()
-                }
-            }
-            controller.overTarget = nil
-            targeted = false
-            controller.endDragState()
-            return true
-        }
-        targeted = false
-        store.add(providers: info.itemProviders(for: [.fileURL, .url, .plainText, .image, .item]))
-        ShelfSound.drop()
-        return true
     }
 }

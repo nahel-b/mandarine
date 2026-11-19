@@ -8,6 +8,10 @@ struct WhatsNewRelease { let version: String; let headline: String; let items: [
 enum WhatsNew {
     /// À compléter à chaque version (la plus récente d'abord) : c'est ce que voit l'utilisateur après la mise à jour.
     static var releases: [WhatsNewRelease] { [
+        WhatsNewRelease(version: "1.18.0", headline: L("The shelf takes everything"), items: [
+            WhatsNewItem(symbol: "tray.and.arrow.down", title: L("Same drops as the wheel"),
+                         text: L("The shelf now accepts what the wheel accepts: the screenshot thumbnail at the bottom of the screen, photos and attachments, folders, and files with any odd extension.")),
+        ]),
         WhatsNewRelease(version: "1.17.0", headline: L("Calendar on the shelf"), items: [
             WhatsNewItem(symbol: "calendar", title: L("Events and reminders"),
                          text: L("In the Wii style, a small calendar button next to the trash opens a page with your next events (all your calendars, in date order) and your reminders on a paper note. With an empty shelf it opens by itself. Scroll each column; tick a reminder to finish it. Choose which calendars to show in Settings → Shelf.")),
