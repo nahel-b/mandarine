@@ -8,6 +8,10 @@ struct WhatsNewRelease { let version: String; let headline: String; let items: [
 enum WhatsNew {
     /// À compléter à chaque version (la plus récente d'abord) : c'est ce que voit l'utilisateur après la mise à jour.
     static var releases: [WhatsNewRelease] { [
+        WhatsNewRelease(version: "1.19.0", headline: L("Camcorder DVDs"), items: [
+            WhatsNewItem(symbol: "opticaldisc", title: L("VOB to MOV, best quality"),
+                         text: L("Videos from a DVD camcorder (VOB) are now recognized. The PRORES petal makes a near-lossless .mov, deinterlaced and with the right 16:9 shape. Drop all the VTS_01_*.VOB parts together and they are joined into one video. If the disc is read-only, you choose where to save. An option keeps every field for 60 frames per second (Settings → Conversion).")),
+        ]),
         WhatsNewRelease(version: "1.18.0", headline: L("The shelf takes everything"), items: [
             WhatsNewItem(symbol: "tray.and.arrow.down", title: L("Same drops as the wheel"),
                          text: L("The shelf now accepts what the wheel accepts: the screenshot thumbnail at the bottom of the screen, photos and attachments, folders, and files with any odd extension.")),

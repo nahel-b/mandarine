@@ -1016,7 +1016,7 @@ extension AppDelegate {
         } else if target[0] == "toaststyles" {
             view = AnyView(ToastLab(page: Int(target.count > 1 ? target[1] : "1") ?? 1))
         } else if target[0] == "whatsnew" {
-            view = AnyView(WhatsNewView(releases: WhatsNew.releases, highlighted: ["1.18.0", "1.17.0"], close: {}))
+            view = AnyView(WhatsNewView(releases: WhatsNew.releases, highlighted: ["1.19.0", "1.18.0"], close: {}))
         } else if target[0] == "features" {
             view = AnyView(FeaturesView(startTab: target.count > 1 ? target[1] : "image", startQuery: target.count > 2 ? target[2] : "", close: {}))
         } else if target[0] == "help" {

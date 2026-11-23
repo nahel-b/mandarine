@@ -11,6 +11,9 @@ enum Dispatcher {
     }
 
     static func convert(_ urls: [URL], to ext: String) {
+        // un disque en lecture seule (DVD…) : on demande où enregistrer ; annuler = rien ne démarre
+        let proceed = Thread.isMainThread ? MainActor.assumeIsolated { OutputChoice.askIfNeeded(for: urls) } : DispatchQueue.main.sync { MainActor.assumeIsolated { OutputChoice.askIfNeeded(for: urls) } }
+        guard proceed else { return }
         let title = "Converting to \(ext.uppercased())…"
         if urls.count > 1, FileKind.common(of: urls) == .image, Catalog.normalized(ext) == "pdf" {      // plusieurs images → un seul PDF
             JobQueue.shared.add(title, subtitle: L("\(urls.count) images")) { progress in
@@ -18,8 +21,24 @@ enum Dispatcher {
             }
             return
         }
-        // seuls de vrais fichiers peuvent être remplacés (pas un lien, pas un texte glissé)
-        let replaceable = urls.allSatisfy(\.isFileURL) && FileKind.common(of: urls) != .snippet
+        // les morceaux d'un même titre de DVD (VTS_01_1.VOB, VTS_01_2.VOB…) : recollés, puis convertis en un seul fichier
+        if let parts = DVDJoin.parts(of: urls) {
+            let name = DVDJoin.title(of: parts)
+            JobQueue.shared.add(title, subtitle: L("\(parts.count) VOB parts → \(name)")) { progress in
+                let joined = try DVDJoin.join(parts) { progress($0 * 0.08) }
+                defer { try? FileManager.default.removeItem(at: joined.deletingLastPathComponent()) }
+                let outs = try await Converter.run(urls: [joined], to: ext) { progress(0.08 + $0 * 0.92) }
+                let folder = OutputNaming.writableFolder(for: parts[0])          // à côté du disque si possible, sinon dans Films
+                return try outs.map { o in
+                    let dest = OutputNaming.unique(folder: folder, base: o.deletingPathExtension().lastPathComponent, ext: o.pathExtension)
+                    try FileManager.default.moveItem(at: o, to: dest)
+                    return dest
+                }
+            }
+            return
+        }
+        // seuls de vrais fichiers peuvent être remplacés (pas un lien, pas un texte glissé, pas un disque en lecture seule)
+        let replaceable = urls.allSatisfy { $0.isFileURL && FileManager.default.isWritableFile(atPath: $0.deletingLastPathComponent().path) } && FileKind.common(of: urls) != .snippet
         if urls.count == 1 {
             let u = urls[0]
             JobQueue.shared.add(title, subtitle: u.lastPathComponent, replaces: replaceable ? [u] : []) { progress in

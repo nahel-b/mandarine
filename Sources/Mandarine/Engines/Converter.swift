@@ -202,8 +202,10 @@ enum MediaEngine {
             var args = ["-i", url.path]
             if !info.hasAudio { args += ["-an"] }
             // MPEG-1/2 (.mpg, DVD, caméscopes) : souvent entrelacé → yadif ne touche que les images marquées entrelacées
-            let mpeg = ["mpg", "mpeg"].contains(url.pathExtension.lowercased())
-            args += ["-vf", (mpeg ? "yadif=deint=interlaced," : "") + "scale=trunc(iw/2)*2:trunc(ih/2)*2"] + FFmpeg.videoArgs(for: e) + [out.path]
+            let ext = url.pathExtension.lowercased()
+            let deinterlace = FileKind.interlacedExts.contains(ext) ? FileKind.deinterlaceFilter + "," : ""
+            let squarePixels = FileKind.dvdExts.contains(ext) ? "scale='trunc(iw*sar/2)*2':ih:flags=lanczos,setsar=1," : ""          // DVD 16:9 : pixels larges → vraie largeur
+            args += ["-vf", deinterlace + squarePixels + "scale=trunc(iw/2)*2:trunc(ih/2)*2"] + FFmpeg.videoArgs(for: e) + [out.path]
             try await FFmpeg.run(args, duration: info.duration, progress: progress)
         }
         return out
@@ -226,6 +228,52 @@ enum MediaEngine {
             return out
         }
         try await FFmpeg.run(["-i", url.path, "-vn"] + FFmpeg.audioArgs(for: e) + [out.path], duration: info.duration, progress: progress)
+        return out
+    }
+}
+
+
+/// Un DVD range chaque titre en morceaux d'au plus 1 Go : VTS_01_1.VOB, VTS_01_2.VOB… À convertir un par un, la vidéo serait coupée en plein milieu d'une scène.
+/// Si on dépose tous les morceaux d'un même titre, on les recolle dans l'ordre (de simples octets mis bout à bout, sans recompression) avant de convertir.
+enum DVDJoin {
+    static func parts(of urls: [URL]) -> [URL]? {
+        guard urls.count > 1, urls.allSatisfy({ $0.pathExtension.lowercased() == "vob" }) else { return nil }
+        var title: String?
+        var numbered: [(Int, URL)] = []
+        for u in urls {
+            let stem = u.deletingPathExtension().lastPathComponent.uppercased()          // VTS_01_3
+            let bits = stem.split(separator: "_")
+            guard bits.count == 3, bits[0] == "VTS", let n = Int(bits[2]), n > 0 else { return nil }          // _0 = le menu : on ne le recolle pas
+            let t = String(bits[0]) + "_" + String(bits[1])
+            if title == nil { title = t } else if title != t { return nil }
+            numbered.append((n, u))
+        }
+        return numbered.sorted { $0.0 < $1.0 }.map(\.1)
+    }
+
+    static func title(of parts: [URL]) -> String { String(parts[0].deletingPathExtension().lastPathComponent.uppercased().split(separator: "_").prefix(2).joined(separator: "_")) }
+
+    /// Recolle les morceaux dans un fichier temporaire « VTS_01.vob ».
+    static func join(_ parts: [URL], progress: (Double) -> Void) throws -> URL {
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent("mandarine-dvd-" + UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        let out = dir.appendingPathComponent(title(of: parts) + ".vob")
+        FileManager.default.createFile(atPath: out.path, contents: nil)
+        let w = try FileHandle(forWritingTo: out)
+        defer { try? w.close() }
+        let total = Double(parts.reduce(0) { $0 + $1.fileSize })
+        var done = 0.0
+        for p in parts {
+            let r = try FileHandle(forReadingFrom: p)
+            defer { try? r.close() }
+            while true {
+                try Task.checkCancellation()
+                let chunk = r.readData(ofLength: 8 << 20)
+                if chunk.isEmpty { break }
+                w.write(chunk); done += Double(chunk.count)
+                progress(total > 0 ? done / total : 0)
+            }
+        }
         return out
     }
 }

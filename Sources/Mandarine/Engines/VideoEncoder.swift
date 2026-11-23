@@ -123,7 +123,10 @@ enum VideoEncoder {
         let tags = colorTags(info)
         var vf: [String] = []
         // MPEG-1/2 (.mpg, caméscopes, PowerShot) : souvent entrelacé → yadif ne touche que les images marquées entrelacées
-        if ["mpg", "mpeg"].contains(input.pathExtension.lowercased()) { vf.append("yadif=deint=interlaced") }
+        let ext = input.pathExtension.lowercased()
+        if FileKind.interlacedExts.contains(ext) { vf.append(FileKind.deinterlaceFilter) }
+        // DVD : l'image 16:9 est stockée en 720 × 480 avec des pixels « larges » ; on l'étire à sa vraie largeur pour qu'elle ne paraisse pas écrasée, quel que soit le lecteur
+        if FileKind.dvdExts.contains(ext) { vf.append("scale='trunc(iw*sar/2)*2':ih:flags=lanczos,setsar=1") }
         // 1) redimensionnement : Lanczos, matrices explicites (aucun décalage de teinte lors du passage 4:2:2 10 bits → 4:2:0)
         var scale = "scale="
         if o.longSide > 0 {
