@@ -2,6 +2,23 @@ import Foundation
 import UniformTypeIdentifiers
 
 /// Famille d'un fichier : détermine quelles roues et quels outils sont proposés.
+/// Que faire d'une vidéo de caméscope entrelacée (VOB, AVCHD).
+enum InterlaceMode: String, CaseIterable, Identifiable {
+    case standard, smooth, keep
+    var id: String { rawValue }
+    var title: String {
+        switch self {
+        case .standard: return L("Deinterlace (25 / 30 fps)")
+        case .smooth: return L("Deinterlace (50 / 60 fps)")
+        case .keep: return L("Keep interlaced")
+        }
+    }
+    /// Le réglage en cours (`MANDARINE_INTERLACE=standard|smooth|keep` pour les essais).
+    static var current: InterlaceMode { ProcessInfo.processInfo.environment["MANDARINE_INTERLACE"].flatMap(InterlaceMode.init(rawValue:)) ?? AppSettings.shared.interlaceMode }
+    /// Le filtre qui désentrelace (seules les images marquées entrelacées sont touchées) ; `mode=1` garde chaque demi-image (50 ou 60 images par seconde).
+    var deinterlaceFilter: String { self == .smooth ? "yadif=mode=1:deint=interlaced" : "yadif=deint=interlaced" }
+}
+
 enum FileKind: String, CaseIterable {
     case image, video, audio, pdf, document, slides, spreadsheet, epub, subtitle, archive, folder, snippet, other
 
@@ -10,11 +27,6 @@ enum FileKind: String, CaseIterable {
     /// Caméscopes : DVD (VOB, VRO), AVCHD (MTS, M2TS). Entrelacés (60i / 50i) : on les désentrelace. DVD : pixels non carrés (16:9 stocké en 720 × 480).
     static let interlacedExts: Set<String> = ["mpg", "mpeg", "vob", "vro", "mts", "m2ts"]
     static let dvdExts: Set<String> = ["vob", "vro"]
-    /// Le filtre qui désentrelace (seules les images marquées entrelacées sont touchées). Option : `mode=1` garde chaque demi-image (≈ 60 images par seconde, plus fluide, fichiers plus lourds).
-    static var deinterlaceFilter: String {
-        let smooth = AppSettings.shared.deinterlace60 || ProcessInfo.processInfo.environment["MANDARINE_DEINT60"] != nil
-        return smooth ? "yadif=mode=1:deint=interlaced" : "yadif=deint=interlaced"
-    }
     static let audioExts: Set<String> = ["mp3", "m4a", "wav", "flac", "ogg", "oga", "opus", "aiff", "aif", "wma", "aac", "caf"]
     static let documentExts: Set<String> = ["docx", "pages", "md", "markdown", "txt", "rtf", "rtfd", "textclipping", "html", "htm", "doc"]
     static let slideExts: Set<String> = ["ppt", "pptx", "key"]

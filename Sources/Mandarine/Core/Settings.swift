@@ -90,7 +90,7 @@ final class AppSettings: ObservableObject {
     @Published var enableCull: Bool { didSet { d.set(enableCull, forKey: "enableCull") } }
     @Published var enableScan: Bool { didSet { d.set(enableScan, forKey: "enableScan") } }
     @Published var enableRingtone: Bool { didSet { d.set(enableRingtone, forKey: "enableRingtone") } }
-    @Published var deinterlace60: Bool { didSet { d.set(deinterlace60, forKey: "deinterlace60") } }          // vidéos de caméscope (DVD, AVCHD) : une image par demi-image (≈ 60 i/s) au lieu de 30
+    @Published var interlaceMode: InterlaceMode { didSet { d.set(interlaceMode.rawValue, forKey: "interlaceMode") } }          // vidéos de caméscope (VOB, AVCHD) : désentrelacer (30 ou 60 i/s) ou garder entrelacé
     @Published var ringtoneSeconds: Int { didSet { d.set(ringtoneSeconds, forKey: "ringtoneSeconds") } }
     @Published var enableTextDrag: Bool { didSet { d.set(enableTextDrag, forKey: "enableTextDrag") } }
     @Published var enableCode: Bool { didSet { d.set(enableCode, forKey: "enableCode") } }
@@ -144,7 +144,7 @@ final class AppSettings: ObservableObject {
         enableScan = d.object(forKey: "enableScan") as? Bool ?? true
         enableRingtone = d.object(forKey: "enableRingtone") as? Bool ?? true
         ringtoneSeconds = (d.object(forKey: "ringtoneSeconds") as? Int) ?? 30
-        deinterlace60 = d.object(forKey: "deinterlace60") as? Bool ?? false
+        interlaceMode = d.string(forKey: "interlaceMode").flatMap(InterlaceMode.init(rawValue:)) ?? (d.bool(forKey: "deinterlace60") ? .smooth : .standard)          // ancien réglage à cocher repris
         enableTextDrag = d.object(forKey: "enableTextDrag") as? Bool ?? true
         enableCode = d.object(forKey: "enableCode") as? Bool ?? true
         enableDavinci = d.object(forKey: "enableDavinci") as? Bool ?? true

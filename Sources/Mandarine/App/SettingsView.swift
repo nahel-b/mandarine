@@ -177,8 +177,8 @@ struct SettingsView: View {
                 if s.enableRingtone {
                     Stepper(L("Ringtone length: \(s.ringtoneSeconds) s"), value: $s.ringtoneSeconds, in: 5...40, step: 5)
                 }
-                Toggle(L("Camcorder video: keep every field (about 60 frames per second)"), isOn: $s.deinterlace60)
-                Text(L("DVD and AVCHD camcorder videos are interlaced. By default they are deinterlaced to 30 frames per second. This keeps twice as many, for smoother motion, with larger files.")).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                Picker(L("Interlaced camcorder video (VOB, MTS)"), selection: $s.interlaceMode) { ForEach(InterlaceMode.allCases) { Text($0.title).tag($0) } }
+                Text(s.interlaceMode == .keep ? L("The picture is left interlaced, as filmed (MP4, MKV, ProRes). Best to archive, or to edit and deinterlace later; motion shows comb lines on a computer screen.") : s.interlaceMode == .smooth ? L("Every field becomes a picture: twice as many frames per second (50 in Europe, 60 in the US), smoother motion, larger files.") : L("The two fields are merged: 25 frames per second in Europe, 30 in the US, clean on any screen.")).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             }
             Section(L("Dragged text")) {
                 Toggle(L("Wheel for selected text"), isOn: $s.enableTextDrag)

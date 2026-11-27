@@ -66,8 +66,21 @@ enum OutputChoice {
         panel.prompt = L("Save here")
         let last = defaults.string(forKey: "lastReadOnlyOutput").map { URL(fileURLWithPath: $0, isDirectory: true) }
         panel.directoryURL = last ?? fm.urls(for: .moviesDirectory, in: .userDomainMask).first
+        // pour une vidéo de caméscope, le choix de l'entrelacement est proposé là, au moment de convertir
+        var popup: NSPopUpButton?
+        if urls.contains(where: { FileKind.interlacedExts.contains($0.pathExtension.lowercased()) }) {
+            let menu = NSPopUpButton(frame: .zero, pullsDown: false)
+            menu.addItems(withTitles: InterlaceMode.allCases.map(\.title))
+            menu.selectItem(at: InterlaceMode.allCases.firstIndex(of: AppSettings.shared.interlaceMode) ?? 0)
+            let row = NSStackView(views: [NSTextField(labelWithString: L("Interlacing:")), menu])
+            row.edgeInsets = NSEdgeInsets(top: 8, left: 16, bottom: 8, right: 16)
+            row.frame = NSRect(origin: .zero, size: row.fittingSize)
+            panel.accessoryView = row; panel.isAccessoryViewDisclosed = true
+            popup = menu
+        }
         NSApp.activate(ignoringOtherApps: true)
         guard panel.runModal() == .OK, let dir = panel.url else { return false }
+        if let m = popup, InterlaceMode.allCases.indices.contains(m.indexOfSelectedItem) { AppSettings.shared.interlaceMode = InterlaceMode.allCases[m.indexOfSelectedItem] }
         defaults.set(dir.path, forKey: "lastReadOnlyOutput")
         set(dir, for: Array(readOnly))
         return true

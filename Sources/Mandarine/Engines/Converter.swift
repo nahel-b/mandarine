@@ -203,9 +203,11 @@ enum MediaEngine {
             if !info.hasAudio { args += ["-an"] }
             // MPEG-1/2 (.mpg, DVD, caméscopes) : souvent entrelacé → yadif ne touche que les images marquées entrelacées
             let ext = url.pathExtension.lowercased()
-            let deinterlace = FileKind.interlacedExts.contains(ext) ? FileKind.deinterlaceFilter + "," : ""
-            let squarePixels = FileKind.dvdExts.contains(ext) ? "scale='trunc(iw*sar/2)*2':ih:flags=lanczos,setsar=1," : ""          // DVD 16:9 : pixels larges → vraie largeur
-            args += ["-vf", deinterlace + squarePixels + "scale=trunc(iw/2)*2:trunc(ih/2)*2"] + FFmpeg.videoArgs(for: e) + [out.path]
+            let camcorder = FileKind.interlacedExts.contains(ext)
+            let keep = camcorder && InterlaceMode.current == .keep && ["mp4", "mov", "mkv"].contains(e)          // les autres formats (GIF, WebM…) sont toujours désentrelacés
+            let deinterlace = camcorder && !keep ? InterlaceMode.current.deinterlaceFilter + "," : ""
+            let squarePixels = FileKind.dvdExts.contains(ext) && !keep ? "scale='trunc(iw*sar/2)*2':ih:flags=lanczos,setsar=1," : ""          // DVD 16:9 : pixels larges → vraie largeur
+            args += ["-vf", deinterlace + squarePixels + "scale=trunc(iw/2)*2:trunc(ih/2)*2" + (keep ? ":interl=1" : "")] + FFmpeg.videoArgs(for: e) + (keep ? ["-flags", "+ildct+ilme"] : []) + [out.path]
             try await FFmpeg.run(args, duration: info.duration, progress: progress)
         }
         return out

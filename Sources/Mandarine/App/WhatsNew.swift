@@ -8,6 +8,12 @@ struct WhatsNewRelease { let version: String; let headline: String; let items: [
 enum WhatsNew {
     /// À compléter à chaque version (la plus récente d'abord) : c'est ce que voit l'utilisateur après la mise à jour.
     static var releases: [WhatsNewRelease] { [
+        WhatsNewRelease(version: "1.20.0", headline: L("DVD camcorder, better"), items: [
+            WhatsNewItem(symbol: "film", title: L("Your choice of interlacing"),
+                         text: L("For camcorder videos, choose in Settings → Conversion: deinterlace to 25 / 30 or 50 / 60 frames per second, or keep the video interlaced (MP4, MKV, ProRes). The same choice is offered when the disc is read-only.")),
+            WhatsNewItem(symbol: "waveform", title: L("Sound and picture stay together"),
+                         text: L("After a short shot, a video from a DVD camcorder could freeze for a few seconds and the sound fall out of step. Each restart of the camcorder clock is now handled, and the progress bar knows the real length.")),
+        ]),
         WhatsNewRelease(version: "1.19.0", headline: L("Camcorder DVDs"), items: [
             WhatsNewItem(symbol: "opticaldisc", title: L("VOB to MOV, best quality"),
                          text: L("Videos from a DVD camcorder (VOB) are now recognized. The PRORES petal makes a near-lossless .mov, deinterlaced and with the right 16:9 shape. Drop all the VTS_01_*.VOB parts together and they are joined into one video. If the disc is read-only, you choose where to save. An option keeps every field for 60 frames per second (Settings → Conversion).")),

@@ -124,9 +124,11 @@ enum VideoEncoder {
         var vf: [String] = []
         // MPEG-1/2 (.mpg, caméscopes, PowerShot) : souvent entrelacé → yadif ne touche que les images marquées entrelacées
         let ext = input.pathExtension.lowercased()
-        if FileKind.interlacedExts.contains(ext) { vf.append(FileKind.deinterlaceFilter) }
-        // DVD : l'image 16:9 est stockée en 720 × 480 avec des pixels « larges » ; on l'étire à sa vraie largeur pour qu'elle ne paraisse pas écrasée, quel que soit le lecteur
-        if FileKind.dvdExts.contains(ext) { vf.append("scale='trunc(iw*sar/2)*2':ih:flags=lanczos,setsar=1") }
+        let keep = keepsInterlacing(o, input: input)
+        if FileKind.interlacedExts.contains(ext) && !keep { vf.append(InterlaceMode.current.deinterlaceFilter) }
+        // DVD : l'image 16:9 est stockée en 720 × 480 avec des pixels « larges » ; on l'étire à sa vraie largeur pour qu'elle ne paraisse pas écrasée, quel que soit le lecteur.
+        // En gardant l'entrelacement, on ne touche pas à l'image : la forme 16:9 reste notée dans le fichier.
+        if FileKind.dvdExts.contains(ext) && !keep { vf.append("scale='trunc(iw*sar/2)*2':ih:flags=lanczos,setsar=1") }
         // 1) redimensionnement : Lanczos, matrices explicites (aucun décalage de teinte lors du passage 4:2:2 10 bits → 4:2:0)
         var scale = "scale="
         if o.longSide > 0 {
@@ -136,6 +138,7 @@ enum VideoEncoder {
             scale += "w='if(gte(iw,ih),\(cap),-2)':h='if(gte(iw,ih),-2,\(capH))':"
         }
         scale += "flags=lanczos+accurate_rnd+full_chroma_int"
+        if keep { scale += ":interl=1" }          // les deux demi-images sont traitées séparément
         if o.preserveColor { scale += ":in_color_matrix=\(tags.matrix):out_color_matrix=\(tags.matrix):in_range=\(tags.range):out_range=\(tags.range)" }
         vf.append(scale)
         // 2) cadence
@@ -160,6 +163,7 @@ enum VideoEncoder {
         case .proRes:
             a += ["-c:v", "prores_ks", "-profile:v", String(o.proResProfile), "-vendor", "apl0"]
         }
+        if keep { a += ["-flags", o.encoder == .proRes ? "+ildct" : "+ildct+ilme"] }          // encodage entrelacé
         // débit / qualité
         if o.encoder == .proRes {}      // ProRes : le profil fixe le débit
         else { switch o.mode {
@@ -186,6 +190,11 @@ enum VideoEncoder {
         return a
     }
 
+    /// « Garder entrelacé » : vidéo de caméscope, sans changement de taille ni de cadence, en ProRes ou H.264.
+    static func keepsInterlacing(_ o: EncodeOptions, input: URL) -> Bool {
+        InterlaceMode.current == .keep && FileKind.interlacedExts.contains(input.pathExtension.lowercased()) && o.longSide == 0 && o.fps == 0 && (o.encoder == .proRes || o.encoder == .x264)
+    }
+
     // MARK: Exécution
     static func encode(_ o: EncodeOptions, input: URL, output: URL, progress: @escaping (Double) -> Void) async throws {
         let info = await FFmpeg.probe(input)
@@ -198,6 +207,7 @@ enum VideoEncoder {
         } else {
             try await FFmpeg.run(arguments(o, info: info, input: input, output: output), duration: info.duration, progress: progress)
         }
+        if keepsInterlacing(o, input: input) { try await FFmpeg.fixFieldOrder(output) }
     }
 
     /// Encode 10 s au milieu de la vidéo avec les mêmes réglages, pour estimer la taille finale.

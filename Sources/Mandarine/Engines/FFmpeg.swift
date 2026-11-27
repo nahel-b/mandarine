@@ -55,6 +55,64 @@ enum FFmpeg {
         return encoderCache?.contains(" \(name) ") ?? false
     }
 
+    /// ffmpeg note « tb » ou « bt » dans un .mov ProRes entrelacé (une demi-image stockée d'abord, l'autre affichée d'abord), ce que des logiciels de montage lisent
+    /// à l'envers. On recopie le fichier (sans réencoder) avec l'ordre correct : « tt » ou « bb ».
+    static func fixFieldOrder(_ file: URL) async throws {
+        guard file.pathExtension.lowercased() == "mov", let probe = ffprobe else { return }
+        let p = Process(); p.executableURL = probe
+        p.arguments = ["-v", "error", "-select_streams", "v:0", "-show_entries", "stream=field_order", "-of", "csv=p=0", file.path]
+        let pipe = Pipe(); p.standardOutput = pipe; p.standardError = Pipe()
+        try p.run(); let data = pipe.fileHandleForReading.readDataToEndOfFile(); p.waitUntilExit()
+        let order = String(decoding: data, as: UTF8.self).trimmingCharacters(in: .whitespacesAndNewlines)
+        guard order == "tb" || order == "bt" else { return }
+        let tmp = file.deletingLastPathComponent().appendingPathComponent(".\(UUID().uuidString).mov")
+        do {
+            try await run(["-i", file.path, "-map", "0", "-c", "copy", "-field_order", order == "tb" ? "tt" : "bb", "-map_metadata", "0", tmp.path], duration: 0) { _ in }
+            _ = try FileManager.default.replaceItemAt(file, withItemAt: tmp)
+        } catch { try? FileManager.default.removeItem(at: tmp); throw error }
+    }
+
+    /// Un caméscope DVD remet son horloge à zéro à chaque prise de vue. ffmpeg ne recale par défaut que les sauts de plus de 10 s : après une prise plus courte,
+    /// l'image se fige et le son se décale. On abaisse ce seuil à 1 s, et le son suit les horodatages ainsi recalés.
+    static func repairDVDTimestamps(_ args: [String]) -> [String] {
+        let dvd = args.indices.dropLast().contains { args[$0] == "-i" && FileKind.dvdExts.contains((args[$0 + 1] as NSString).pathExtension.lowercased()) }
+        guard dvd else { return args }
+        var a = ["-dts_delta_threshold", "1"] + args
+        // un son recopié ou passé par un graphe de filtres ne peut pas recevoir de filtre en plus
+        let copiesAudio = a.indices.dropLast().contains { ["-c", "-c:a", "-codec:a", "-acodec"].contains(a[$0]) && a[$0 + 1] == "copy" }
+        guard !copiesAudio, !a.contains("-an"), !a.contains("-filter_complex"), !a.contains("-lavfi") else { return a }
+        if let i = a.firstIndex(where: { $0 == "-af" || $0 == "-filter:a" }), i + 1 < a.count { a[i + 1] = "aresample=async=1," + a[i + 1] }
+        else { a.insert(contentsOf: ["-af", "aresample=async=1"], at: a.count - 1) }
+        return a
+    }
+
+    /// La durée annoncée d'un VOB est fausse (12 s pour 15 min) à cause de ces remises à zéro. On compte les images de trois extraits et on rapporte à la taille.
+    private static func estimatedDVDDuration(_ url: URL) -> Double? {
+        guard let probe = ffprobe, let file = try? FileHandle(forReadingFrom: url), let size = try? file.seekToEnd(), size > 0 else { return nil }
+        defer { try? file.close() }
+        let chunk: UInt64 = 8 << 20
+        let offsets: [UInt64] = size <= chunk * 3 ? [0] : [0, (size - chunk) / 2, size - chunk].map { $0 / 2048 * 2048 }          // secteurs de 2 048 octets
+        var frames = 0.0, bytes = 0.0, fps = 0.0
+        for offset in offsets {
+            let sample = OutputNaming.tempURL(ext: "vob")
+            defer { try? FileManager.default.removeItem(at: sample) }
+            guard (try? file.seek(toOffset: offset)) != nil, let data = try? file.read(upToCount: Int(offsets.count == 1 ? size : chunk)), (try? data.write(to: sample)) != nil else { return nil }
+            let p = Process(); p.executableURL = probe
+            p.arguments = ["-v", "quiet", "-select_streams", "v:0", "-count_packets", "-show_entries", "stream=r_frame_rate,nb_read_packets", "-of", "default=nw=1", sample.path]
+            let pipe = Pipe(); p.standardOutput = pipe; p.standardError = Pipe()
+            guard (try? p.run()) != nil else { return nil }
+            let text = String(decoding: pipe.fileHandleForReading.readDataToEndOfFile(), as: UTF8.self); p.waitUntilExit()
+            for line in text.split(separator: "\n") {
+                let kv = line.split(separator: "=").map(String.init)
+                guard kv.count == 2 else { continue }
+                if kv[0] == "nb_read_packets", let n = Double(kv[1]) { frames += n; bytes += Double(data.count) }
+                if kv[0] == "r_frame_rate", let r = parseRate(kv[1]), r > 0 { fps = r }
+            }
+        }
+        guard frames > 0, bytes > 0, fps > 0 else { return nil }
+        return frames / fps * Double(size) / bytes
+    }
+
     static func probe(_ url: URL) async -> MediaInfo {
         var info = MediaInfo()
         // Résultat rapide via AVFoundation, complété par ffprobe si disponible.
@@ -103,6 +161,7 @@ enum FFmpeg {
                         default: break
                         }
                     }
+                    if info.hasVideo, FileKind.dvdExts.contains(url.pathExtension.lowercased()), let d = estimatedDVDDuration(url) { info.duration = d }
                     return info
                 }
             } catch {}
@@ -125,7 +184,7 @@ enum FFmpeg {
     /// Lance ffmpeg. `duration` (en secondes) sert à calculer la progression.
     @discardableResult
     static func run(_ originalArgs: [String], duration: Double? = nil, progress: ((Double) -> Void)? = nil) async throws -> String {
-        let args = HLS.resolveInputs(originalArgs)
+        let args = repairDVDTimestamps(HLS.resolveInputs(originalArgs))
         guard let ff = ffmpeg else {
             throw MandarineError(L("ffmpeg est introuvable. Téléchargez-le dans Réglages → Engines (ou brew install ffmpeg)."))
         }
